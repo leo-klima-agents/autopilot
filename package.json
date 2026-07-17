@@ -9,6 +9,10 @@
   },
   "scripts": {
     "preflight": "node scripts/preflight.mjs",
+    "manifest:check": "node scripts/manifest.mjs check",
+    "manifest:write": "node scripts/manifest.mjs write",
+    "storage:check": "node scripts/storage-check.mjs check",
+    "merged-abi": "node scripts/merged-abi.mjs",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",

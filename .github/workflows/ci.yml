@@ -23,7 +23,7 @@ jobs:
         working-directory: contracts
         continue-on-error: true # advisory until vendored code is fmt-normalized
       - name: build
-        run: forge build --deny-warnings || forge build
+        run: forge build
         working-directory: contracts
       - name: manifest check (selector collisions + staleness)
         run: node scripts/manifest.mjs check
