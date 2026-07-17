@@ -8,6 +8,8 @@ pragma solidity ^0.8.30;
 ///         replays them through these functions and asserts EXACT equality.
 /// @dev All math is floor-division over non-negative integers, WAD = 1e18 weights.
 ///      Any change here must be mirrored in packages/core and regenerate fixtures.
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
 library LibDeterministic {
     uint256 internal constant WAD = 1e18;
 
@@ -66,6 +68,103 @@ library LibDeterministic {
         uint256 eff = allocatedRate < capRate ? allocatedRate : capRate;
         streamed = eff * dt;
         burned = emitted - streamed;
+    }
+
+    /// @notice cap rate from trailing revenue: capRate = κ × (trailingRevenue / windowSec)
+    ///         — mirrors packages/core capBurnExpected exactly (floor at each step)
+    function capFromRevenue(uint256 trailingRevenue, uint256 windowSec, uint256 kappaWad)
+        internal
+        pure
+        returns (uint256)
+    {
+        if (windowSec == 0) revert ZeroDenominator();
+        return mulDiv(kappaWad, trailingRevenue / windowSec, WAD);
+    }
+
+    // ---------------------------------------------------------------------
+    // Water-filling allocator (mirror of packages/core strategies/waterFilling.ts)
+    // ---------------------------------------------------------------------
+
+    /// @notice bits needed to represent n (bitLength(0) == 0) — mirrors TS bitLength
+    function bitLength(uint256 n) internal pure returns (uint256 bits) {
+        while (n > 0) {
+            n >>= 1;
+            ++bits;
+        }
+    }
+
+    /// @notice floor integer square root — the exact Newton iteration of the TS twin:
+    ///         x₀ = 2^(ceil(bitLength(n)/2)), xₖ₊₁ = (xₖ + n/xₖ) >> 1, stop when y >= x
+    function isqrt(uint256 n) internal pure returns (uint256) {
+        if (n < 2) return n;
+        uint256 x = uint256(1) << ((bitLength(n) + 1) / 2);
+        for (;;) {
+            uint256 y = (x + n / x) >> 1;
+            if (y >= x) return x;
+            x = y;
+        }
+    }
+
+    /// @dev w_i(λ) = max(0, isqrt(R_i·W_i·scale/λ) − W_i). 512-bit intermediate via OZ
+    ///      Math.mulDiv; evaluated λ values keep the result within uint256 for inputs
+    ///      bounded by the fixture domain (R, W, budget ≤ 1e30).
+    function _weightAtLambda(uint256 r, uint256 w, uint256 lambda, uint256 scale) private pure returns (uint256) {
+        uint256 product = r * w;
+        if (product == 0) return 0;
+        uint256 root = isqrt(Math.mulDiv(product, scale, lambda));
+        return root > w ? root - w : 0;
+    }
+
+    /// @notice Exact water-filling: max Σ wᵢRᵢ/(Wᵢ+wᵢ) s.t. Σwᵢ = budget. Bisection for
+    ///         the smallest integer λ with Σ wᵢ(λ) ≤ budget; leftover assigned to the
+    ///         largest-R pool (ties: lowest index). Bit-exact mirror of the TS twin.
+    function waterFill(uint256[] memory r, uint256[] memory w, uint256 budget, uint256 scale)
+        internal
+        pure
+        returns (uint256[] memory weights, uint256 lambda, uint256 iterations)
+    {
+        if (r.length != w.length) revert LengthMismatch();
+        uint256 n = r.length;
+        weights = new uint256[](n);
+        if (n == 0 || budget == 0) return (weights, 0, 0);
+
+        // λ_hi: smallest λ zeroing every pool
+        uint256 hi = 1;
+        for (uint256 i; i < n; ++i) {
+            if (r[i] > 0 && w[i] > 0) {
+                uint256 cand = (r[i] * scale) / w[i] + 1;
+                if (cand > hi) hi = cand;
+            }
+        }
+        iterations = bitLength(hi);
+
+        uint256 lo = 1;
+        while (lo < hi) {
+            uint256 mid = (lo + hi) >> 1;
+            uint256 sum;
+            for (uint256 i; i < n; ++i) {
+                sum += _weightAtLambda(r[i], w[i], mid, scale);
+            }
+            if (sum <= budget) {
+                hi = mid;
+            } else {
+                lo = mid + 1;
+            }
+        }
+        lambda = hi;
+
+        uint256 total;
+        for (uint256 i; i < n; ++i) {
+            weights[i] = _weightAtLambda(r[i], w[i], lambda, scale);
+            total += weights[i];
+        }
+        if (budget > total) {
+            uint256 best;
+            for (uint256 i = 1; i < n; ++i) {
+                if (r[i] > r[best]) best = i;
+            }
+            weights[best] += budget - total;
+        }
     }
 
     // ---------------------------------------------------------------------

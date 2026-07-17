@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@aero-autopilot/core": "workspace:*",
-    "viem": "^2.21.0"
+    "viem": "^2.37.13"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
