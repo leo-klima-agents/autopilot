@@ -36,6 +36,18 @@
     "./fixtures": {
       "types": "./dist/fixtures/index.d.ts",
       "default": "./dist/fixtures/index.js"
+    },
+    "./data/schema": {
+      "types": "./dist/data/schema.d.ts",
+      "default": "./dist/data/schema.js"
+    },
+    "./data/synthetic": {
+      "types": "./dist/data/synthetic.d.ts",
+      "default": "./dist/data/synthetic.js"
+    },
+    "./data/revenue": {
+      "types": "./dist/data/revenue.d.ts",
+      "default": "./dist/data/revenue.js"
     }
   },
   "files": [

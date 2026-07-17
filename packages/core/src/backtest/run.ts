@@ -9,7 +9,7 @@
  * on/off-target percentages (analytics, marked below).
  */
 
-import { divWad, WAD } from "../math/fixed.js";
+import { divWad, mulDiv, WAD } from "../math/fixed.js";
 import type { CrowdModel } from "../model/crowd.js";
 import {
   AllocationBlockedError,
@@ -17,6 +17,7 @@ import {
   type TargetAllocation,
   type Wad,
 } from "../model/types.js";
+import type { PoolId } from "../model/types.js";
 import { DEFAULT_COOLDOWN_SEC } from "../model/continuous.js";
 import {
   applyRotation,
@@ -55,6 +56,14 @@ export interface BacktestConfig {
   optimalWindowSec?: number;
 }
 
+/** Our portfolio's allocation share per pool over time (for the heat-map). */
+export interface AllocationHistory {
+  times: number[];
+  pools: PoolId[];
+  /** weights[sampleIndex][poolIndex]: portfolio Wad fraction on the pool. */
+  weights: Wad[][];
+}
+
 /** Equity curve time series for the web app (bigint arrays + times). */
 export interface EquityCurve {
   times: number[];
@@ -88,6 +97,8 @@ export interface BacktestResult {
   poolSamples: number;
   /** Equity curve series. */
   equityCurve: EquityCurve;
+  /** Allocation share per pool at each sample (for the heat-map). */
+  allocationHistory: AllocationHistory;
 }
 
 /**
@@ -148,6 +159,8 @@ export function runBacktest(
   const times: number[] = [];
   const equitySeries: Wad[] = [];
   const benchmarkSeries: Wad[] = [];
+  const allocPools = [...model.marketState().pools];
+  const allocWeights: Wad[][] = [];
   let peak = 0n;
   let maxDrawdown = 0n;
 
@@ -166,6 +179,16 @@ export function runBacktest(
     times.push(t);
     equitySeries.push(equity);
     benchmarkSeries.push(benchmark);
+    allocWeights.push(
+      allocPools.map((pool) => {
+        let onPool = 0n;
+        for (const tranche of tranches) {
+          const frac = tranche.allocation.get(pool) ?? 0n;
+          if (frac > 0n) onPool += mulDiv(tranche.positionWeight, frac, WAD);
+        }
+        return portfolioWeight === 0n ? 0n : divWad(onPool, portfolioWeight);
+      }),
+    );
     const rel = equity - benchmark;
     if (rel > peak) peak = rel;
     const drawdown = peak - rel;
@@ -244,5 +267,6 @@ export function runBacktest(
     offTargetPct: poolSamples === 0 ? 0 : offCount / poolSamples,
     poolSamples,
     equityCurve: { times, equity: equitySeries, benchmark: benchmarkSeries },
+    allocationHistory: { times: [...times], pools: allocPools, weights: allocWeights },
   };
 }
