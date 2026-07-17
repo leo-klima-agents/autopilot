@@ -1,0 +1,29 @@
+# Compiler settings are pinned per release tag — Sourcify verification fails on any
+# mismatch (OPERATIONS.md §6), so never float solc or optimizer settings.
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+solc_version = "0.8.30"
+optimizer = true
+optimizer_runs = 200
+via_ir = false
+bytecode_hash = "none"
+fs_permissions = [
+  { access = "read", path = "./test/differential/fixtures" },
+  { access = "read", path = "./facets.json" },
+]
+
+# Fork tests are gated behind the `fork` profile so `forge test` stays offline-green.
+# Run: FOUNDRY_PROFILE=fork forge test --match-path 'test/fork/*'
+# (profiles fall back to [profile.default] for unset keys)
+[profile.fork]
+
+[rpc_endpoints]
+base = "${BASE_RPC_URL}"
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = false

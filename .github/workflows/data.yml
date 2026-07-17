@@ -1,0 +1,48 @@
+name: Data
+
+# Rebuilds the versioned historical datasets (sugar indexer + Alchemy token metadata)
+# and opens a PR with the refreshed JSON. Secrets never reach the site: the site only
+# ever fetches the committed JSON artifacts (P7).
+on:
+  schedule:
+    - cron: "43 4 * * 4" # Thursdays, after the Aerodrome epoch flip
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - name: build datasets
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
+        run: |
+          if [ -z "$BASE_RPC_URL" ] || [ -z "$ALCHEMY_API_KEY" ]; then
+            echo "::error::BASE_RPC_URL / ALCHEMY_API_KEY repository secrets not set (brief §11)"; exit 1
+          fi
+          pnpm data
+      - name: guard — no secrets in data artifacts
+        run: |
+          ! grep -rE "$ALCHEMY_API_KEY" data/ || (echo "::error::secret leaked into data/"; exit 1)
+        env:
+          ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
+      - name: open PR with refreshed data
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/data-refresh
+          title: "data: weekly dataset refresh"
+          commit-message: "data: weekly dataset refresh"
+          body: "Automated weekly rebuild of data/ from sugar + Alchemy. Review the diff for anomalies (symbol changes, killed gauges) before merging."
+          add-paths: data/

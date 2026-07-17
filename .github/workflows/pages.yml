@@ -1,0 +1,54 @@
+name: Pages
+
+# Deploys apps/web to GitHub Pages on push to main. The site is fully static (P7):
+# no key is present at build time and the built bundle is secret-scanned before deploy.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - name: build site (Pages base path)
+        run: pnpm --filter @aero-autopilot/web build
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+      - name: secret scan of the built bundle (P7 — fails the deploy on any hit)
+        run: |
+          set -e
+          PATTERNS='ALCHEMY_API_KEY=|BASE_RPC_URL=|alchemy\.com/v2/[A-Za-z0-9_-]{16,}|[0-9a-fA-F]{64}PRIVKEY'
+          if grep -rEl "$PATTERNS" apps/web/dist; then
+            echo "::error::potential secret in site bundle"; exit 1
+          fi
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
