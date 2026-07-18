@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — Aero Autopilot PoC
 
-**Status:** [M0](MILESTONES.md) baseline, written 2026-07-17 from Tier 1/2 reading. This document is the
+**Status:** [M0](BRIEF.md#13-milestones) baseline, written 2026-07-17 from Tier 1/2 reading. This document is the
 project's working memory across the Aug 3 code drop: every v3 fact the build depends on is
 tabled in §2 with a source and confidence marker, and §3 lists where the design breaks if a
 fact is wrong. Diff each Aero code batch against §2 and log deltas in §4.
