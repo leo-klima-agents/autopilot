@@ -124,6 +124,7 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
     revenueTotal: 0n,
     crowdRevenue: 0n,
   };
+  const revenueByPool = new Map<PoolId, Wad>(); // same increments as revenueTotal
 
   /** cap_pool = mulWad(κ, trailingRevenue / window) — exact floor semantics. */
   function recalibrateCaps(now: number): void {
@@ -171,6 +172,7 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
     for (const pool of pools) {
       const rev = revenue.revenueBetween(pool, from, to);
       totals.revenueTotal += rev;
+      if (rev > 0n) revenueByPool.set(pool, (revenueByPool.get(pool) ?? 0n) + rev);
       const poolW = poolWeight(pool);
       if (rev > 0n) {
         if (poolW === 0n) {
@@ -319,5 +321,6 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
       return shares;
     },
     totals: () => ({ ...totals }),
+    revenueByPool: () => new Map(revenueByPool),
   };
 }

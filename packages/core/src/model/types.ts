@@ -137,4 +137,10 @@ export interface ProtocolModel {
   emissionShares(): Map<PoolId, Wad>;
   /** Conservation counters. */
   totals(): ModelTotals;
+  /**
+   * Total revenue produced per pool since model start, on the same accrual
+   * timing as `totals().revenueTotal` (epoch models lump at flips, continuous
+   * models stream) — the values sum exactly to it. Returns a snapshot copy.
+   */
+  revenueByPool(): ReadonlyMap<PoolId, Wad>;
 }

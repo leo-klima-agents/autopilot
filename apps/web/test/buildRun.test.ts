@@ -100,5 +100,10 @@ describe("per-pool earned revenue passthrough", () => {
     expect(display.allocation.earned).toHaveLength(times.length);
     expect(display.allocation.earned.every((row) => row.length === pools.length)).toBe(true);
     expect(display.allocation.earned.flat().every((n) => typeof n === "number" && n >= 0)).toBe(true);
+    // passive benchmark twin serializes on the same grid
+    expect(display.allocation.benchmarkWeights).toHaveLength(times.length);
+    expect(display.allocation.benchmarkEarned).toHaveLength(times.length);
+    expect(display.allocation.benchmarkWeights.every((row) => row.length === pools.length)).toBe(true);
+    expect(display.allocation.benchmarkEarned.flat().every((n) => typeof n === "number" && n >= 0)).toBe(true);
   });
 });

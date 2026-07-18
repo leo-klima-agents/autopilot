@@ -11,7 +11,7 @@ import type { DisplayResult } from "../lib/serialize.js";
 import { timeAxisFor } from "../lib/timeAxis.js";
 import { moneyFor } from "../lib/format.js";
 import { TIME_AXIS_LEFT, TIME_AXIS_RIGHT_PAD } from "../lib/chartGeometry.js";
-import { useContainerWidth } from "./AllocationHeatmap.js";
+import { useContainerWidth, type HeatmapView } from "./AllocationHeatmap.js";
 
 const ROW_H = 18;
 const TICK_ROW_H = 22;
@@ -24,8 +24,16 @@ function cellColor(t: number): string {
   return `rgb(${mix(18, 232)}, ${mix(23, 180)}, ${mix(30, 79)})`;
 }
 
-export function EarningsHeatmap({ result }: { result: DisplayResult }) {
-  const { times, poolNames, earned } = result.allocation;
+export function EarningsHeatmap({
+  result,
+  view = "strategy",
+}: {
+  result: DisplayResult;
+  view?: HeatmapView;
+}) {
+  const { times, poolNames } = result.allocation;
+  const earned =
+    view === "passive" ? result.allocation.benchmarkEarned : result.allocation.earned;
   const [containerRef, width] = useContainerWidth();
   if (times.length === 0 || poolNames.length === 0 || earned.length === 0) return null;
   const axis = timeAxisFor(result);

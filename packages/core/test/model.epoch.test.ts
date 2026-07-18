@@ -176,6 +176,12 @@ describe("EpochModel rewards", () => {
     expect(model.earnedByPool("p1").get("b")! > 0n).toBe(true);
     // p2 voted b throughout — exactly one entry
     expect([...model.earnedByPool("p2").keys()]).toEqual(["b"]);
+    // per-pool revenue sums exactly to the aggregate conservation counter
+    const byPool = model.revenueByPool();
+    let revSum = 0n;
+    for (const amount of byPool.values()) revSum += amount;
+    expect(revSum).toBe(model.totals().revenueTotal);
+    expect(byPool.get("a")! > 0n && byPool.get("b")! > 0n).toBe(true);
   });
 
   it("emissionShares reflect weight shares", () => {

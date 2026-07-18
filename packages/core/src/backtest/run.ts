@@ -67,6 +67,16 @@ export interface AllocationHistory {
    *  unit weight) earned from the pool across all tranches. Each row sums
    *  exactly to Σ model.earned(tranche) at that sample. */
   earned: Wad[][];
+  /** benchmarkWeights[sampleIndex][poolIndex]: the pool's Wad share of the
+   *  GLOBAL weight — the market portfolio the passive benchmark holds. */
+  benchmarkWeights: Wad[][];
+  /** benchmarkEarned[sampleIndex][poolIndex]: cumulative revenue a passive
+   *  market-cap-weighted portfolio of our size (portfolioWeight) would have
+   *  earned from the pool, accrued per step as
+   *  mulDiv(poolRevenueDelta, portfolioWeight, globalWeight) — the per-pool
+   *  twin of the equity chart's passive benchmark (same timing, floor per
+   *  pool instead of on the aggregate). */
+  benchmarkEarned: Wad[][];
 }
 
 /** Equity curve time series for the web app (bigint arrays + times). */
@@ -167,6 +177,10 @@ export function runBacktest(
   const allocPools = [...model.marketState().pools];
   const allocWeights: Wad[][] = [];
   const allocEarned: Wad[][] = [];
+  const benchWeights: Wad[][] = [];
+  const benchEarned: Wad[][] = [];
+  const passiveEarned = new Map<string, Wad>();
+  let prevRevByPool: ReadonlyMap<string, Wad> = new Map();
   let peak = 0n;
   let maxDrawdown = 0n;
 
@@ -202,6 +216,12 @@ export function runBacktest(
       }
     }
     allocEarned.push(allocPools.map((pool) => earnedNow.get(pool) ?? 0n));
+    const market = model.marketState();
+    const totalW = market.totalWeight();
+    benchWeights.push(
+      allocPools.map((pool) => (totalW === 0n ? 0n : divWad(market.poolWeight(pool), totalW))),
+    );
+    benchEarned.push(allocPools.map((pool) => passiveEarned.get(pool) ?? 0n));
     const rel = equity - benchmark;
     if (rel > peak) peak = rel;
     const drawdown = peak - rel;
@@ -262,7 +282,22 @@ export function runBacktest(
     const revenueTotal = model.totals().revenueTotal;
     const deltaRev = revenueTotal - prevRevenueTotal;
     prevRevenueTotal = revenueTotal;
-    if (globalWeight > 0n) benchmark += divWad(deltaRev, globalWeight);
+    // per-pool twin of the passive benchmark: a market-cap portfolio of our
+    // size takes portfolioWeight/globalWeight of each pool's revenue delta
+    const revByPool = model.revenueByPool();
+    if (globalWeight > 0n) {
+      benchmark += divWad(deltaRev, globalWeight);
+      for (const [pool, total] of revByPool) {
+        const delta = total - (prevRevByPool.get(pool) ?? 0n);
+        if (delta > 0n) {
+          passiveEarned.set(
+            pool,
+            (passiveEarned.get(pool) ?? 0n) + mulDiv(delta, portfolioWeight, globalWeight),
+          );
+        }
+      }
+    }
+    prevRevByPool = revByPool;
     if ((t + stepSec - startTime) % sampleIntervalSec === 0) sample(t + stepSec);
   }
 
@@ -285,6 +320,8 @@ export function runBacktest(
       pools: allocPools,
       weights: allocWeights,
       earned: allocEarned,
+      benchmarkWeights: benchWeights,
+      benchmarkEarned: benchEarned,
     },
   };
 }

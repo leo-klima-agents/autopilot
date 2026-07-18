@@ -80,6 +80,7 @@ export function createEpochModel(config: EpochModelConfig): ProtocolModel {
     revenueTotal: 0n,
     crowdRevenue: 0n,
   };
+  const revenueByPool = new Map<PoolId, Wad>(); // same increments as revenueTotal
 
   function positionPoolWeight(pos: PositionState, pool: PoolId): Wad {
     const frac = pos.allocation.get(pool) ?? 0n;
@@ -117,6 +118,7 @@ export function createEpochModel(config: EpochModelConfig): ProtocolModel {
     for (const pool of pools) {
       const reward = revenue.revenueBetween(pool, from, flip);
       totals.revenueTotal += reward;
+      revenueByPool.set(pool, (revenueByPool.get(pool) ?? 0n) + reward);
       if (reward === 0n) continue;
       const total = poolWeight(pool);
       if (total === 0n) {
@@ -225,5 +227,6 @@ export function createEpochModel(config: EpochModelConfig): ProtocolModel {
       return shares;
     },
     totals: () => ({ ...totals }),
+    revenueByPool: () => new Map(revenueByPool),
   };
 }

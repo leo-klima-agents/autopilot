@@ -3,7 +3,7 @@ import { ConfigPanel } from "./components/ConfigPanel.js";
 import { Guide } from "./components/Guide.js";
 import { Gauges } from "./components/Gauges.js";
 import { EquityChart } from "./components/EquityChart.js";
-import { AllocationHeatmap } from "./components/AllocationHeatmap.js";
+import { AllocationHeatmap, type HeatmapView } from "./components/AllocationHeatmap.js";
 import { EarningsHeatmap } from "./components/EarningsHeatmap.js";
 import {
   DEFAULT_RUN,
@@ -16,6 +16,26 @@ import type { DisplayResult, WorkerResponse } from "./lib/serialize.js";
 
 const STALE_AFTER_DAYS = 14;
 const DEBOUNCE_MS = 300;
+
+/** Strategy ↔ passive-benchmark switch shown on both heat-map panels; the two
+ *  controls share one state so the maps always show the same portfolio. */
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: HeatmapView;
+  onChange: (view: HeatmapView) => void;
+}) {
+  return (
+    <div className="seg-toggle" role="group" aria-label="heatmap portfolio">
+      {(["strategy", "passive"] as const).map((v) => (
+        <button key={v} className={view === v ? "active" : ""} onClick={() => onChange(v)}>
+          {v === "strategy" ? "strategy" : "passive bench"}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Live replay state: the last good result stays on the instruments while a
  *  newer run computes (or a half-typed config errors) — no flicker, no button. */
@@ -31,6 +51,7 @@ export function App() {
   const [view, setView] = useState<"console" | "guide">(() =>
     location.hash === "#guide" ? "guide" : "console",
   );
+  const [heatmapView, setHeatmapView] = useState<HeatmapView>("strategy");
 
   // hash navigation (back button, pasted #guide links on an already-open page)
   useEffect(() => {
@@ -246,12 +267,22 @@ export function App() {
                 </div>
               </div>
               <div className="panel">
-                <p className="placard">Allocation over time</p>
-                <AllocationHeatmap result={live.result} />
+                <div className="panel-head">
+                  <p className="placard">
+                    Allocation over time{heatmapView === "passive" ? " — passive benchmark" : ""}
+                  </p>
+                  <ViewToggle view={heatmapView} onChange={setHeatmapView} />
+                </div>
+                <AllocationHeatmap result={live.result} view={heatmapView} />
               </div>
               <div className="panel">
-                <p className="placard">Earned revenue per pool</p>
-                <EarningsHeatmap result={live.result} />
+                <div className="panel-head">
+                  <p className="placard">
+                    Earned revenue per pool{heatmapView === "passive" ? " — passive benchmark" : ""}
+                  </p>
+                  <ViewToggle view={heatmapView} onChange={setHeatmapView} />
+                </div>
+                <EarningsHeatmap result={live.result} view={heatmapView} />
               </div>
             </>
           ) : (

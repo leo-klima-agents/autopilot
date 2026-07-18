@@ -308,6 +308,13 @@ export function Guide({ onClose }: { onClose: () => void }) {
             pool's cumulative contribution over the whole run (USD on historical replays). A bright allocation row over
             a dark revenue row is weight parked where the fees never showed up.
           </dd>
+          <dt>strategy / passive bench toggle</dt>
+          <dd>
+            Flips both heat-maps between your strategy's portfolio and the passive benchmark's: a market-cap-weighted
+            portfolio of the same size that always holds every pool in proportion to its global vote weight. Comparing
+            the two views shows exactly where the strategy concentrated relative to the market, and which of those
+            concentrations paid.
+          </dd>
         </dl>
       </div>
 
