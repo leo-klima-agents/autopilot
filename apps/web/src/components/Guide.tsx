@@ -203,7 +203,11 @@ export function Guide({ onClose }: { onClose: () => void }) {
         <h3>Run</h3>
         <dl>
           <dt>duration, weeks</dt>
-          <dd>Simulated length (clamped to the dataset's coverage).</dd>
+          <dd>
+            Simulated length (clamped to the dataset's coverage). Historical runs anchor at the most recent complete
+            epoch and replay backwards from there — a 12-week run covers the latest 12 weeks, and the still-in-progress
+            week at indexing time is excluded. Synthetic runs always start at the beginning of the generated series.
+          </dd>
           <dt>tranches / tokens per tranche</dt>
           <dd>
             How many separate positions you stake and their size. More tranches = smoother reallocation pipeline but
