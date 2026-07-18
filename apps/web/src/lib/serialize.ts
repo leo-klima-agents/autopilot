@@ -10,6 +10,8 @@ import type { BuiltRun } from "./buildRun.js";
 export interface DisplayResult {
   totalReturn: number;
   passiveReturn: number;
+  /** Foresight (revenue-proportional) benchmark return — the ceiling reference. */
+  revenueBenchmarkReturn: number;
   returnVsPassive: number;
   maxDrawdownVsBenchmark: number;
   turnover: number;
@@ -18,7 +20,7 @@ export interface DisplayResult {
   onTargetPct: number;
   offTargetPct: number;
   poolSamples: number;
-  equity: { times: number[]; equity: number[]; benchmark: number[] };
+  equity: { times: number[]; equity: number[]; benchmark: number[]; revenueBenchmark: number[] };
   allocation: {
     times: number[];
     pools: string[];
@@ -30,6 +32,10 @@ export interface DisplayResult {
     benchmarkWeights: number[][];
     /** Cumulative revenue a passive market-cap portfolio of our size earned. */
     benchmarkEarned: number[][];
+    /** The foresight benchmark's holdings: each epoch's revenue shares. */
+    revenueBenchmarkWeights: number[][];
+    /** Cumulative revenue the foresight benchmark earned per pool. */
+    revenueBenchmarkEarned: number[][];
   };
   datasetGeneratedAt: string | undefined;
   /** Historical timestamps are real dates; synthetic ones are an arbitrary anchor. */
@@ -47,6 +53,7 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
   return {
     totalReturn: Number(result.totalReturn) / WAD,
     passiveReturn: Number(result.passiveReturn) / WAD,
+    revenueBenchmarkReturn: Number(result.revenueBenchmarkReturn) / WAD,
     returnVsPassive: Number(result.returnVsPassive) / WAD,
     maxDrawdownVsBenchmark: Number(result.maxDrawdownVsBenchmark) / WAD,
     turnover: Number(result.turnover) / WAD,
@@ -59,6 +66,7 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
       times: result.equityCurve.times,
       equity: result.equityCurve.equity.map((w) => Number(w) / WAD),
       benchmark: result.equityCurve.benchmark.map((w) => Number(w) / WAD),
+      revenueBenchmark: result.equityCurve.revenueBenchmark.map((w) => Number(w) / WAD),
     },
     allocation: {
       times: result.allocationHistory.times,
@@ -70,6 +78,12 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
         row.map((w) => Number(w) / WAD),
       ),
       benchmarkEarned: result.allocationHistory.benchmarkEarned.map((row) =>
+        row.map((w) => Number(w) / WAD),
+      ),
+      revenueBenchmarkWeights: result.allocationHistory.revenueBenchmarkWeights.map((row) =>
+        row.map((w) => Number(w) / WAD),
+      ),
+      revenueBenchmarkEarned: result.allocationHistory.revenueBenchmarkEarned.map((row) =>
         row.map((w) => Number(w) / WAD),
       ),
     },

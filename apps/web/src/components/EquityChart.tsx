@@ -1,6 +1,7 @@
-/** Equity vs passive benchmark. Our line is phosphor, the benchmark amber and
- *  dashed — the two must never be confusable at a glance. Historical runs get
- *  real UTC dates on the axis; synthetic runs keep relative day labels. */
+/** Equity vs the two passive benchmarks. Our line is phosphor, the market
+ *  benchmark amber and dashed, the revenue (foresight) benchmark cyan and
+ *  dashed — none confusable at a glance. Historical runs get real UTC dates
+ *  on the axis; synthetic runs keep relative day labels. */
 import {
   CartesianGrid,
   Legend,
@@ -16,12 +17,13 @@ import { timeAxisFor } from "../lib/timeAxis.js";
 import { TIME_AXIS_LEFT, TIME_AXIS_RIGHT_PAD, Y_AXIS_WIDTH } from "../lib/chartGeometry.js";
 
 export function EquityChart({ result }: { result: DisplayResult }) {
-  const { times, equity, benchmark } = result.equity;
+  const { times, equity, benchmark, revenueBenchmark } = result.equity;
   const axis = timeAxisFor(result);
   const data = times.map((ts, i) => ({
     ts,
     equity: equity[i],
     benchmark: benchmark[i],
+    revenueBenchmark: revenueBenchmark[i],
   }));
 
   return (
@@ -76,6 +78,16 @@ export function EquityChart({ result }: { result: DisplayResult }) {
             stroke="#E8B44F"
             strokeWidth={1.4}
             strokeDasharray="5 4"
+            dot={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="revenueBenchmark"
+            name="revenue benchmark (foresight)"
+            stroke="#6FB8D3"
+            strokeWidth={1.4}
+            strokeDasharray="2 3"
             dot={false}
             isAnimationActive={false}
           />

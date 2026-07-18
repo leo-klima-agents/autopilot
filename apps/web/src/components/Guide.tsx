@@ -293,8 +293,10 @@ export function Guide({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>Equity chart</dt>
           <dd>
-            Solid phosphor line: your cumulative return. Dashed amber: the passive benchmark. The gap between them is
-            the whole story; time ticks land on epoch flips (Thursdays, UTC).
+            Solid phosphor line: your cumulative return. Dashed amber: the passive (market) benchmark. Dashed cyan:
+            the revenue benchmark — the foresight ceiling (see the toggle entry below). Your line should live between
+            the two dashed ones; how far up that band it sits is the strategy's skill. Time ticks land on epoch flips
+            (Thursdays, UTC).
           </dd>
           <dt>Allocation heat-map</dt>
           <dd>
@@ -308,12 +310,18 @@ export function Guide({ onClose }: { onClose: () => void }) {
             pool's cumulative contribution over the whole run (USD on historical replays). A bright allocation row over
             a dark revenue row is weight parked where the fees never showed up.
           </dd>
-          <dt>strategy / passive bench toggle</dt>
+          <dt>strategy / passive bench / revenue bench toggle</dt>
           <dd>
-            Flips both heat-maps between your strategy's portfolio and the passive benchmark's: a market-cap-weighted
-            portfolio of the same size that always holds every pool in proportion to its global vote weight. Comparing
-            the two views shows exactly where the strategy concentrated relative to the market, and which of those
-            concentrations paid.
+            Flips both heat-maps between three portfolios of the same size. <em>Strategy</em> is yours.{" "}
+            <em>Passive bench</em> is the market portfolio: every pool held in proportion to its global vote weight —
+            what doing nothing earns. <em>Revenue bench</em> is the foresight benchmark: each weekly epoch it holds
+            pools in proportion to that epoch's realized revenue, which no real allocator could know in advance — it is
+            the ceiling, not an investable alternative. Its weight replaces yours in each pool when computing earnings,
+            so it answers "what if this portfolio had been allocated revenue-optimally instead". The strategy's worth
+            lives between the two benchmarks: the "captured" figure on the Vs-bench gauge is the fraction of the
+            foresight edge (revenue bench − passive bench) the strategy actually collected. Note that with a reactive
+            herd the crowd itself chases revenue, so the foresight edge shrinks as the herd lag shortens — that is the
+            market getting efficient, not a bug.
           </dd>
         </dl>
       </div>

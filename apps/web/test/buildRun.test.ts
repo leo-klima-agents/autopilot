@@ -105,5 +105,11 @@ describe("per-pool earned revenue passthrough", () => {
     expect(display.allocation.benchmarkEarned).toHaveLength(times.length);
     expect(display.allocation.benchmarkWeights.every((row) => row.length === pools.length)).toBe(true);
     expect(display.allocation.benchmarkEarned.flat().every((n) => typeof n === "number" && n >= 0)).toBe(true);
+    // revenue (oracle) benchmark serializes on the same grid too
+    expect(display.allocation.revenueBenchmarkWeights).toHaveLength(times.length);
+    expect(display.allocation.revenueBenchmarkEarned).toHaveLength(times.length);
+    expect(display.allocation.revenueBenchmarkWeights.every((row) => row.length === pools.length)).toBe(true);
+    expect(display.equity.revenueBenchmark).toHaveLength(display.equity.times.length);
+    expect(display.revenueBenchmarkReturn).toBeGreaterThanOrEqual(0);
   });
 });

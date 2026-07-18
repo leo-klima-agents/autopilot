@@ -21,7 +21,14 @@ export function Gauges({ result }: { result: DisplayResult }) {
           {vs > 0 ? "+" : ""}
           {money(vs)}
         </div>
-        <div className="sub">passive: {money(result.passiveReturn)}</div>
+        <div className="sub">
+          passive: {money(result.passiveReturn)} · oracle: {money(result.revenueBenchmarkReturn)}
+          {(() => {
+            // capture: the fraction of the foresight edge the strategy took
+            const edge = result.revenueBenchmarkReturn - result.passiveReturn;
+            return edge > 1e-12 ? ` · captured ${pct(vs / edge)}` : "";
+          })()}
+        </div>
       </div>
       <div className="gauge">
         <p className="placard">Max DD vs bench</p>

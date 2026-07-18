@@ -139,6 +139,66 @@ describe("runBacktest", () => {
     const perPool = divWad(sumBig(benchmarkEarned.at(-1)!), portfolioWeight);
     const diff = perPool > result.passiveReturn ? perPool - result.passiveReturn : result.passiveReturn - perPool;
     expect(diff <= result.passiveReturn / 1_000_000n + 12n).toBe(true);
+
+    // Revenue (oracle) benchmark: same grid, cumulative, and — because the
+    // crowd's 2:1 weights misprice the 3:1 revenue split — above the market.
+    const { revenueBenchmarkWeights, revenueBenchmarkEarned } = result.allocationHistory;
+    expect(revenueBenchmarkWeights).toHaveLength(times.length);
+    expect(revenueBenchmarkEarned).toHaveLength(times.length);
+    for (const row of [...revenueBenchmarkWeights, ...revenueBenchmarkEarned]) {
+      expect(row).toHaveLength(pools.length);
+    }
+    for (let i = 1; i < revenueBenchmarkEarned.length; i += 1) {
+      for (let p = 0; p < pools.length; p += 1) {
+        expect(revenueBenchmarkEarned[i]![p]! >= revenueBenchmarkEarned[i - 1]![p]!).toBe(true);
+      }
+    }
+    // constant 9:3 revenue → oracle weights are the 3:1 revenue shares
+    const lastShares = revenueBenchmarkWeights.at(-1)!;
+    expect(lastShares[pools.indexOf("a")]).toBe((3n * WAD) / 4n);
+    expect(lastShares[pools.indexOf("b")]).toBe(WAD / 4n);
+    expect(result.revenueBenchmarkReturn > result.passiveReturn).toBe(true);
+    // the sampled oracle equity ends exactly at the headline metric
+    expect(result.equityCurve.revenueBenchmark.at(-1)).toBe(result.revenueBenchmarkReturn);
+  });
+
+  it("oracle benchmark takes the entire revenue in a single-pool universe", () => {
+    // With one pool the oracle holds 100% of it and its weight displaces
+    // ours, so it earns every unit of revenue — exact, no crowd needed.
+    const rate = 10n * WAD;
+    const revenue = constantRevenue({ a: rate });
+    const model = createContinuousModel({ revenue, startTime: T0, cooldownSec: HOUR });
+    const result = runBacktest(fixedGrid(HOUR, { lookbackSec: HOUR }), model, {
+      startTime: T0,
+      durationSec: 6 * HOUR,
+      stepSec: HOUR,
+      trancheCount: 1,
+      trancheWeight: WAD,
+      cooldownSec: HOUR,
+    });
+    expect(result.revenueBenchmarkReturn).toBe(rate * BigInt(6 * HOUR));
+    expect(result.revenueBenchmarkReturn >= result.passiveReturn).toBe(true);
+  });
+
+  it("survives a zero-revenue run with empty oracle allocations", () => {
+    const model = createContinuousModel({
+      revenue: constantRevenue({ a: 0n }),
+      startTime: T0,
+      cooldownSec: HOUR,
+    });
+    const result = runBacktest(fixedGrid(HOUR), model, {
+      startTime: T0,
+      durationSec: 3 * HOUR,
+      stepSec: HOUR,
+      trancheCount: 1,
+      trancheWeight: WAD,
+      cooldownSec: HOUR,
+    });
+    expect(result.revenueBenchmarkReturn).toBe(0n);
+    expect(result.equityCurve.revenueBenchmark.every((v) => v === 0n)).toBe(true);
+    expect(
+      result.allocationHistory.revenueBenchmarkWeights.every((row) => row.every((w) => w === 0n)),
+    ).toBe(true);
   });
 
   it("counts blocked submissions instead of throwing", () => {

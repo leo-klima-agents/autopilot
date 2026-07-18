@@ -28,13 +28,20 @@ function ViewToggle({
 }) {
   return (
     <div className="seg-toggle" role="group" aria-label="heatmap portfolio">
-      {(["strategy", "passive"] as const).map((v) => (
+      {(["strategy", "passive", "revenue"] as const).map((v) => (
         <button key={v} className={view === v ? "active" : ""} onClick={() => onChange(v)}>
-          {v === "strategy" ? "strategy" : "passive bench"}
+          {v === "strategy" ? "strategy" : v === "passive" ? "passive bench" : "revenue bench"}
         </button>
       ))}
     </div>
   );
+}
+
+/** Placard suffix for the non-strategy heat-map views. */
+function viewSuffix(view: HeatmapView): string {
+  if (view === "passive") return " — passive benchmark";
+  if (view === "revenue") return " — revenue benchmark (foresight)";
+  return "";
 }
 
 /** Live replay state: the last good result stays on the instruments while a
@@ -264,22 +271,22 @@ export function App() {
                     <span className="chip" style={{ background: "#E8B44F" }} />
                     passive — global revenue ÷ global weight
                   </span>
+                  <span>
+                    <span className="chip" style={{ background: "#6FB8D3" }} />
+                    revenue bench — epoch's revenue shares, held with foresight
+                  </span>
                 </div>
               </div>
               <div className="panel">
                 <div className="panel-head">
-                  <p className="placard">
-                    Allocation over time{heatmapView === "passive" ? " — passive benchmark" : ""}
-                  </p>
+                  <p className="placard">Allocation over time{viewSuffix(heatmapView)}</p>
                   <ViewToggle view={heatmapView} onChange={setHeatmapView} />
                 </div>
                 <AllocationHeatmap result={live.result} view={heatmapView} />
               </div>
               <div className="panel">
                 <div className="panel-head">
-                  <p className="placard">
-                    Earned revenue per pool{heatmapView === "passive" ? " — passive benchmark" : ""}
-                  </p>
+                  <p className="placard">Earned revenue per pool{viewSuffix(heatmapView)}</p>
                   <ViewToggle view={heatmapView} onChange={setHeatmapView} />
                 </div>
                 <EarningsHeatmap result={live.result} view={heatmapView} />
