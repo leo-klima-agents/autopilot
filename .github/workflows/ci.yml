@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: forge fmt check
+        run: forge fmt --check
+        working-directory: contracts
+        continue-on-error: true # advisory until vendored code is fmt-normalized
+      - name: build
+        run: forge build
+        working-directory: contracts
+      - name: manifest check (selector collisions + staleness)
+        run: node scripts/manifest.mjs check
+      - name: storage layout check (append-only namespaces)
+        run: node scripts/storage-check.mjs
+      - name: tests (unit + diamond + invariant + differential; fork suite skips without RPC)
+        run: forge test -vv
+        working-directory: contracts
+
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm -r test
+      - name: fixtures are fresh (differential vectors regenerate identically)
+        run: |
+          pnpm fixtures
+          git diff --exit-code contracts/test/differential/fixtures
+
+  slither:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: crytic/slither-action@v0.4.1
+        continue-on-error: true # triaged findings documented in docs/SLITHER-TRIAGE.md
+        with:
+          target: contracts/
+          slither-args: --filter-paths "lib/|src/Diamond.sol|src/libraries/LibDiamond.sol|src/facets/DiamondCutFacet.sol|src/facets/DiamondLoupeFacet.sol"

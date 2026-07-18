@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "structs": {
+    "AccessStorage": [
+      {
+        "type": "mapping(bytes32 => mapping(address => bool))",
+        "name": "hasRole"
+      }
+    ],
+    "CustodyStorage": [
+      {
+        "type": "address",
+        "name": "acceptedCollection"
+      }
+    ],
+    "Tranche": [
+      {
+        "type": "uint256",
+        "name": "positionTokenId"
+      },
+      {
+        "type": "uint64",
+        "name": "lastActionAt"
+      },
+      {
+        "type": "bool",
+        "name": "exists"
+      }
+    ],
+    "TrancheStorage": [
+      {
+        "type": "uint256",
+        "name": "nextTrancheId"
+      },
+      {
+        "type": "mapping(uint256 => Tranche)",
+        "name": "tranches"
+      },
+      {
+        "type": "uint256[]",
+        "name": "trancheIds"
+      }
+    ],
+    "TargetsStorage": [
+      {
+        "type": "address[]",
+        "name": "targetPools"
+      },
+      {
+        "type": "mapping(address => uint256)",
+        "name": "targetWeight"
+      },
+      {
+        "type": "bytes32",
+        "name": "strategyRef"
+      },
+      {
+        "type": "uint64",
+        "name": "submittedAt"
+      },
+      {
+        "type": "mapping(address => bool)",
+        "name": "poolAllowed"
+      },
+      {
+        "type": "address[]",
+        "name": "allowlist"
+      },
+      {
+        "type": "uint96",
+        "name": "maxPoolWeightWad"
+      },
+      {
+        "type": "uint96",
+        "name": "maxDeltaWad"
+      },
+      {
+        "type": "uint64",
+        "name": "rotationCooldown"
+      },
+      {
+        "type": "address",
+        "name": "organicFlowOracle"
+      }
+    ],
+    "ProtocolConfigStorage": [
+      {
+        "type": "address",
+        "name": "voter"
+      },
+      {
+        "type": "address",
+        "name": "votingEscrow"
+      },
+      {
+        "type": "address",
+        "name": "rewardsDistributor"
+      },
+      {
+        "type": "address",
+        "name": "token"
+      },
+      {
+        "type": "address",
+        "name": "router"
+      }
+    ],
+    "MockPosition": [
+      {
+        "type": "uint256",
+        "name": "weight"
+      },
+      {
+        "type": "uint64",
+        "name": "lastAllocationAt"
+      },
+      {
+        "type": "bool",
+        "name": "permanent"
+      },
+      {
+        "type": "bool",
+        "name": "exists"
+      },
+      {
+        "type": "address[]",
+        "name": "pools"
+      },
+      {
+        "type": "mapping(address => uint256)",
+        "name": "allocation"
+      }
+    ],
+    "MockPool": [
+      {
+        "type": "uint256",
+        "name": "revenueRate"
+      },
+      {
+        "type": "uint256",
+        "name": "allocatedRate"
+      },
+      {
+        "type": "uint256",
+        "name": "capRate"
+      },
+      {
+        "type": "uint256",
+        "name": "totalWeight"
+      },
+      {
+        "type": "bool",
+        "name": "exists"
+      }
+    ],
+    "MockAeroStorage": [
+      {
+        "type": "uint256",
+        "name": "nextTokenId"
+      },
+      {
+        "type": "uint64",
+        "name": "cooldown"
+      },
+      {
+        "type": "bool",
+        "name": "perPositionCooldown"
+      },
+      {
+        "type": "uint64",
+        "name": "globalLastAllocationAt"
+      },
+      {
+        "type": "uint64",
+        "name": "lastSettledAt"
+      },
+      {
+        "type": "uint256",
+        "name": "totalEmitted"
+      },
+      {
+        "type": "uint256",
+        "name": "totalStreamed"
+      },
+      {
+        "type": "uint256",
+        "name": "totalBurned"
+      },
+      {
+        "type": "address[]",
+        "name": "poolList"
+      },
+      {
+        "type": "mapping(address => MockPool)",
+        "name": "pools"
+      },
+      {
+        "type": "mapping(uint256 => MockPosition)",
+        "name": "positions"
+      },
+      {
+        "type": "mapping(uint256 => uint256)",
+        "name": "earned"
+      }
+    ]
+  }
+}

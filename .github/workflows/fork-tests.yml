@@ -1,0 +1,27 @@
+name: Fork tests
+
+# Nightly + PRs labeled `fork-tests` (brief §8.3). Requires the BASE_RPC_URL repository
+# secret — set by a maintainer; local env does NOT propagate to CI (brief §11).
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  pull_request:
+    types: [labeled, synchronize]
+  workflow_dispatch:
+
+jobs:
+  fork:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'fork-tests')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: fork suite at pinned block
+        env:
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        run: |
+          if [ -z "$BASE_RPC_URL" ]; then
+            echo "::error::BASE_RPC_URL repository secret is not set (brief §11)"; exit 1
+          fi
+          forge test --match-path 'test/fork/*' -vv
+        working-directory: contracts

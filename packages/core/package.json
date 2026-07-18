@@ -1,0 +1,72 @@
+{
+  "name": "@aero-autopilot/core",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./math": {
+      "types": "./dist/math/index.d.ts",
+      "default": "./dist/math/index.js"
+    },
+    "./model": {
+      "types": "./dist/model/index.d.ts",
+      "default": "./dist/model/index.js"
+    },
+    "./strategies": {
+      "types": "./dist/strategies/index.d.ts",
+      "default": "./dist/strategies/index.js"
+    },
+    "./scheduler": {
+      "types": "./dist/scheduler/index.d.ts",
+      "default": "./dist/scheduler/index.js"
+    },
+    "./backtest": {
+      "types": "./dist/backtest/index.d.ts",
+      "default": "./dist/backtest/index.js"
+    },
+    "./data": {
+      "types": "./dist/data/index.d.ts",
+      "default": "./dist/data/index.js"
+    },
+    "./fixtures": {
+      "types": "./dist/fixtures/index.d.ts",
+      "default": "./dist/fixtures/index.js"
+    },
+    "./data/schema": {
+      "types": "./dist/data/schema.d.ts",
+      "default": "./dist/data/schema.js"
+    },
+    "./data/synthetic": {
+      "types": "./dist/data/synthetic.d.ts",
+      "default": "./dist/data/synthetic.js"
+    },
+    "./data/revenue": {
+      "types": "./dist/data/revenue.d.ts",
+      "default": "./dist/data/revenue.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "fixtures": "tsx src/fixtures/emit.ts",
+    "data": "tsx src/data/cli.ts"
+  },
+  "dependencies": {
+    "viem": "^2.37.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.14",
+    "fast-check": "^4.4.0",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

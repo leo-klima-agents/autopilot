@@ -1,0 +1,4180 @@
+{
+  "name": "cooldown-scheduler",
+  "cases": [
+    {
+      "name": "empty-tranche-list",
+      "inputs": {
+        "tranches": [],
+        "target": {
+          "pool-a": "250000000000000000",
+          "pool-b": "250000000000000000",
+          "pool-c": "250000000000000000",
+          "pool-d": "250000000000000000"
+        },
+        "now": 1735171200,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": []
+      }
+    },
+    {
+      "name": "all-on-target-no-actions",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734998400,
+            "allocation": {
+              "pool-a": "250000000000000000",
+              "pool-b": "250000000000000000",
+              "pool-c": "250000000000000000",
+              "pool-d": "250000000000000000"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "250000000000000000",
+          "pool-b": "250000000000000000",
+          "pool-c": "250000000000000000",
+          "pool-d": "250000000000000000"
+        },
+        "now": 1735171200,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": []
+      }
+    },
+    {
+      "name": "single-free-tranche-rotates",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734998400,
+            "allocation": {
+              "pool-a": "1000000000000000000"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "250000000000000000",
+          "pool-b": "250000000000000000",
+          "pool-c": "250000000000000000",
+          "pool-d": "250000000000000000"
+        },
+        "now": 1735171200,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "250000000000000000",
+              "pool-b": "250000000000000000",
+              "pool-c": "250000000000000000",
+              "pool-d": "250000000000000000"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cooldown-boundary-exact",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734998400,
+            "allocation": {
+              "pool-a": "1000000000000000000"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734998401,
+            "allocation": {
+              "pool-a": "1000000000000000000"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "250000000000000000",
+          "pool-b": "250000000000000000",
+          "pool-c": "250000000000000000",
+          "pool-d": "250000000000000000"
+        },
+        "now": 1735171200,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "250000000000000000",
+              "pool-b": "250000000000000000",
+              "pool-c": "250000000000000000",
+              "pool-d": "250000000000000000"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735171201
+          }
+        ]
+      }
+    },
+    {
+      "name": "tie-distance-lowest-id-first",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t1",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734998400,
+            "allocation": {
+              "pool-a": "1000000000000000000"
+            }
+          },
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734998400,
+            "allocation": {
+              "pool-a": "1000000000000000000"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "250000000000000000",
+          "pool-b": "250000000000000000",
+          "pool-c": "250000000000000000",
+          "pool-d": "250000000000000000"
+        },
+        "now": 1735171200,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "250000000000000000",
+              "pool-b": "250000000000000000",
+              "pool-c": "250000000000000000",
+              "pool-d": "250000000000000000"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "250000000000000000",
+              "pool-b": "250000000000000000",
+              "pool-c": "250000000000000000",
+              "pool-d": "250000000000000000"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "zero-cooldown-always-free",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1735171200,
+            "allocation": {}
+          }
+        ],
+        "target": {
+          "pool-a": "1000000000000000000"
+        },
+        "now": 1735171200,
+        "cooldownSec": 0
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "1000000000000000000"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-000",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1735143352,
+            "allocation": {
+              "pool-a": "287622582786161711",
+              "pool-b": "286613973584867277",
+              "pool-c": "112960200982692434",
+              "pool-d": "312803242646278578"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1735047454,
+            "allocation": {
+              "pool-a": "58141188741397517",
+              "pool-b": "0",
+              "pool-c": "644800629937755906",
+              "pool-d": "297058181320846577"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "0",
+          "pool-b": "219849855769958658",
+          "pool-c": "398327737363949224",
+          "pool-d": "381822406866092118"
+        },
+        "now": 1735190346,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735220254
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t0",
+            "until": 1735316152
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-001",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "10000000000000000000",
+            "lastActionAt": 1734826993,
+            "allocation": {
+              "pool-a": "46860376696790520",
+              "pool-b": "364849675505321695",
+              "pool-c": "170051354249708100",
+              "pool-d": "418238593548179685"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1735123078,
+            "allocation": {
+              "pool-a": "318083136042262772",
+              "pool-b": "0",
+              "pool-c": "402750150743939572",
+              "pool-d": "279166713213797656"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734915253,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "406344961215992107",
+              "pool-c": "119358411530713637",
+              "pool-d": "474296627253294256"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "207490858230076116",
+          "pool-b": "0",
+          "pool-c": "0",
+          "pool-d": "792509141769923884"
+        },
+        "now": 1735285001,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "207490858230076116",
+              "pool-b": "0",
+              "pool-c": "0",
+              "pool-d": "792509141769923884"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "207490858230076116",
+              "pool-b": "0",
+              "pool-c": "0",
+              "pool-d": "792509141769923884"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735295878
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-002",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1735045165,
+            "allocation": {
+              "pool-a": "102697432887145413",
+              "pool-b": "0",
+              "pool-c": "478974790997130073",
+              "pool-d": "418327776115724514"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "10000000000000000000",
+            "lastActionAt": 1735135892,
+            "allocation": {
+              "pool-a": "183708549522498482",
+              "pool-b": "234317596312135527",
+              "pool-c": "356203813081286756",
+              "pool-d": "225770041084079235"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1734934403,
+            "allocation": {
+              "pool-a": "169741673195188313",
+              "pool-b": "0",
+              "pool-c": "263861430368906878",
+              "pool-d": "566396896435904809"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "575190056492816326",
+          "pool-b": "424809943507183674",
+          "pool-c": "0",
+          "pool-d": "0"
+        },
+        "now": 1735287004,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "575190056492816326",
+              "pool-b": "424809943507183674",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "575190056492816326",
+              "pool-b": "424809943507183674",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735308692
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-003",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1734912582,
+            "allocation": {
+              "pool-a": "250000000000000000",
+              "pool-b": "250000000000000000",
+              "pool-c": "250000000000000000",
+              "pool-d": "250000000000000000"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1735062625,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "419589937126742907",
+              "pool-c": "366102702028583769",
+              "pool-d": "214307360844673324"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734921445,
+            "allocation": {
+              "pool-a": "402436958587856800",
+              "pool-b": "143624758977697805",
+              "pool-c": "0",
+              "pool-d": "453938282434445395"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "225001893588429247",
+          "pool-b": "176655613583401553",
+          "pool-c": "284353242015694284",
+          "pool-d": "313989250812474916"
+        },
+        "now": 1735267466,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "225001893588429247",
+              "pool-b": "176655613583401553",
+              "pool-c": "284353242015694284",
+              "pool-d": "313989250812474916"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "225001893588429247",
+              "pool-b": "176655613583401553",
+              "pool-c": "284353242015694284",
+              "pool-d": "313989250812474916"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "225001893588429247",
+              "pool-b": "176655613583401553",
+              "pool-c": "284353242015694284",
+              "pool-d": "313989250812474916"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-004",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1734932245,
+            "allocation": {
+              "pool-a": "230407470609979756",
+              "pool-b": "48983591178747731",
+              "pool-c": "379448240574996498",
+              "pool-d": "341160697636276015"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "842196214994696632",
+          "pool-b": "130644514007737988",
+          "pool-c": "0",
+          "pool-d": "27159270997565380"
+        },
+        "now": 1735333270,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "842196214994696632",
+              "pool-b": "130644514007737988",
+              "pool-c": "0",
+              "pool-d": "27159270997565380"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-005",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1734855640,
+            "allocation": {
+              "pool-a": "103525070487717968",
+              "pool-b": "315143421862010230",
+              "pool-c": "393842460816271187",
+              "pool-d": "187489046834000615"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1734853370,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "560861980797904481",
+              "pool-c": "439138019202095519",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1734898690,
+            "allocation": {
+              "pool-a": "312416442306145048",
+              "pool-b": "393930606406130938",
+              "pool-c": "0",
+              "pool-d": "293652951287724014"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1734871565,
+            "allocation": {
+              "pool-a": "510076759042757037",
+              "pool-b": "0",
+              "pool-c": "489923240957242963",
+              "pool-d": "0"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "0",
+          "pool-b": "923190603071147667",
+          "pool-c": "76809396928852333",
+          "pool-d": "0"
+        },
+        "now": 1735212533,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "923190603071147667",
+              "pool-c": "76809396928852333",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "923190603071147667",
+              "pool-c": "76809396928852333",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "923190603071147667",
+              "pool-c": "76809396928852333",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "923190603071147667",
+              "pool-c": "76809396928852333",
+              "pool-d": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-006",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734836376,
+            "allocation": {
+              "pool-a": "1000000000000000000",
+              "pool-b": "0",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734951849,
+            "allocation": {
+              "pool-a": "179757603517518074",
+              "pool-b": "466754123577182252",
+              "pool-c": "353488272905299674",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1734950079,
+            "allocation": {
+              "pool-a": "215381992489615867",
+              "pool-b": "0",
+              "pool-c": "467495765151917690",
+              "pool-d": "317122242358466443"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734871911,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "1000000000000000000",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t4",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1735046360,
+            "allocation": {
+              "pool-a": "422428093894183861",
+              "pool-b": "0",
+              "pool-c": "189442237840137261",
+              "pool-d": "388129668265678878"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "64843342883852396",
+          "pool-b": "604407909677608833",
+          "pool-c": "149683481082221875",
+          "pool-d": "181065266356316896"
+        },
+        "now": 1735229246,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "64843342883852396",
+              "pool-b": "604407909677608833",
+              "pool-c": "149683481082221875",
+              "pool-d": "181065266356316896"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "64843342883852396",
+              "pool-b": "604407909677608833",
+              "pool-c": "149683481082221875",
+              "pool-d": "181065266356316896"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t4",
+            "allocation": {
+              "pool-a": "64843342883852396",
+              "pool-b": "604407909677608833",
+              "pool-c": "149683481082221875",
+              "pool-d": "181065266356316896"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "64843342883852396",
+              "pool-b": "604407909677608833",
+              "pool-c": "149683481082221875",
+              "pool-d": "181065266356316896"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "64843342883852396",
+              "pool-b": "604407909677608833",
+              "pool-c": "149683481082221875",
+              "pool-d": "181065266356316896"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-007",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1734896934,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "1000000000000000000",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1734996878,
+            "allocation": {
+              "pool-a": "449240601048882073",
+              "pool-b": "0",
+              "pool-c": "495320744300632193",
+              "pool-d": "55438654650485734"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "0",
+          "pool-b": "0",
+          "pool-c": "502328479724628536",
+          "pool-d": "497671520275371464"
+        },
+        "now": 1735246841,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "0",
+              "pool-c": "502328479724628536",
+              "pool-d": "497671520275371464"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "0",
+              "pool-c": "502328479724628536",
+              "pool-d": "497671520275371464"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-008",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734915079,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1734977636,
+            "allocation": {
+              "pool-a": "408547593336243325",
+              "pool-b": "185756752505275027",
+              "pool-c": "0",
+              "pool-d": "405695654158481648"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734974863,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "160966859431924878",
+              "pool-c": "436119422695388508",
+              "pool-d": "402913717872686614"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734835980,
+            "allocation": {}
+          },
+          {
+            "id": "t4",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1734998054,
+            "allocation": {
+              "pool-a": "264634865540531810",
+              "pool-b": "380025833761454571",
+              "pool-c": "355339300698013619",
+              "pool-d": "0"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "22629592635249851",
+          "pool-b": "793718418719756451",
+          "pool-c": "183651988644993698",
+          "pool-d": "0"
+        },
+        "now": 1735246489,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "22629592635249851",
+              "pool-b": "793718418719756451",
+              "pool-c": "183651988644993698",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "22629592635249851",
+              "pool-b": "793718418719756451",
+              "pool-c": "183651988644993698",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "22629592635249851",
+              "pool-b": "793718418719756451",
+              "pool-c": "183651988644993698",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "22629592635249851",
+              "pool-b": "793718418719756451",
+              "pool-c": "183651988644993698",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t4",
+            "allocation": {
+              "pool-a": "22629592635249851",
+              "pool-b": "793718418719756451",
+              "pool-c": "183651988644993698",
+              "pool-d": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-009",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1734887298,
+            "allocation": {
+              "pool-a": "413902995799700710",
+              "pool-b": "273749076045842336",
+              "pool-c": "312347928154456954",
+              "pool-d": "0"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "492314046743954064",
+          "pool-b": "0",
+          "pool-c": "0",
+          "pool-d": "507685953256045936"
+        },
+        "now": 1735237140,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "492314046743954064",
+              "pool-b": "0",
+              "pool-c": "0",
+              "pool-d": "507685953256045936"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-010",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1734827902,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1734910447,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "136661118763430341",
+              "pool-c": "863338881236569659",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "10000000000000000000",
+            "lastActionAt": 1735155095,
+            "allocation": {
+              "pool-a": "706628775262806268",
+              "pool-b": "0",
+              "pool-c": "220067996219641245",
+              "pool-d": "73303228517552487"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1734950387,
+            "allocation": {}
+          },
+          {
+            "id": "t4",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735073783,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "803707120503334181",
+              "pool-c": "42670574906442470",
+              "pool-d": "153622304590223349"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "0",
+          "pool-b": "497230763618466894",
+          "pool-c": "97868634418655209",
+          "pool-d": "404900601962877897"
+        },
+        "now": 1735330672,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "497230763618466894",
+              "pool-c": "97868634418655209",
+              "pool-d": "404900601962877897"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "497230763618466894",
+              "pool-c": "97868634418655209",
+              "pool-d": "404900601962877897"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "497230763618466894",
+              "pool-c": "97868634418655209",
+              "pool-d": "404900601962877897"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "497230763618466894",
+              "pool-c": "97868634418655209",
+              "pool-d": "404900601962877897"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t4",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "497230763618466894",
+              "pool-c": "97868634418655209",
+              "pool-d": "404900601962877897"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-011",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734947045,
+            "allocation": {
+              "pool-a": "166869194120665418",
+              "pool-b": "134019485878705898",
+              "pool-c": "322746298192204585",
+              "pool-d": "376365021808424099"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734838438,
+            "allocation": {}
+          }
+        ],
+        "target": {
+          "pool-a": "531691142031484386",
+          "pool-b": "0",
+          "pool-c": "468308857968515614",
+          "pool-d": "0"
+        },
+        "now": 1735232238,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "531691142031484386",
+              "pool-b": "0",
+              "pool-c": "468308857968515614",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "531691142031484386",
+              "pool-b": "0",
+              "pool-c": "468308857968515614",
+              "pool-d": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-012",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1735156333,
+            "allocation": {
+              "pool-a": "222584280307561452",
+              "pool-b": "196034300977960441",
+              "pool-c": "374505140243779272",
+              "pool-d": "206876278470698835"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1734899872,
+            "allocation": {
+              "pool-a": "251612504985584445",
+              "pool-b": "168220048230692749",
+              "pool-c": "580167446783722806",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1735056240,
+            "allocation": {}
+          },
+          {
+            "id": "t3",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734951246,
+            "allocation": {}
+          }
+        ],
+        "target": {
+          "pool-a": "492113397028897599",
+          "pool-b": "0",
+          "pool-c": "49921666129950491",
+          "pool-d": "457964936841151910"
+        },
+        "now": 1735201279,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "492113397028897599",
+              "pool-b": "0",
+              "pool-c": "49921666129950491",
+              "pool-d": "457964936841151910"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "492113397028897599",
+              "pool-b": "0",
+              "pool-c": "49921666129950491",
+              "pool-d": "457964936841151910"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t2",
+            "until": 1735229040
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t0",
+            "until": 1735329133
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-013",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735064378,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "521620322341035910",
+              "pool-c": "0",
+              "pool-d": "478379677658964090"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735111851,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "440954238631259418",
+              "pool-c": "334294644741073532",
+              "pool-d": "224751116627667050"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "127911671914422468",
+          "pool-b": "299400391598010232",
+          "pool-c": "325389143455702593",
+          "pool-d": "247298793031864707"
+        },
+        "now": 1735238102,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "127911671914422468",
+              "pool-b": "299400391598010232",
+              "pool-c": "325389143455702593",
+              "pool-d": "247298793031864707"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735284651
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-014",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "10000000000000000000",
+            "lastActionAt": 1735021824,
+            "allocation": {
+              "pool-a": "293078524386452487",
+              "pool-b": "0",
+              "pool-c": "706921475613547513",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1735021043,
+            "allocation": {
+              "pool-a": "477152729203442948",
+              "pool-b": "164997757890803754",
+              "pool-c": "230397753630467829",
+              "pool-d": "127451759275285469"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "467187073684911687",
+          "pool-b": "425946014742092342",
+          "pool-c": "0",
+          "pool-d": "106866911572995971"
+        },
+        "now": 1735216018,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "467187073684911687",
+              "pool-b": "425946014742092342",
+              "pool-c": "0",
+              "pool-d": "106866911572995971"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "467187073684911687",
+              "pool-b": "425946014742092342",
+              "pool-c": "0",
+              "pool-d": "106866911572995971"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-015",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734912330,
+            "allocation": {
+              "pool-a": "69800541883981287",
+              "pool-b": "572369748932503748",
+              "pool-c": "357829709183514965",
+              "pool-d": "0"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "689444159484833469",
+          "pool-b": "0",
+          "pool-c": "162679600906211864",
+          "pool-d": "147876239608954667"
+        },
+        "now": 1735248492,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "689444159484833469",
+              "pool-b": "0",
+              "pool-c": "162679600906211864",
+              "pool-d": "147876239608954667"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-016",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735155294,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734882550,
+            "allocation": {
+              "pool-a": "231526343786790471",
+              "pool-b": "510281223971906610",
+              "pool-c": "0",
+              "pool-d": "258192432241302919"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1735072415,
+            "allocation": {}
+          }
+        ],
+        "target": {
+          "pool-a": "291272987430659990",
+          "pool-b": "230406555644378981",
+          "pool-c": "156390181875334198",
+          "pool-d": "321930275049626831"
+        },
+        "now": 1735195118,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "291272987430659990",
+              "pool-b": "230406555644378981",
+              "pool-c": "156390181875334198",
+              "pool-d": "321930275049626831"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t2",
+            "until": 1735245215
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t0",
+            "until": 1735328094
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-017",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1734908007,
+            "allocation": {
+              "pool-a": "361891568634267604",
+              "pool-b": "323559293116205258",
+              "pool-c": "280893614486018534",
+              "pool-d": "33655523763508604"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1735069106,
+            "allocation": {
+              "pool-a": "147340532579468611",
+              "pool-b": "543454707296666970",
+              "pool-c": "0",
+              "pool-d": "309204760123864419"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1734912248,
+            "allocation": {}
+          },
+          {
+            "id": "t3",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1735061040,
+            "allocation": {
+              "pool-a": "47900813381561874",
+              "pool-b": "550653575324626313",
+              "pool-c": "18211974266441413",
+              "pool-d": "383233637027370400"
+            }
+          },
+          {
+            "id": "t4",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734867490,
+            "allocation": {
+              "pool-a": "401958046830663717",
+              "pool-b": "164437110779070344",
+              "pool-c": "298866736619125869",
+              "pool-d": "134738105771140070"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "630297769503870424",
+          "pool-b": "214244255805493079",
+          "pool-c": "38424827077728902",
+          "pool-d": "117033147612907595"
+        },
+        "now": 1735250383,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "630297769503870424",
+              "pool-b": "214244255805493079",
+              "pool-c": "38424827077728902",
+              "pool-d": "117033147612907595"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "630297769503870424",
+              "pool-b": "214244255805493079",
+              "pool-c": "38424827077728902",
+              "pool-d": "117033147612907595"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "630297769503870424",
+              "pool-b": "214244255805493079",
+              "pool-c": "38424827077728902",
+              "pool-d": "117033147612907595"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "630297769503870424",
+              "pool-b": "214244255805493079",
+              "pool-c": "38424827077728902",
+              "pool-d": "117033147612907595"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t4",
+            "allocation": {
+              "pool-a": "630297769503870424",
+              "pool-b": "214244255805493079",
+              "pool-c": "38424827077728902",
+              "pool-d": "117033147612907595"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-018",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1735132354,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1735045741,
+            "allocation": {
+              "pool-a": "138526199872587192",
+              "pool-b": "45819082637251082",
+              "pool-c": "585668349793476509",
+              "pool-d": "229986367696685217"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735079335,
+            "allocation": {
+              "pool-a": "479738471059664828",
+              "pool-b": "520261528940335172",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "361932755247497933",
+          "pool-b": "0",
+          "pool-c": "267791218751714581",
+          "pool-d": "370276026000787486"
+        },
+        "now": 1735291845,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "361932755247497933",
+              "pool-b": "0",
+              "pool-c": "267791218751714581",
+              "pool-d": "370276026000787486"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "361932755247497933",
+              "pool-b": "0",
+              "pool-c": "267791218751714581",
+              "pool-d": "370276026000787486"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t0",
+            "until": 1735305154
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-019",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1734841314,
+            "allocation": {
+              "pool-a": "232947418958734162",
+              "pool-b": "351796552502746619",
+              "pool-c": "44184580278839999",
+              "pool-d": "371071448259679220"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "0",
+          "pool-b": "0",
+          "pool-c": "482709268525736056",
+          "pool-d": "517290731474263944"
+        },
+        "now": 1735183113,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "0",
+              "pool-c": "482709268525736056",
+              "pool-d": "517290731474263944"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-020",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1735063360,
+            "allocation": {
+              "pool-a": "94482754166593313",
+              "pool-b": "420997770880762172",
+              "pool-c": "134087509582693957",
+              "pool-d": "350431965369950558"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1735121118,
+            "allocation": {
+              "pool-a": "151900195433528050",
+              "pool-b": "0",
+              "pool-c": "62159130165016923",
+              "pool-d": "785940674401455027"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1735136200,
+            "allocation": {
+              "pool-a": "355826140486804260",
+              "pool-b": "391685219639705821",
+              "pool-c": "252488639873489919",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1735048579,
+            "allocation": {
+              "pool-a": "209928088406745648",
+              "pool-b": "437991091688923362",
+              "pool-c": "169965410183970759",
+              "pool-d": "182115409720360231"
+            }
+          },
+          {
+            "id": "t4",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1734981151,
+            "allocation": {
+              "pool-a": "93479867262357703",
+              "pool-b": "259513050410893148",
+              "pool-c": "340414883770902108",
+              "pool-d": "306592198555847041"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "65131773302614042",
+          "pool-b": "317994464081288645",
+          "pool-c": "265378908036171237",
+          "pool-d": "351494854579926076"
+        },
+        "now": 1735252038,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "65131773302614042",
+              "pool-b": "317994464081288645",
+              "pool-c": "265378908036171237",
+              "pool-d": "351494854579926076"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "65131773302614042",
+              "pool-b": "317994464081288645",
+              "pool-c": "265378908036171237",
+              "pool-d": "351494854579926076"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t4",
+            "allocation": {
+              "pool-a": "65131773302614042",
+              "pool-b": "317994464081288645",
+              "pool-c": "265378908036171237",
+              "pool-d": "351494854579926076"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735293918
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t2",
+            "until": 1735309000
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-021",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734938107,
+            "allocation": {
+              "pool-a": "250000000000000000",
+              "pool-b": "250000000000000000",
+              "pool-c": "250000000000000000",
+              "pool-d": "250000000000000000"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1734859535,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "374078801813987147",
+              "pool-c": "327905908819763711",
+              "pool-d": "298015289366249142"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1734954779,
+            "allocation": {
+              "pool-a": "308072721376363982",
+              "pool-b": "280712399586889810",
+              "pool-c": "229903629324290830",
+              "pool-d": "181311249712455378"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "499068630551100212",
+          "pool-b": "485971153627210229",
+          "pool-c": "14960215821689559",
+          "pool-d": "0"
+        },
+        "now": 1735268036,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "499068630551100212",
+              "pool-b": "485971153627210229",
+              "pool-c": "14960215821689559",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "499068630551100212",
+              "pool-b": "485971153627210229",
+              "pool-c": "14960215821689559",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "499068630551100212",
+              "pool-b": "485971153627210229",
+              "pool-c": "14960215821689559",
+              "pool-d": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-022",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1735076295,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735001631,
+            "allocation": {
+              "pool-a": "675762553557116756",
+              "pool-b": "103116006892501135",
+              "pool-c": "221121439550382109",
+              "pool-d": "0"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "0",
+          "pool-b": "376797593054745966",
+          "pool-c": "623202406945254034",
+          "pool-d": "0"
+        },
+        "now": 1735258223,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "376797593054745966",
+              "pool-c": "623202406945254034",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "376797593054745966",
+              "pool-c": "623202406945254034",
+              "pool-d": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-023",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1734918712,
+            "allocation": {
+              "pool-a": "667055800041334129",
+              "pool-b": "0",
+              "pool-c": "332944199958665871",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734905129,
+            "allocation": {}
+          },
+          {
+            "id": "t2",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1735015010,
+            "allocation": {}
+          },
+          {
+            "id": "t3",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1735020570,
+            "allocation": {
+              "pool-a": "181473628332526939",
+              "pool-b": "635885744872171887",
+              "pool-c": "182640626795301174",
+              "pool-d": "0"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "257043730585528671",
+          "pool-b": "640610306887734723",
+          "pool-c": "0",
+          "pool-d": "102345962526736606"
+        },
+        "now": 1735209152,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "257043730585528671",
+              "pool-b": "640610306887734723",
+              "pool-c": "0",
+              "pool-d": "102345962526736606"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "257043730585528671",
+              "pool-b": "640610306887734723",
+              "pool-c": "0",
+              "pool-d": "102345962526736606"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "257043730585528671",
+              "pool-b": "640610306887734723",
+              "pool-c": "0",
+              "pool-d": "102345962526736606"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "257043730585528671",
+              "pool-b": "640610306887734723",
+              "pool-c": "0",
+              "pool-d": "102345962526736606"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-024",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1735038333,
+            "allocation": {
+              "pool-a": "298143954465296867",
+              "pool-b": "0",
+              "pool-c": "228678428880501649",
+              "pool-d": "473177616654201484"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "278356984471604944",
+          "pool-b": "202687251229531807",
+          "pool-c": "225479824603479919",
+          "pool-d": "293475939695383330"
+        },
+        "now": 1735321128,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "278356984471604944",
+              "pool-b": "202687251229531807",
+              "pool-c": "225479824603479919",
+              "pool-d": "293475939695383330"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-025",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "10000000000000000000",
+            "lastActionAt": 1734998375,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1734907120,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "0",
+              "pool-c": "1000000000000000000",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734864349,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "658041631969605812",
+              "pool-c": "333826461067595066",
+              "pool-d": "8131906962799122"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "634765674794688714",
+          "pool-b": "190040214689906347",
+          "pool-c": "175194110515404939",
+          "pool-d": "0"
+        },
+        "now": 1735304052,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "634765674794688714",
+              "pool-b": "190040214689906347",
+              "pool-c": "175194110515404939",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "634765674794688714",
+              "pool-b": "190040214689906347",
+              "pool-c": "175194110515404939",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "634765674794688714",
+              "pool-b": "190040214689906347",
+              "pool-c": "175194110515404939",
+              "pool-d": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-026",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1735095850,
+            "allocation": {
+              "pool-a": "155841866490301328",
+              "pool-b": "0",
+              "pool-c": "0",
+              "pool-d": "844158133509698672"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "145142453079240936",
+          "pool-b": "343847015981610837",
+          "pool-c": "0",
+          "pool-d": "511010530939148227"
+        },
+        "now": 1735241551,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "wait",
+            "trancheId": "t0",
+            "until": 1735268650
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-027",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1735052074,
+            "allocation": {
+              "pool-a": "1000000000000000000",
+              "pool-b": "0",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734966363,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "191384450803042509",
+              "pool-c": "379075155240902164",
+              "pool-d": "429540393956055327"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1735098650,
+            "allocation": {}
+          },
+          {
+            "id": "t3",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1734944332,
+            "allocation": {}
+          }
+        ],
+        "target": {
+          "pool-a": "491996540298608859",
+          "pool-b": "508003459701391141",
+          "pool-c": "0",
+          "pool-d": "0"
+        },
+        "now": 1735214860,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "491996540298608859",
+              "pool-b": "508003459701391141",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "491996540298608859",
+              "pool-b": "508003459701391141",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t0",
+            "until": 1735224874
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t2",
+            "until": 1735271450
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-028",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1734881012,
+            "allocation": {
+              "pool-a": "216033203396795827",
+              "pool-b": "596227481779932471",
+              "pool-c": "187739314823271702",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1734888778,
+            "allocation": {
+              "pool-a": "281556943461164270",
+              "pool-b": "312500740478820395",
+              "pool-c": "342166192512594620",
+              "pool-d": "63776123547420715"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "1000000000000000000",
+          "pool-b": "0",
+          "pool-c": "0",
+          "pool-d": "0"
+        },
+        "now": 1735240456,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "1000000000000000000",
+              "pool-b": "0",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "1000000000000000000",
+              "pool-b": "0",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-029",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1734870731,
+            "allocation": {
+              "pool-a": "228657954962629964",
+              "pool-b": "358916249788683291",
+              "pool-c": "267669861420357960",
+              "pool-d": "144755933828328785"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1735144329,
+            "allocation": {
+              "pool-a": "334257075296943052",
+              "pool-b": "586182674233841215",
+              "pool-c": "0",
+              "pool-d": "79560250469215733"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "324571490319158233",
+          "pool-b": "103416716773721980",
+          "pool-c": "304462541082984806",
+          "pool-d": "267549251824134981"
+        },
+        "now": 1735300722,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "324571490319158233",
+              "pool-b": "103416716773721980",
+              "pool-c": "304462541082984806",
+              "pool-d": "267549251824134981"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735317129
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-030",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1735096440,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1735118572,
+            "allocation": {
+              "pool-a": "635260563239096752",
+              "pool-b": "39632993424677131",
+              "pool-c": "0",
+              "pool-d": "325106443336226117"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1735129677,
+            "allocation": {
+              "pool-a": "365785757344136880",
+              "pool-b": "588801641829035984",
+              "pool-c": "45412600826827136",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1735118509,
+            "allocation": {
+              "pool-a": "341886482501983229",
+              "pool-b": "658113517498016771",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t4",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734854492,
+            "allocation": {}
+          }
+        ],
+        "target": {
+          "pool-a": "465950026761742379",
+          "pool-b": "326748390034260132",
+          "pool-c": "0",
+          "pool-d": "207301583203997489"
+        },
+        "now": 1735269423,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "465950026761742379",
+              "pool-b": "326748390034260132",
+              "pool-c": "0",
+              "pool-d": "207301583203997489"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t4",
+            "allocation": {
+              "pool-a": "465950026761742379",
+              "pool-b": "326748390034260132",
+              "pool-c": "0",
+              "pool-d": "207301583203997489"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t3",
+            "until": 1735291309
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735291372
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t2",
+            "until": 1735302477
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-031",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734844677,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "345291299106371686",
+              "pool-c": "0",
+              "pool-d": "654708700893628314"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "163374917478581428",
+          "pool-b": "0",
+          "pool-c": "646508103242849192",
+          "pool-d": "190116979278569380"
+        },
+        "now": 1735253042,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "163374917478581428",
+              "pool-b": "0",
+              "pool-c": "646508103242849192",
+              "pool-d": "190116979278569380"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-032",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1734964272,
+            "allocation": {}
+          }
+        ],
+        "target": {
+          "pool-a": "451556670154955422",
+          "pool-b": "430627078520283124",
+          "pool-c": "64452297689089288",
+          "pool-d": "53363953635672166"
+        },
+        "now": 1735328488,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "451556670154955422",
+              "pool-b": "430627078520283124",
+              "pool-c": "64452297689089288",
+              "pool-d": "53363953635672166"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-033",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1734966903,
+            "allocation": {
+              "pool-a": "819078243405076138",
+              "pool-b": "180921756594923862",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1734994456,
+            "allocation": {
+              "pool-a": "250126492894940555",
+              "pool-b": "593395955515951445",
+              "pool-c": "125058989789948446",
+              "pool-d": "31418561799159554"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "335567031474139554",
+          "pool-b": "241995348416799945",
+          "pool-c": "202344739276225770",
+          "pool-d": "220092880832834731"
+        },
+        "now": 1735272737,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "335567031474139554",
+              "pool-b": "241995348416799945",
+              "pool-c": "202344739276225770",
+              "pool-d": "220092880832834731"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "335567031474139554",
+              "pool-b": "241995348416799945",
+              "pool-c": "202344739276225770",
+              "pool-d": "220092880832834731"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-034",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1735061801,
+            "allocation": {}
+          }
+        ],
+        "target": {
+          "pool-a": "369790503445826227",
+          "pool-b": "0",
+          "pool-c": "360045567926177140",
+          "pool-d": "270163928627996633"
+        },
+        "now": 1735284847,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "369790503445826227",
+              "pool-b": "0",
+              "pool-c": "360045567926177140",
+              "pool-d": "270163928627996633"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-035",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734893199,
+            "allocation": {
+              "pool-a": "245890420122624604",
+              "pool-b": "118265918077218447",
+              "pool-c": "575690123393153232",
+              "pool-d": "60153538407003717"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "102081616411534449",
+          "pool-b": "797313572576842123",
+          "pool-c": "100604811011623428",
+          "pool-d": "0"
+        },
+        "now": 1735226789,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "102081616411534449",
+              "pool-b": "797313572576842123",
+              "pool-c": "100604811011623428",
+              "pool-d": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-036",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1734987037,
+            "allocation": {
+              "pool-a": "305508441589710584",
+              "pool-b": "0",
+              "pool-c": "694491558410289416",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1735170581,
+            "allocation": {
+              "pool-a": "352188391915946654",
+              "pool-b": "0",
+              "pool-c": "304895238554851503",
+              "pool-d": "342916369529201843"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1735017656,
+            "allocation": {}
+          },
+          {
+            "id": "t3",
+            "positionWeight": "10000000000000000000",
+            "lastActionAt": 1734967411,
+            "allocation": {
+              "pool-a": "222075802510962776",
+              "pool-b": "151552718669760781",
+              "pool-c": "282750076935113820",
+              "pool-d": "343621401884162623"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "339110657105338924",
+          "pool-b": "81115737266738257",
+          "pool-c": "369603340011153854",
+          "pool-d": "210170265616768965"
+        },
+        "now": 1735209397,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "339110657105338924",
+              "pool-b": "81115737266738257",
+              "pool-c": "369603340011153854",
+              "pool-d": "210170265616768965"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "339110657105338924",
+              "pool-b": "81115737266738257",
+              "pool-c": "369603340011153854",
+              "pool-d": "210170265616768965"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "339110657105338924",
+              "pool-b": "81115737266738257",
+              "pool-c": "369603340011153854",
+              "pool-d": "210170265616768965"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735343381
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-037",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1735108772,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "207980496221842032",
+              "pool-c": "0",
+              "pool-d": "792019503778157968"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735087225,
+            "allocation": {
+              "pool-a": "454342958824192127",
+              "pool-b": "212699989804581365",
+              "pool-c": "0",
+              "pool-d": "332957051371226508"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1735020098,
+            "allocation": {
+              "pool-a": "325433498269047495",
+              "pool-b": "35590462730526952",
+              "pool-c": "282137263447041174",
+              "pool-d": "356838775553384379"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1734864683,
+            "allocation": {
+              "pool-a": "327450097545913620",
+              "pool-b": "132316394572288502",
+              "pool-c": "356538757721955390",
+              "pool-d": "183694750159842488"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "0",
+          "pool-b": "83566964320470620",
+          "pool-c": "839555397440427503",
+          "pool-d": "76877638239101877"
+        },
+        "now": 1735286492,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "83566964320470620",
+              "pool-c": "839555397440427503",
+              "pool-d": "76877638239101877"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "83566964320470620",
+              "pool-c": "839555397440427503",
+              "pool-d": "76877638239101877"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "83566964320470620",
+              "pool-c": "839555397440427503",
+              "pool-d": "76877638239101877"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "83566964320470620",
+              "pool-c": "839555397440427503",
+              "pool-d": "76877638239101877"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-038",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1735055018,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1735060332,
+            "allocation": {
+              "pool-a": "520204441696564617",
+              "pool-b": "311861617898763575",
+              "pool-c": "85036219097832719",
+              "pool-d": "82897721306839089"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1735122131,
+            "allocation": {
+              "pool-a": "568568016198318731",
+              "pool-b": "0",
+              "pool-c": "0",
+              "pool-d": "431431983801681269"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "10000000000000000000",
+            "lastActionAt": 1735026126,
+            "allocation": {
+              "pool-a": "458354866359086569",
+              "pool-b": "268255237205451868",
+              "pool-c": "273389896435461563",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t4",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734855519,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "378433258479583414",
+              "pool-c": "53021494078128587",
+              "pool-d": "568545247442287999"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "0",
+          "pool-b": "494915348011164732",
+          "pool-c": "505084651988835268",
+          "pool-d": "0"
+        },
+        "now": 1735224572,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t4",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "494915348011164732",
+              "pool-c": "505084651988835268",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "494915348011164732",
+              "pool-c": "505084651988835268",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t0",
+            "until": 1735227818
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735233132
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t2",
+            "until": 1735294931
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-039",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1735035569,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "271042582930997171",
+              "pool-c": "110232656040124583",
+              "pool-d": "618724761028878246"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735049341,
+            "allocation": {
+              "pool-a": "431713616585381076",
+              "pool-b": "26660003196778948",
+              "pool-c": "0",
+              "pool-d": "541626380217839976"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1734912769,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "0",
+              "pool-c": "638500689670427092",
+              "pool-d": "361499310329572908"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "452584745230134182",
+          "pool-b": "478133148711644950",
+          "pool-c": "18045012434023740",
+          "pool-d": "51237093624197128"
+        },
+        "now": 1735238352,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "452584745230134182",
+              "pool-b": "478133148711644950",
+              "pool-c": "18045012434023740",
+              "pool-d": "51237093624197128"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "452584745230134182",
+              "pool-b": "478133148711644950",
+              "pool-c": "18045012434023740",
+              "pool-d": "51237093624197128"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "452584745230134182",
+              "pool-b": "478133148711644950",
+              "pool-c": "18045012434023740",
+              "pool-d": "51237093624197128"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-040",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734916042,
+            "allocation": {
+              "pool-a": "405449796882403479",
+              "pool-b": "0",
+              "pool-c": "594550203117596521",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734983745,
+            "allocation": {}
+          },
+          {
+            "id": "t2",
+            "positionWeight": "10000000000000000000",
+            "lastActionAt": 1734880918,
+            "allocation": {
+              "pool-a": "443083105019697713",
+              "pool-b": "124012369222647095",
+              "pool-c": "254224219048853967",
+              "pool-d": "178680306708801225"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "307450053613734530",
+          "pool-b": "0",
+          "pool-c": "385843325744808627",
+          "pool-d": "306706620641456843"
+        },
+        "now": 1735221724,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "307450053613734530",
+              "pool-b": "0",
+              "pool-c": "385843325744808627",
+              "pool-d": "306706620641456843"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "307450053613734530",
+              "pool-b": "0",
+              "pool-c": "385843325744808627",
+              "pool-d": "306706620641456843"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "307450053613734530",
+              "pool-b": "0",
+              "pool-c": "385843325744808627",
+              "pool-d": "306706620641456843"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-041",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735100683,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1735079111,
+            "allocation": {
+              "pool-a": "171586844264472982",
+              "pool-b": "281731962674132434",
+              "pool-c": "401645185432017318",
+              "pool-d": "145036007629377266"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1735131967,
+            "allocation": {
+              "pool-a": "455850386235661393",
+              "pool-b": "544149613764338607",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "0",
+          "pool-b": "0",
+          "pool-c": "313532294780451251",
+          "pool-d": "686467705219548749"
+        },
+        "now": 1735215097,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735251911
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t0",
+            "until": 1735273483
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t2",
+            "until": 1735304767
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-042",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1735036264,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "21586594750826445",
+              "pool-c": "40694131552587338",
+              "pool-d": "937719273696586217"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1735116158,
+            "allocation": {
+              "pool-a": "286689561881685570",
+              "pool-b": "275952005751866727",
+              "pool-c": "408361755845665334",
+              "pool-d": "28996676520782369"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735039386,
+            "allocation": {
+              "pool-a": "463940217474900947",
+              "pool-b": "331277853638719244",
+              "pool-c": "0",
+              "pool-d": "204781928886379809"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1735075420,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "482438484191853890",
+              "pool-c": "0",
+              "pool-d": "517561515808146110"
+            }
+          },
+          {
+            "id": "t4",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1735040941,
+            "allocation": {
+              "pool-a": "210957381289758081",
+              "pool-b": "66260386487691368",
+              "pool-c": "165358644086751775",
+              "pool-d": "557423588135798776"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "576902432843819823",
+          "pool-b": "0",
+          "pool-c": "407490154214853828",
+          "pool-d": "15607412941326349"
+        },
+        "now": 1735178558,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "wait",
+            "trancheId": "t0",
+            "until": 1735209064
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t2",
+            "until": 1735212186
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t4",
+            "until": 1735213741
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t3",
+            "until": 1735248220
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735288958
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-043",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1734973316,
+            "allocation": {
+              "pool-a": "430666983799404193",
+              "pool-b": "426037510051975845",
+              "pool-c": "0",
+              "pool-d": "143295506148619962"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "279874549006284878",
+          "pool-b": "0",
+          "pool-c": "0",
+          "pool-d": "720125450993715122"
+        },
+        "now": 1735177742,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "279874549006284878",
+              "pool-b": "0",
+              "pool-c": "0",
+              "pool-d": "720125450993715122"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-044",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1735168202,
+            "allocation": {
+              "pool-a": "232625496524974398",
+              "pool-b": "272766673854463751",
+              "pool-c": "408039932549662761",
+              "pool-d": "86567897070899090"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1735066870,
+            "allocation": {
+              "pool-a": "467374785929906704",
+              "pool-b": "71097579066451186",
+              "pool-c": "65112115510186254",
+              "pool-d": "396415519493455856"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "10000000000000000000",
+            "lastActionAt": 1735024721,
+            "allocation": {}
+          },
+          {
+            "id": "t3",
+            "positionWeight": "8000000000000000000",
+            "lastActionAt": 1735096694,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "872132270310500943",
+              "pool-c": "0",
+              "pool-d": "127867729689499057"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "6433651317701256",
+          "pool-b": "439480913958738375",
+          "pool-c": "313673398468482760",
+          "pool-d": "240412036255077609"
+        },
+        "now": 1735234168,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "6433651317701256",
+              "pool-b": "439480913958738375",
+              "pool-c": "313673398468482760",
+              "pool-d": "240412036255077609"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735239670
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t3",
+            "until": 1735269494
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t0",
+            "until": 1735341002
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-045",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735056478,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "301021267884203000",
+              "pool-c": "348703206219819559",
+              "pool-d": "350275525895977441"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734970384,
+            "allocation": {}
+          }
+        ],
+        "target": {
+          "pool-a": "0",
+          "pool-b": "0",
+          "pool-c": "127538805281102759",
+          "pool-d": "872461194718897241"
+        },
+        "now": 1735289345,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "0",
+              "pool-c": "127538805281102759",
+              "pool-d": "872461194718897241"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "0",
+              "pool-c": "127538805281102759",
+              "pool-d": "872461194718897241"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-046",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734825851,
+            "allocation": {
+              "pool-a": "147532365172391265",
+              "pool-b": "345868596979609648",
+              "pool-c": "430638353631669698",
+              "pool-d": "75960684216329389"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1735128737,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "0",
+              "pool-c": "432463240059230799",
+              "pool-d": "567536759940769201"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1735148412,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "605643457388933738",
+              "pool-c": "0",
+              "pool-d": "394356542611066262"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "428146298639569264",
+          "pool-b": "193546100157338798",
+          "pool-c": "378307601203091938",
+          "pool-d": "0"
+        },
+        "now": 1735290270,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "428146298639569264",
+              "pool-b": "193546100157338798",
+              "pool-c": "378307601203091938",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735301537
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t2",
+            "until": 1735321212
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-047",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "10000000000000000000",
+            "lastActionAt": 1734897938,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1734906496,
+            "allocation": {
+              "pool-a": "469125940241907321",
+              "pool-b": "0",
+              "pool-c": "469143723372911524",
+              "pool-d": "61730336385181155"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1734883547,
+            "allocation": {}
+          },
+          {
+            "id": "t3",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1734962959,
+            "allocation": {
+              "pool-a": "396229938757499686",
+              "pool-b": "393817558207699024",
+              "pool-c": "0",
+              "pool-d": "209952503034801290"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "148862958461007639",
+          "pool-b": "1188414362745529",
+          "pool-c": "482679503930557084",
+          "pool-d": "367269123245689748"
+        },
+        "now": 1735249217,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "148862958461007639",
+              "pool-b": "1188414362745529",
+              "pool-c": "482679503930557084",
+              "pool-d": "367269123245689748"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "148862958461007639",
+              "pool-b": "1188414362745529",
+              "pool-c": "482679503930557084",
+              "pool-d": "367269123245689748"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "148862958461007639",
+              "pool-b": "1188414362745529",
+              "pool-c": "482679503930557084",
+              "pool-d": "367269123245689748"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "148862958461007639",
+              "pool-b": "1188414362745529",
+              "pool-c": "482679503930557084",
+              "pool-d": "367269123245689748"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-048",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1734927585,
+            "allocation": {
+              "pool-a": "230071807802519940",
+              "pool-b": "348639859300448388",
+              "pool-c": "29666410030124266",
+              "pool-d": "391621922866907406"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1735049039,
+            "allocation": {
+              "pool-a": "229876891397882917",
+              "pool-b": "320096808121968060",
+              "pool-c": "165249542484060967",
+              "pool-d": "284776757996088056"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1734857348,
+            "allocation": {
+              "pool-a": "401566219355747988",
+              "pool-b": "0",
+              "pool-c": "329750996569323795",
+              "pool-d": "268682784074928217"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "430190047802995371",
+          "pool-b": "569809952197004629",
+          "pool-c": "0",
+          "pool-d": "0"
+        },
+        "now": 1735224508,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "430190047802995371",
+              "pool-b": "569809952197004629",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "430190047802995371",
+              "pool-b": "569809952197004629",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "430190047802995371",
+              "pool-b": "569809952197004629",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-049",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734881153,
+            "allocation": {}
+          },
+          {
+            "id": "t1",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1735117908,
+            "allocation": {
+              "pool-a": "483453581190633481",
+              "pool-b": "0",
+              "pool-c": "147669830776237097",
+              "pool-d": "368876588033129422"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "543021716395184573",
+          "pool-b": "308056524484647674",
+          "pool-c": "46092824647066762",
+          "pool-d": "102828934473100991"
+        },
+        "now": 1735274187,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "543021716395184573",
+              "pool-b": "308056524484647674",
+              "pool-c": "46092824647066762",
+              "pool-d": "102828934473100991"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735290708
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-050",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734934355,
+            "allocation": {
+              "pool-a": "2487225977003581",
+              "pool-b": "0",
+              "pool-c": "333820708933866831",
+              "pool-d": "663692065089129588"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "9000000000000000000",
+            "lastActionAt": 1735157550,
+            "allocation": {
+              "pool-a": "394620418597302852",
+              "pool-b": "0",
+              "pool-c": "597186130673118793",
+              "pool-d": "8193450729578355"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1734904251,
+            "allocation": {
+              "pool-a": "377179794742594351",
+              "pool-b": "0",
+              "pool-c": "622820205257405649",
+              "pool-d": "0"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1735018028,
+            "allocation": {}
+          },
+          {
+            "id": "t4",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734912815,
+            "allocation": {}
+          }
+        ],
+        "target": {
+          "pool-a": "173653799386673260",
+          "pool-b": "339662550653382530",
+          "pool-c": "277946861509193205",
+          "pool-d": "208736788450751005"
+        },
+        "now": 1735283183,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "173653799386673260",
+              "pool-b": "339662550653382530",
+              "pool-c": "277946861509193205",
+              "pool-d": "208736788450751005"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "173653799386673260",
+              "pool-b": "339662550653382530",
+              "pool-c": "277946861509193205",
+              "pool-d": "208736788450751005"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "173653799386673260",
+              "pool-b": "339662550653382530",
+              "pool-c": "277946861509193205",
+              "pool-d": "208736788450751005"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t4",
+            "allocation": {
+              "pool-a": "173653799386673260",
+              "pool-b": "339662550653382530",
+              "pool-c": "277946861509193205",
+              "pool-d": "208736788450751005"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735330350
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-051",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1734888765,
+            "allocation": {
+              "pool-a": "314995292239152408",
+              "pool-b": "112546580487863098",
+              "pool-c": "93804205379931496",
+              "pool-d": "478653921893052998"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735062393,
+            "allocation": {
+              "pool-a": "406302024853725499",
+              "pool-b": "0",
+              "pool-c": "452775652158333686",
+              "pool-d": "140922322987940815"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "3000000000000000000",
+            "lastActionAt": 1734977739,
+            "allocation": {
+              "pool-a": "118733700836547138",
+              "pool-b": "266589355623476516",
+              "pool-c": "614676943539976346",
+              "pool-d": "0"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "165431324692353734",
+          "pool-b": "166449928571202248",
+          "pool-c": "379567089583708030",
+          "pool-d": "288551657152735988"
+        },
+        "now": 1735219167,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "165431324692353734",
+              "pool-b": "166449928571202248",
+              "pool-c": "379567089583708030",
+              "pool-d": "288551657152735988"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "165431324692353734",
+              "pool-b": "166449928571202248",
+              "pool-c": "379567089583708030",
+              "pool-d": "288551657152735988"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t1",
+            "until": 1735235193
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-052",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1735056923,
+            "allocation": {
+              "pool-a": "28997216728976815",
+              "pool-b": "595357773804128068",
+              "pool-c": "280953775784638016",
+              "pool-d": "94691233682257101"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "5000000000000000000",
+            "lastActionAt": 1735110363,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "249822732556723859",
+              "pool-c": "426379857441381234",
+              "pool-d": "323797410001894907"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "6000000000000000000",
+            "lastActionAt": 1734981141,
+            "allocation": {
+              "pool-a": "138778838759095880",
+              "pool-b": "210097737813890026",
+              "pool-c": "279388122020762092",
+              "pool-d": "371735301406252002"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1735047943,
+            "allocation": {
+              "pool-a": "301485772733428774",
+              "pool-b": "445877343425750972",
+              "pool-c": "251779985451900715",
+              "pool-d": "856898388919539"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "591212316428000946",
+          "pool-b": "408787683571999054",
+          "pool-c": "0",
+          "pool-d": "0"
+        },
+        "now": 1735314786,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "591212316428000946",
+              "pool-b": "408787683571999054",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "591212316428000946",
+              "pool-b": "408787683571999054",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "591212316428000946",
+              "pool-b": "408787683571999054",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t3",
+            "allocation": {
+              "pool-a": "591212316428000946",
+              "pool-b": "408787683571999054",
+              "pool-c": "0",
+              "pool-d": "0"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "random-053",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t0",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1734914730,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "526439046191028427",
+              "pool-c": "0",
+              "pool-d": "473560953808971573"
+            }
+          },
+          {
+            "id": "t1",
+            "positionWeight": "2000000000000000000",
+            "lastActionAt": 1734897234,
+            "allocation": {
+              "pool-a": "324060986004909525",
+              "pool-b": "134232416072800889",
+              "pool-c": "233534087218261121",
+              "pool-d": "308172510704028465"
+            }
+          },
+          {
+            "id": "t2",
+            "positionWeight": "4000000000000000000",
+            "lastActionAt": 1735058127,
+            "allocation": {
+              "pool-a": "251595666400210919",
+              "pool-b": "315334121209669854",
+              "pool-c": "247634565285415068",
+              "pool-d": "185435647104704159"
+            }
+          },
+          {
+            "id": "t3",
+            "positionWeight": "7000000000000000000",
+            "lastActionAt": 1735154623,
+            "allocation": {
+              "pool-a": "0",
+              "pool-b": "0",
+              "pool-c": "488992248638668903",
+              "pool-d": "511007751361331097"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "333933336093686506",
+          "pool-b": "297589032643492813",
+          "pool-c": "97647354446654824",
+          "pool-d": "270830276816165857"
+        },
+        "now": 1735202359,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t0",
+            "allocation": {
+              "pool-a": "333933336093686506",
+              "pool-b": "297589032643492813",
+              "pool-c": "97647354446654824",
+              "pool-d": "270830276816165857"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t1",
+            "allocation": {
+              "pool-a": "333933336093686506",
+              "pool-b": "297589032643492813",
+              "pool-c": "97647354446654824",
+              "pool-d": "270830276816165857"
+            }
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t2",
+            "until": 1735230927
+          },
+          {
+            "kind": "wait",
+            "trancheId": "t3",
+            "until": 1735327423
+          }
+        ]
+      }
+    }
+  ]
+}

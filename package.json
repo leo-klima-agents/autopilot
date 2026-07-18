@@ -1,0 +1,22 @@
+{
+  "name": "aero-autopilot",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "preflight": "node scripts/preflight.mjs",
+    "manifest:check": "node scripts/manifest.mjs check",
+    "manifest:write": "node scripts/manifest.mjs write",
+    "storage:check": "node scripts/storage-check.mjs check",
+    "merged-abi": "node scripts/merged-abi.mjs",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "fixtures": "pnpm --filter @aero-autopilot/core fixtures",
+    "data": "pnpm --filter @aero-autopilot/core data"
+  }
+}

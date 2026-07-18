@@ -1,0 +1,15 @@
+{
+  "totalReturn": "15348258776435768613189",
+  "passiveReturn": "15343980891364749340980",
+  "returnVsPassive": "4277885071019272209",
+  "maxDrawdownVsBenchmark": "0",
+  "turnover": "2174632600489674204",
+  "rotations": 20,
+  "blockedSubmissions": 0,
+  "onTargetPct": 0.9142857142857143,
+  "offTargetPct": 0,
+  "poolSamples": 280,
+  "equityPoints": 70,
+  "finalEquity": "15348258776435768613189",
+  "finalBenchmark": "15343980891364749340980"
+}

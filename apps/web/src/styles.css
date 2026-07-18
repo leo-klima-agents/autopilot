@@ -1,0 +1,351 @@
+/* ---------------------------------------------------------------------------
+   Aero Autopilot — Strategy Replay Console
+   Design: a flight-instrument panel (EFIS), not a dashboard template.
+   Type: B612 / B612 Mono — the typeface Airbus commissioned for cockpit
+   displays; every numeral on this page is data and set in the mono cut.
+   Palette (committed dark, per instrument convention):
+     bezel      #0B0E12   instrument face #12171E   bezel edge #26303B
+     text       #D8E1E8   placard labels  #7C8A96
+     phosphor   #6FD3A6   (our equity, GO states)
+     amber      #E8B44F   (benchmark, cautions)
+     alert      #E0654F   (drawdown, wash-bait, failures)
+   Signature: the flight-director strip under the masthead — a horizon line
+   that becomes the replay progress indicator while a run is in flight.
+--------------------------------------------------------------------------- */
+
+:root {
+  --bezel: #0b0e12;
+  --face: #12171e;
+  --face-raised: #171e27;
+  --edge: #26303b;
+  --text: #d8e1e8;
+  --placard: #7c8a96;
+  --phosphor: #6fd3a6;
+  --phosphor-dim: #2c5747;
+  --amber: #e8b44f;
+  --alert: #e0654f;
+  --focus: #8ab8d8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bezel);
+  color: var(--text);
+  font-family: "B612", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+code,
+.mono,
+.gauge-value,
+input,
+select {
+  font-family: "B612 Mono", ui-monospace, monospace;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/* masthead + flight director strip */
+.masthead {
+  padding: 14px 20px 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.masthead h1 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.masthead h1 .thin {
+  color: var(--placard);
+  font-weight: 400;
+}
+
+.masthead .links {
+  color: var(--placard);
+  font-size: 12px;
+}
+
+.masthead .links a {
+  color: var(--placard);
+}
+
+.flight-director {
+  height: 3px;
+  background: var(--edge);
+  position: relative;
+  overflow: hidden;
+}
+
+.flight-director .horizon {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--phosphor), transparent);
+  width: 30%;
+  transform: translateX(-100%);
+}
+
+.flight-director.running .horizon {
+  animation: sweep 1.4s linear infinite;
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(430%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flight-director.running .horizon {
+    animation: none;
+    width: 100%;
+    transform: none;
+    opacity: 0.6;
+  }
+}
+
+/* layout: flight plan (left) | instruments (right) */
+.deck {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 14px;
+  padding: 14px 20px 40px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .deck {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: var(--face);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.panel + .panel {
+  margin-top: 14px;
+}
+
+.placard {
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--placard);
+  margin: 0 0 10px;
+}
+
+.placard .unit {
+  letter-spacing: 0.05em;
+  text-transform: none;
+}
+
+/* form controls */
+.field {
+  display: grid;
+  grid-template-columns: 1fr 132px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.field label {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.field .hint {
+  display: block;
+  color: var(--placard);
+  font-size: 10.5px;
+}
+
+input,
+select {
+  background: var(--bezel);
+  color: var(--text);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  width: 100%;
+}
+
+input[type="checkbox"] {
+  width: auto;
+  justify-self: start;
+  accent-color: var(--phosphor);
+}
+
+button {
+  font-family: "B612", system-ui, sans-serif;
+  background: var(--face-raised);
+  color: var(--text);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--placard);
+}
+
+button.engage {
+  background: var(--phosphor-dim);
+  border-color: var(--phosphor);
+  color: #eafff5;
+  text-transform: uppercase;
+  font-weight: 700;
+  width: 100%;
+  padding: 10px;
+}
+
+button.engage:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.preset-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preset-bar button.active {
+  border-color: var(--phosphor);
+  color: var(--phosphor);
+}
+
+.preset-blurb {
+  color: var(--placard);
+  font-size: 12px;
+  margin-top: 8px;
+  min-height: 3em;
+}
+
+/* gauges */
+.gauge-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+}
+
+.gauge {
+  background: var(--face-raised);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.gauge .placard {
+  margin-bottom: 4px;
+}
+
+.gauge-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.gauge-value.good {
+  color: var(--phosphor);
+}
+
+.gauge-value.bad {
+  color: var(--alert);
+}
+
+.gauge-value.caution {
+  color: var(--amber);
+}
+
+.gauge .sub {
+  color: var(--placard);
+  font-size: 10.5px;
+}
+
+/* charts */
+.chart-wrap {
+  width: 100%;
+  height: 300px;
+}
+
+.heatmap-scroll {
+  overflow-x: auto;
+}
+
+.heatmap-label {
+  font-family: "B612 Mono", ui-monospace, monospace;
+  font-size: 10px;
+  fill: var(--placard);
+}
+
+.legend {
+  display: flex;
+  gap: 18px;
+  font-size: 11px;
+  color: var(--placard);
+  margin-top: 6px;
+}
+
+.legend .chip {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* banners + states */
+.banner {
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  background: rgba(232, 180, 79, 0.07);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.banner.alert {
+  border-color: var(--alert);
+  color: var(--alert);
+  background: rgba(224, 101, 79, 0.07);
+}
+
+.empty {
+  color: var(--placard);
+  padding: 60px 20px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.copy-link {
+  float: right;
+  font-size: 11.5px;
+  padding: 4px 10px;
+}
