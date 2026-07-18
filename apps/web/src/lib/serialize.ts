@@ -23,6 +23,8 @@ export interface DisplayResult {
   datasetGeneratedAt: string | undefined;
   /** Historical timestamps are real dates; synthetic ones are an arbitrary anchor. */
   dataKind: "historical" | "synthetic";
+  /** "usd" when revenue is Alchemy-priced USD; "index" for synthetic units. */
+  revenueUnit: "usd" | "index";
   startTime: number;
   durationSec: number;
 }
@@ -55,6 +57,7 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
     },
     datasetGeneratedAt: run.datasetGeneratedAt,
     dataKind: run.dataKind,
+    revenueUnit: run.revenueUnit,
     startTime: run.startTime,
     durationSec: run.durationSec,
   };

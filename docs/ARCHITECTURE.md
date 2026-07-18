@@ -141,7 +141,7 @@ on-target-% methodology as its calibration test.
 | A8 | Rebase: `RewardsDistributor.claim(tokenId)` permissionless; reverts `UpdatePeriod` until minter poked post-flip; auto-compounds via `depositFor` for unexpired/permanent locks | RewardsDistributor.sol | [code] |
 | A9 | veNFT transfers are standard ERC-721 (only LOCKED escrow type blocked); `voted` does not block transfer | VotingEscrow.sol `_transferFrom` | [code] |
 | A10 | Base addresses — Voter `0x16613524e02ad97eDfeF371bC883F2F5d6C480A5`, VotingEscrow `0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4`, AERO `0x940181a94A35A4569E4529A3CDfB74e38FD98631`, RewardsDistributor `0x227f65131A261548b057215bB1D5Ab2997964C7d`, Router `0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43`, Minter `0xeB018363F0a9Af8f91F06FEe6613a751b2A33FE5` | [contracts README deployment table](https://github.com/aerodrome-finance/contracts); Voter + RewardsDistributor cross-checked vs [sugar deployments/base.env](https://github.com/velodrome-finance/sugar/blob/main/deployments/base.env) | [code] — re-verify on chain before any funds move |
-| A11 | Sugar on Base: LpSugar `0x69dD9db6d8f8E7d83887A704f447b1a584b599A1`, RewardsSugar `0x1b121EfDaF4ABb8785a315C51D29BCE0552A7678`, VeSugar `0x4d6A741cEE6A8cC5632B2d948C050303F6246D24` | [sugar deployments/base.env](https://github.com/velodrome-finance/sugar/blob/main/deployments/base.env) | [code] |
+| A11 | Sugar on Base: LpSugar `0x3058f92ebf83e2536f2084f20f7c0357d7d3ccfe` (newer deployment; enumerates all 34k+ pools **including Slipstream CL** — the `deployments/base.env` address `0x69dD9db6d8f8E7d83887A704f447b1a584b599A1` does NOT index CL pools and must not be used), RewardsSugar `0x1b121EfDaF4ABb8785a315C51D29BCE0552A7678`, VeSugar `0x4d6A741cEE6A8cC5632B2d948C050303F6246D24` | verified on chain 2026-07-18 (`all()` decodes with the 32-field Lp tuple, 34,330 pools, CL from ~offset 28,000); cross-referenced with [ldeso/aerodrome](https://github.com/ldeso/aerodrome); RewardsSugar/VeSugar per [sugar deployments/base.env](https://github.com/velodrome-finance/sugar/blob/main/deployments/base.env) | [code] |
 | A12 | `RewardsSugar.epochsByAddress(limit, offset, pool)` walks **up to 200 past epochs** per pool returning `{ts, lp, votes, emissions, bribes[], fees[]}` from genuine on-chain historical records (bribe supply checkpoints, `rewardRateByEpoch`, `tokenRewardsPerEpoch`). Caveats: iteration breaks at pre-gauge history; **killed gauges return no epoch data** | [RewardsSugar.vy](https://github.com/velodrome-finance/sugar/blob/main/contracts/RewardsSugar.vy) | [code] |
 | A13 | Relay (prior art): roles admin/keeper/allowed-caller/public; keepers act from 1h post-flip; public callers act in last 24h of epoch (guaranteed compounding without active keepers); admin sweep only first 24h post-epoch and only non-high-liquidity tokens; public caller bounty = "minimum of either 1% of VELO converted or the team-set constant" (wording ambiguous — min vs max unresolved without reading AutoCompounder source); relay has no vote-withdrawal, deposit/withdraw-managed mutually exclusive with voting per epoch | [velodrome-finance/relay README](https://github.com/velodrome-finance/relay) (aerodrome relay README is the identical doc) | [code]/[faq] |
 | A14 | v2 managed-NFT creation requires the **AllowedManager** role — this PoC deliberately does NOT use managed NFTs (P6 single-owner custody; also removed in v3) | [PERMISSIONS.md](https://github.com/aerodrome-finance/contracts/blob/main/PERMISSIONS.md) | [code] |
@@ -220,9 +220,23 @@ Ordered by blast radius.
 - **Indexer: sugar-first.** `RewardsSugar.epochsByAddress` (A12) provides exactly the
   per-epoch, per-pool `{votes, emissions, bribes[], fees[]}` history the backtester needs,
   up to 200 epochs back, in one view call per pool page. The custom-log indexer is not
-  built. Pool universe selection comes from LpSugar (TVL/volume ranking); token metadata
-  comes from Alchemy at build time (§6 of the brief). Killed-gauge caveat (A12) is logged
-  per pool in the dataset manifest.
+  built. Token metadata comes from Alchemy at build time (§6 of the brief). Killed-gauge
+  caveat (A12) is logged per pool in the dataset manifest.
+- **Pool selection: two-stage, USD-ranked** (revised 2026-07-18; methodology inspired by
+  [ldeso/aerodrome](https://github.com/ldeso/aerodrome)). The original ranking by current
+  gauge emission rate empirically surfaced zero Slipstream CL pools — which dominate real
+  fee revenue. Two causes: the ranking itself, and the `base.env` LpSugar deployment not
+  indexing CL pools at all (fixed by the newer deployment, A11). Stage 1: top ~60
+  alive-gauge pools by CURRENT-epoch votes (`RewardsSugar.epochsLatest`; CL pools included
+  naturally). Stage 2: top 30 of those by trailing 12-month USD revenue. `fetchTopPools`
+  (emission ranking) is kept only as the no-key fallback.
+- **Revenue is USD-priced** (revised 2026-07-18). Per-epoch `feesUsd`/`bribesUsd` are
+  computed at index time from the Alchemy Prices API (daily history,
+  `api.g.alchemy.com/prices/v1`): each reward amount × that token's price at the epoch's
+  Thursday-start date, bigint floor per amount. Prices cache incrementally in
+  `data/prices.json`; tokens Alchemy cannot price carry a sentinel and their amounts are
+  skipped and counted (`PoolRecord.pricing` coverage). Raw token amounts remain in the
+  dataset; the unpriced sum fallback survives only for synthetic single-quote-token data.
 - **v2 tranches stake permanent locks** (A7 `lockPermanent`) mirroring the v3 permanent
   opt-in (F8), so tranche accounting is decay-free in both protocol models and the same
   scheduler drives both.

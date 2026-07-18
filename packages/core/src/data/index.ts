@@ -27,6 +27,9 @@ export {
   type SugarLp,
   type SugarLpEpoch,
   type SugarClient,
+  fetchAllLps,
+  fetchLatestEpochs,
+  selectVoteCandidates,
 } from "./sugar.js";
 export {
   sanitizeSymbol,
@@ -43,4 +46,17 @@ export {
   type ResolveTokensOptions,
   type Erc20Reader,
 } from "./tokens.js";
-export { buildDataset } from "./cli.js";
+export { buildDataset, rankPoolsByUsdRevenue } from "./cli.js";
+export { sleep, withRetry, type RetryOptions } from "./retry.js";
+export {
+  emptyPriceCache,
+  fetchHistoricalPrices,
+  loadPriceCache,
+  parseUsdToWad,
+  priceDateForEpoch,
+  priceWadAt,
+  savePriceCache,
+  type FetchPricesOptions,
+  type PriceCacheV1,
+} from "./prices.js";
+export { computeEpochUsd, usdWadOf, type EpochUsdDeps, type EpochUsdResult } from "./usd.js";

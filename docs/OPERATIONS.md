@@ -45,7 +45,7 @@ Sequence: **fork rehearsal → Base Sepolia dry run (mock protocol facet) → ma
 - [ ] init executed exactly once (re-submission of the init calldata reverts `InitAlreadyExecuted`)
 - [ ] event emission spot-checked (a `TargetsSet` and a `Rotated` on dust amounts)
 - [ ] verification complete per §6 below
-- [ ] GitHub Actions repository secrets `BASE_RPC_URL` + `ALCHEMY_API_KEY` set by a maintainer (local env does not propagate — brief §11)
+- [ ] GitHub Actions repository secrets `BASE_RPC_URL` + `ALCHEMY_API_KEY` set by a maintainer (local env does not propagate — brief §11). `ALCHEMY_API_KEY` drives token metadata AND historical USD pricing; without it the weekly dataset falls back to unpriced vote ranking. `data/prices.json` is a committed, regenerable build cache (safe to delete; first rebuild ~5-7 min, weekly incremental ~2-3 min).
 
 ## 3. Keeper operations
 

@@ -26,7 +26,9 @@ function repoDataPlugin(): Plugin {
       if (!existsSync(repoData)) return;
       mkdirSync(out, { recursive: true });
       for (const f of readdirSync(repoData)) {
-        if (f.endsWith(".json")) copyFileSync(join(repoData, f), join(out, f));
+        // Datasets only — build caches (prices.json, tokens.json) are never
+        // fetched by the site and would add megabytes of dead weight.
+        if (f.endsWith(".v1.json")) copyFileSync(join(repoData, f), join(out, f));
       }
     },
   };
