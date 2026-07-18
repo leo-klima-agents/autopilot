@@ -10,6 +10,7 @@
  */
 
 import { divWad, mulDiv, WAD } from "../math/fixed.js";
+import { WEEK } from "../model/types.js";
 import type { CrowdModel } from "../model/crowd.js";
 import {
   AllocationBlockedError,
@@ -67,16 +68,26 @@ export interface AllocationHistory {
    *  unit weight) earned from the pool across all tranches. Each row sums
    *  exactly to Σ model.earned(tranche) at that sample. */
   earned: Wad[][];
-  /** benchmarkWeights[sampleIndex][poolIndex]: the pool's Wad share of the
-   *  GLOBAL weight — the market portfolio the passive benchmark holds. */
-  benchmarkWeights: Wad[][];
-  /** benchmarkEarned[sampleIndex][poolIndex]: cumulative revenue a passive
+  /** marketBenchmarkWeights[sampleIndex][poolIndex]: the pool's Wad share of the
+   *  GLOBAL weight — the portfolio the market benchmark holds. */
+  marketBenchmarkWeights: Wad[][];
+  /** marketBenchmarkEarned[sampleIndex][poolIndex]: cumulative revenue a passive
    *  market-cap-weighted portfolio of our size (portfolioWeight) would have
    *  earned from the pool, accrued per step as
    *  mulDiv(poolRevenueDelta, portfolioWeight, globalWeight) — the per-pool
-   *  twin of the equity chart's passive benchmark (same timing, floor per
+   *  twin of the equity chart's market benchmark (same timing, floor per
    *  pool instead of on the aggregate). */
-  benchmarkEarned: Wad[][];
+  marketBenchmarkEarned: Wad[][];
+  /** revenueBenchmarkWeights[sampleIndex][poolIndex]: the FORESIGHT (oracle)
+   *  benchmark's portfolio fractions — each weekly epoch it holds pools in
+   *  proportion to that epoch's TOTAL per-pool revenue. Not investable
+   *  (weights need the epoch's realized revenue); an upper reference. */
+  revenueBenchmarkWeights: Wad[][];
+  /** revenueBenchmarkEarned[sampleIndex][poolIndex]: cumulative revenue the
+   *  oracle portfolio earns. Its weight DISPLACES ours: per step and pool,
+   *  mulDiv(poolRevenueDelta, oracleWeight, poolWeightExcludingUs +
+   *  oracleWeight). The final partial epoch uses revenue-to-date shares. */
+  revenueBenchmarkEarned: Wad[][];
 }
 
 /** Equity curve time series for the web app (bigint arrays + times). */
@@ -84,20 +95,27 @@ export interface EquityCurve {
   times: number[];
   /** Cumulative portfolio return per unit weight, Wad. */
   equity: Wad[];
-  /** Cumulative passive benchmark return per unit weight, Wad. */
-  benchmark: Wad[];
+  /** Cumulative market benchmark return per unit weight, Wad. */
+  marketBenchmark: Wad[];
+  /** Cumulative revenue-proportional (foresight) benchmark return per unit
+   *  weight, Wad. */
+  revenueBenchmark: Wad[];
 }
 
 /** Backtest result metrics. */
 export interface BacktestResult {
   /** Cumulative revenue earned per unit of portfolio weight, Wad. */
   totalReturn: Wad;
-  /** Passive benchmark: global revenue per unit of global weight, Wad. */
-  passiveReturn: Wad;
-  /** totalReturn - passiveReturn (signed). */
-  returnVsPassive: bigint;
-  /** Max peak-to-trough drawdown of (equity - benchmark), Wad. */
-  maxDrawdownVsBenchmark: bigint;
+  /** Market benchmark: global revenue per unit of global weight, Wad. */
+  marketBenchmarkReturn: Wad;
+  /** Revenue-proportional (foresight) benchmark return per unit weight, Wad.
+   *  The ceiling reference: capture = (totalReturn - marketBenchmarkReturn) /
+   *  (revenueBenchmarkReturn - marketBenchmarkReturn). */
+  revenueBenchmarkReturn: Wad;
+  /** totalReturn - marketBenchmarkReturn (signed). */
+  returnVsMarket: bigint;
+  /** Max peak-to-trough drawdown of (equity - market benchmark), Wad. */
+  maxDrawdownVsMarket: bigint;
   /** Σ L1(Δallocation)/2 per executed rotation, Wad fractions, cumulated. */
   turnover: Wad;
   /** Number of executed rotations. */
@@ -166,14 +184,14 @@ export function runBacktest(
   let turnover = 0n;
   let rotations = 0;
   let blockedSubmissions = 0;
-  let benchmark = 0n;
+  let marketBenchmark = 0n;
   let prevRevenueTotal = 0n;
   let onCount = 0;
   let offCount = 0;
   let poolSamples = 0;
   const times: number[] = [];
   const equitySeries: Wad[] = [];
-  const benchmarkSeries: Wad[] = [];
+  const marketBenchmarkSeries: Wad[] = [];
   const allocPools = [...model.marketState().pools];
   const allocWeights: Wad[][] = [];
   const allocEarned: Wad[][] = [];
@@ -181,6 +199,66 @@ export function runBacktest(
   const benchEarned: Wad[][] = [];
   const passiveEarned = new Map<string, Wad>();
   let prevRevByPool: ReadonlyMap<string, Wad> = new Map();
+
+  // -- revenue-proportional (oracle) benchmark --------------------------------
+  // Weights fix per weekly epoch, proportional to that epoch's TOTAL per-pool
+  // revenue — knowable only at the flip. Steps buffer their (revenue delta,
+  // pool weight excluding our tranches) pairs; samples taken inside an open
+  // epoch are back-filled when it closes. Run end closes the partial epoch
+  // with revenue-to-date shares.
+  const oracleEarnedCum: Wad[] = allocPools.map(() => 0n);
+  const oracleWeights: Wad[][] = [];
+  const oracleEarned: Wad[][] = [];
+  const oracleEquity: Wad[] = [];
+  let epochStepDeltas: Wad[][] = [];
+  let epochStepWeightsExUs: Wad[][] = [];
+  let epochRevenue: Wad[] = allocPools.map(() => 0n);
+  let pendingOracleSamples: { row: number; steps: number }[] = [];
+
+  const closeOracleEpoch = (): void => {
+    let totalRev = 0n;
+    for (const rev of epochRevenue) totalRev += rev;
+    const oracleW = allocPools.map((_, p) =>
+      totalRev === 0n ? 0n : mulDiv(portfolioWeight, epochRevenue[p]!, totalRev),
+    );
+    const shares = allocPools.map((_, p) =>
+      totalRev === 0n ? 0n : mulDiv(WAD, epochRevenue[p]!, totalRev),
+    );
+    const cumInEpoch = allocPools.map(() => 0n);
+    const fillRow = (row: number): void => {
+      oracleWeights[row] = shares;
+      oracleEarned[row] = allocPools.map((_, p) => oracleEarnedCum[p]! + cumInEpoch[p]!);
+      let sum = 0n;
+      for (let p = 0; p < allocPools.length; p += 1) sum += oracleEarnedCum[p]! + cumInEpoch[p]!;
+      oracleEquity[row] = divWad(sum, portfolioWeight);
+    };
+    let pi = 0;
+    while (pi < pendingOracleSamples.length && pendingOracleSamples[pi]!.steps === 0) {
+      fillRow(pendingOracleSamples[pi]!.row);
+      pi += 1;
+    }
+    for (let s = 0; s < epochStepDeltas.length; s += 1) {
+      const deltas = epochStepDeltas[s]!;
+      const exUs = epochStepWeightsExUs[s]!;
+      for (let p = 0; p < allocPools.length; p += 1) {
+        const delta = deltas[p]!;
+        const w = oracleW[p]!;
+        if (delta <= 0n || w === 0n) continue;
+        cumInEpoch[p] = cumInEpoch[p]! + mulDiv(delta, w, exUs[p]! + w);
+      }
+      while (pi < pendingOracleSamples.length && pendingOracleSamples[pi]!.steps === s + 1) {
+        fillRow(pendingOracleSamples[pi]!.row);
+        pi += 1;
+      }
+    }
+    for (let p = 0; p < allocPools.length; p += 1) {
+      oracleEarnedCum[p] = oracleEarnedCum[p]! + cumInEpoch[p]!;
+    }
+    epochStepDeltas = [];
+    epochStepWeightsExUs = [];
+    epochRevenue = allocPools.map(() => 0n);
+    pendingOracleSamples = [];
+  };
   let peak = 0n;
   let maxDrawdown = 0n;
 
@@ -198,7 +276,7 @@ export function runBacktest(
     const equity = portfolioEquity();
     times.push(t);
     equitySeries.push(equity);
-    benchmarkSeries.push(benchmark);
+    marketBenchmarkSeries.push(marketBenchmark);
     allocWeights.push(
       allocPools.map((pool) => {
         let onPool = 0n;
@@ -222,7 +300,12 @@ export function runBacktest(
       allocPools.map((pool) => (totalW === 0n ? 0n : divWad(market.poolWeight(pool), totalW))),
     );
     benchEarned.push(allocPools.map((pool) => passiveEarned.get(pool) ?? 0n));
-    const rel = equity - benchmark;
+    // oracle rows are back-filled when the epoch's revenue shares are known
+    oracleWeights.push([]);
+    oracleEarned.push([]);
+    oracleEquity.push(0n);
+    pendingOracleSamples.push({ row: oracleEarned.length - 1, steps: epochStepDeltas.length });
+    const rel = equity - marketBenchmark;
     if (rel > peak) peak = rel;
     const drawdown = peak - rel;
     if (drawdown > maxDrawdown) maxDrawdown = drawdown;
@@ -277,19 +360,36 @@ export function runBacktest(
       const target = strategy.propose(model.marketState(), portfolio());
       executeTarget(target, t);
     }
-    const globalWeight = model.marketState().totalWeight();
+    const marketBefore = model.marketState();
+    const globalWeight = marketBefore.totalWeight();
+    // pool weight minus our tranches at step start — the oracle benchmark's
+    // weight displaces ours in the denominator
+    const weightsExUs = allocPools.map((pool) => {
+      let ours = 0n;
+      for (const tranche of tranches) {
+        const frac = tranche.allocation.get(pool) ?? 0n;
+        if (frac > 0n) ours += mulDiv(tranche.positionWeight, frac, WAD);
+      }
+      const w = marketBefore.poolWeight(pool);
+      return w > ours ? w - ours : 0n;
+    });
     model.advance(stepSec);
     const revenueTotal = model.totals().revenueTotal;
     const deltaRev = revenueTotal - prevRevenueTotal;
     prevRevenueTotal = revenueTotal;
-    // per-pool twin of the passive benchmark: a market-cap portfolio of our
-    // size takes portfolioWeight/globalWeight of each pool's revenue delta
     const revByPool = model.revenueByPool();
+    const deltas = allocPools.map(
+      (pool) => (revByPool.get(pool) ?? 0n) - (prevRevByPool.get(pool) ?? 0n),
+    );
+    prevRevByPool = revByPool;
+    // per-pool twin of the market benchmark: a market-cap portfolio of our
+    // size takes portfolioWeight/globalWeight of each pool's revenue delta
     if (globalWeight > 0n) {
-      benchmark += divWad(deltaRev, globalWeight);
-      for (const [pool, total] of revByPool) {
-        const delta = total - (prevRevByPool.get(pool) ?? 0n);
+      marketBenchmark += divWad(deltaRev, globalWeight);
+      for (let p = 0; p < allocPools.length; p += 1) {
+        const delta = deltas[p]!;
         if (delta > 0n) {
+          const pool = allocPools[p]!;
           passiveEarned.set(
             pool,
             (passiveEarned.get(pool) ?? 0n) + mulDiv(delta, portfolioWeight, globalWeight),
@@ -297,16 +397,28 @@ export function runBacktest(
         }
       }
     }
-    prevRevByPool = revByPool;
+    // oracle benchmark: buffer the step; close the epoch at weekly flips
+    epochStepDeltas.push(deltas);
+    epochStepWeightsExUs.push(weightsExUs);
+    for (let p = 0; p < allocPools.length; p += 1) {
+      epochRevenue[p] = epochRevenue[p]! + deltas[p]!;
+    }
+    if (Math.floor((t + stepSec) / WEEK) > Math.floor(t / WEEK)) closeOracleEpoch();
     if ((t + stepSec - startTime) % sampleIntervalSec === 0) sample(t + stepSec);
   }
+  closeOracleEpoch(); // partial final epoch: revenue-to-date shares
 
   const totalReturn = portfolioEquity();
   return {
     totalReturn,
-    passiveReturn: benchmark,
-    returnVsPassive: totalReturn - benchmark,
-    maxDrawdownVsBenchmark: maxDrawdown,
+    marketBenchmarkReturn: marketBenchmark,
+    revenueBenchmarkReturn: (() => {
+      let sum = 0n;
+      for (const value of oracleEarnedCum) sum += value;
+      return divWad(sum, portfolioWeight);
+    })(),
+    returnVsMarket: totalReturn - marketBenchmark,
+    maxDrawdownVsMarket: maxDrawdown,
     turnover,
     rotations,
     blockedSubmissions,
@@ -314,14 +426,21 @@ export function runBacktest(
     onTargetPct: poolSamples === 0 ? 0 : onCount / poolSamples,
     offTargetPct: poolSamples === 0 ? 0 : offCount / poolSamples,
     poolSamples,
-    equityCurve: { times, equity: equitySeries, benchmark: benchmarkSeries },
+    equityCurve: {
+      times,
+      equity: equitySeries,
+      marketBenchmark: marketBenchmarkSeries,
+      revenueBenchmark: oracleEquity,
+    },
     allocationHistory: {
       times: [...times],
       pools: allocPools,
       weights: allocWeights,
       earned: allocEarned,
-      benchmarkWeights: benchWeights,
-      benchmarkEarned: benchEarned,
+      marketBenchmarkWeights: benchWeights,
+      marketBenchmarkEarned: benchEarned,
+      revenueBenchmarkWeights: oracleWeights,
+      revenueBenchmarkEarned: oracleEarned,
     },
   };
 }

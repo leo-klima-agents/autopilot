@@ -24,7 +24,7 @@ describe("runBacktest", () => {
       crowd: staticCrowd(new Map([["b", 100n * WAD]])),
     });
     expect(result.totalReturn > 0n).toBe(true);
-    expect(result.returnVsPassive > 0n).toBe(true);
+    expect(result.returnVsMarket > 0n).toBe(true);
     expect(result.rotations).toBeGreaterThan(0);
     expect(result.turnover > 0n).toBe(true);
   });
@@ -43,8 +43,8 @@ describe("runBacktest", () => {
     // With no crowd, our weight IS the global weight: active === passive
     // except for the first step (bootstrap allocates at t0, revenue of the
     // unallocated instant is dust) and floor dust.
-    const slack = result.passiveReturn / 1_000_000n + 2n;
-    const diff = result.returnVsPassive < 0n ? -result.returnVsPassive : result.returnVsPassive;
+    const slack = result.marketBenchmarkReturn / 1_000_000n + 2n;
+    const diff = result.returnVsMarket < 0n ? -result.returnVsMarket : result.returnVsMarket;
     expect(diff <= slack).toBe(true);
   });
 
@@ -66,7 +66,7 @@ describe("runBacktest", () => {
       T0 + 6 * HOUR,
     ]);
     expect(result.equityCurve.equity).toHaveLength(3);
-    expect(result.equityCurve.benchmark).toHaveLength(3);
+    expect(result.equityCurve.marketBenchmark).toHaveLength(3);
     // Equity is non-decreasing (accrual only).
     const eq = result.equityCurve.equity;
     for (let i = 1; i < eq.length; i += 1) expect(eq[i]! >= eq[i - 1]!).toBe(true);
@@ -116,29 +116,89 @@ describe("runBacktest", () => {
       cooldownSec: HOUR,
       crowd: staticCrowd(new Map([["a", 2n * WAD], ["b", WAD]])),
     });
-    const { times, pools, benchmarkWeights, benchmarkEarned } = result.allocationHistory;
-    expect(benchmarkWeights).toHaveLength(times.length);
-    expect(benchmarkEarned).toHaveLength(times.length);
-    for (const row of [...benchmarkWeights, ...benchmarkEarned]) {
+    const { times, pools, marketBenchmarkWeights, marketBenchmarkEarned } = result.allocationHistory;
+    expect(marketBenchmarkWeights).toHaveLength(times.length);
+    expect(marketBenchmarkEarned).toHaveLength(times.length);
+    for (const row of [...marketBenchmarkWeights, ...marketBenchmarkEarned]) {
       expect(row).toHaveLength(pools.length);
     }
     // Market shares are Wad fractions of the global weight: each row sums to
     // WAD up to per-pool floor dust.
-    for (const row of benchmarkWeights) {
+    for (const row of marketBenchmarkWeights) {
       const sum = sumBig(row);
       expect(sum <= WAD && sum >= WAD - BigInt(pools.length)).toBe(true);
     }
     // Cumulative accrual: non-decreasing per pool.
-    for (let i = 1; i < benchmarkEarned.length; i += 1) {
+    for (let i = 1; i < marketBenchmarkEarned.length; i += 1) {
       for (let p = 0; p < pools.length; p += 1) {
-        expect(benchmarkEarned[i]![p]! >= benchmarkEarned[i - 1]![p]!).toBe(true);
+        expect(marketBenchmarkEarned[i]![p]! >= marketBenchmarkEarned[i - 1]![p]!).toBe(true);
       }
     }
-    // The per-pool passive twin reproduces passiveReturn up to floor dust
+    // The per-pool passive twin reproduces marketBenchmarkReturn up to floor dust
     // (per-pool mulDiv floors vs the aggregate divWad, once per step).
-    const perPool = divWad(sumBig(benchmarkEarned.at(-1)!), portfolioWeight);
-    const diff = perPool > result.passiveReturn ? perPool - result.passiveReturn : result.passiveReturn - perPool;
-    expect(diff <= result.passiveReturn / 1_000_000n + 12n).toBe(true);
+    const perPool = divWad(sumBig(marketBenchmarkEarned.at(-1)!), portfolioWeight);
+    const diff = perPool > result.marketBenchmarkReturn ? perPool - result.marketBenchmarkReturn : result.marketBenchmarkReturn - perPool;
+    expect(diff <= result.marketBenchmarkReturn / 1_000_000n + 12n).toBe(true);
+
+    // Revenue (oracle) benchmark: same grid, cumulative, and — because the
+    // crowd's 2:1 weights misprice the 3:1 revenue split — above the market.
+    const { revenueBenchmarkWeights, revenueBenchmarkEarned } = result.allocationHistory;
+    expect(revenueBenchmarkWeights).toHaveLength(times.length);
+    expect(revenueBenchmarkEarned).toHaveLength(times.length);
+    for (const row of [...revenueBenchmarkWeights, ...revenueBenchmarkEarned]) {
+      expect(row).toHaveLength(pools.length);
+    }
+    for (let i = 1; i < revenueBenchmarkEarned.length; i += 1) {
+      for (let p = 0; p < pools.length; p += 1) {
+        expect(revenueBenchmarkEarned[i]![p]! >= revenueBenchmarkEarned[i - 1]![p]!).toBe(true);
+      }
+    }
+    // constant 9:3 revenue → oracle weights are the 3:1 revenue shares
+    const lastShares = revenueBenchmarkWeights.at(-1)!;
+    expect(lastShares[pools.indexOf("a")]).toBe((3n * WAD) / 4n);
+    expect(lastShares[pools.indexOf("b")]).toBe(WAD / 4n);
+    expect(result.revenueBenchmarkReturn > result.marketBenchmarkReturn).toBe(true);
+    // the sampled oracle equity ends exactly at the headline metric
+    expect(result.equityCurve.revenueBenchmark.at(-1)).toBe(result.revenueBenchmarkReturn);
+  });
+
+  it("oracle benchmark takes the entire revenue in a single-pool universe", () => {
+    // With one pool the oracle holds 100% of it and its weight displaces
+    // ours, so it earns every unit of revenue — exact, no crowd needed.
+    const rate = 10n * WAD;
+    const revenue = constantRevenue({ a: rate });
+    const model = createContinuousModel({ revenue, startTime: T0, cooldownSec: HOUR });
+    const result = runBacktest(fixedGrid(HOUR, { lookbackSec: HOUR }), model, {
+      startTime: T0,
+      durationSec: 6 * HOUR,
+      stepSec: HOUR,
+      trancheCount: 1,
+      trancheWeight: WAD,
+      cooldownSec: HOUR,
+    });
+    expect(result.revenueBenchmarkReturn).toBe(rate * BigInt(6 * HOUR));
+    expect(result.revenueBenchmarkReturn >= result.marketBenchmarkReturn).toBe(true);
+  });
+
+  it("survives a zero-revenue run with empty oracle allocations", () => {
+    const model = createContinuousModel({
+      revenue: constantRevenue({ a: 0n }),
+      startTime: T0,
+      cooldownSec: HOUR,
+    });
+    const result = runBacktest(fixedGrid(HOUR), model, {
+      startTime: T0,
+      durationSec: 3 * HOUR,
+      stepSec: HOUR,
+      trancheCount: 1,
+      trancheWeight: WAD,
+      cooldownSec: HOUR,
+    });
+    expect(result.revenueBenchmarkReturn).toBe(0n);
+    expect(result.equityCurve.revenueBenchmark.every((v) => v === 0n)).toBe(true);
+    expect(
+      result.allocationHistory.revenueBenchmarkWeights.every((row) => row.every((w) => w === 0n)),
+    ).toBe(true);
   });
 
   it("counts blocked submissions instead of throwing", () => {
@@ -246,6 +306,6 @@ describe("calibration: published on-target progression (F21, ordering only)", ()
     });
     // Global: 2h * 100 WAD/s revenue over 400 WAD weight.
     const expected = divWad(100n * WAD * BigInt(2 * HOUR), 400n * WAD);
-    expect(result.passiveReturn).toBe(expected);
+    expect(result.marketBenchmarkReturn).toBe(expected);
   });
 });

@@ -33,7 +33,11 @@ export function EarningsHeatmap({
 }) {
   const { times, poolNames } = result.allocation;
   const earned =
-    view === "passive" ? result.allocation.benchmarkEarned : result.allocation.earned;
+    view === "market"
+      ? result.allocation.marketBenchmarkEarned
+      : view === "revenue"
+        ? result.allocation.revenueBenchmarkEarned
+        : result.allocation.earned;
   const [containerRef, width] = useContainerWidth();
   if (times.length === 0 || poolNames.length === 0 || earned.length === 0) return null;
   const axis = timeAxisFor(result);

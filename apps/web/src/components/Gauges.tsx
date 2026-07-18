@@ -4,7 +4,7 @@ import type { DisplayResult } from "../lib/serialize.js";
 import { fmt, moneyFor, pct } from "../lib/format.js";
 
 export function Gauges({ result }: { result: DisplayResult }) {
-  const vs = result.returnVsPassive;
+  const vs = result.returnVsMarket;
   const usd = result.revenueUnit === "usd";
   // USD runs are Alchemy-priced fees + bribes; index runs are synthetic units
   const money = moneyFor(result.revenueUnit);
@@ -16,19 +16,26 @@ export function Gauges({ result }: { result: DisplayResult }) {
         <div className="sub">{usd ? "USD revenue / unit vote weight" : "revenue / unit weight"}</div>
       </div>
       <div className="gauge">
-        <p className="placard">Vs bench</p>
+        <p className="placard">Vs market</p>
         <div className={`gauge-value ${vs > 0 ? "good" : vs < 0 ? "bad" : ""}`}>
           {vs > 0 ? "+" : ""}
           {money(vs)}
         </div>
-        <div className="sub">passive: {money(result.passiveReturn)}</div>
+        <div className="sub">
+          market: {money(result.marketBenchmarkReturn)} · rev bench: {money(result.revenueBenchmarkReturn)}
+          {(() => {
+            // capture: the fraction of the foresight edge the strategy took
+            const edge = result.revenueBenchmarkReturn - result.marketBenchmarkReturn;
+            return edge > 1e-12 ? ` · captured ${pct(vs / edge)}` : "";
+          })()}
+        </div>
       </div>
       <div className="gauge">
-        <p className="placard">Max DD vs bench</p>
-        <div className={`gauge-value ${result.maxDrawdownVsBenchmark > 0 ? "caution" : ""}`}>
-          {money(result.maxDrawdownVsBenchmark)}
+        <p className="placard">Max DD vs market</p>
+        <div className={`gauge-value ${result.maxDrawdownVsMarket > 0 ? "caution" : ""}`}>
+          {money(result.maxDrawdownVsMarket)}
         </div>
-        <div className="sub">peak-to-trough of (equity − bench)</div>
+        <div className="sub">peak-to-trough of (equity − market bench)</div>
       </div>
       <div className="gauge">
         <p className="placard">On target</p>
