@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import type { DisplayResult } from "../lib/serialize.js";
 import { timeAxisFor } from "../lib/timeAxis.js";
+import { TIME_AXIS_LEFT, TIME_AXIS_RIGHT_PAD, Y_AXIS_WIDTH } from "../lib/chartGeometry.js";
 
 export function EquityChart({ result }: { result: DisplayResult }) {
   const { times, equity, benchmark } = result.equity;
@@ -26,7 +27,12 @@ export function EquityChart({ result }: { result: DisplayResult }) {
   return (
     <div className="chart-wrap">
       <ResponsiveContainer>
-        <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+        {/* plot area spans [TIME_AXIS_LEFT, width - TIME_AXIS_RIGHT_PAD] — the
+            heat-map uses the same span, so dates align vertically across panels */}
+        <LineChart
+          data={data}
+          margin={{ top: 8, right: TIME_AXIS_RIGHT_PAD, bottom: 4, left: TIME_AXIS_LEFT - Y_AXIS_WIDTH }}
+        >
           <CartesianGrid stroke="#26303B" strokeDasharray="2 4" />
           <XAxis
             dataKey="ts"
@@ -41,7 +47,7 @@ export function EquityChart({ result }: { result: DisplayResult }) {
             stroke="#7C8A96"
             tick={{ fontSize: 10, fontFamily: "B612 Mono" }}
             tickFormatter={(v: number) => v.toPrecision(3)}
-            width={70}
+            width={Y_AXIS_WIDTH}
           />
           <Tooltip
             contentStyle={{

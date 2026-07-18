@@ -1,13 +1,15 @@
 /** Allocation over time: pools × samples, phosphor intensity = portfolio
- *  weight fraction. Plain SVG — wide content scrolls in its own container.
- *  Historical runs label the time edges with real UTC dates. */
+ *  weight fraction. The cell grid spans the exact horizontal range of the
+ *  equity chart's plot area (shared geometry in lib/chartGeometry), so a date
+ *  here sits on the same vertical line as the same date up in the chart.
+ *  Historical runs label the time ticks with real UTC dates. */
+import { useEffect, useRef, useState } from "react";
 import type { DisplayResult } from "../lib/serialize.js";
 import { timeAxisFor } from "../lib/timeAxis.js";
+import { TIME_AXIS_LEFT, TIME_AXIS_RIGHT_PAD } from "../lib/chartGeometry.js";
 
-const CELL_W = 4;
 const ROW_H = 18;
-const LABEL_W = 170;
-const MAX_COLS = 240;
+const TICK_ROW_H = 22;
 
 function cellColor(w: number): string {
   if (w <= 0) return "#12171E";
@@ -17,64 +19,83 @@ function cellColor(w: number): string {
   return `rgb(${mix(18, 111)}, ${mix(23, 211)}, ${mix(30, 166)})`;
 }
 
+/** Container width via ResizeObserver — the heat-map stretches like the chart. */
+function useContainerWidth(): [React.RefObject<HTMLDivElement>, number] {
+  const ref = useRef<HTMLDivElement>(null as unknown as HTMLDivElement);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w) setWidth(Math.floor(w));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width];
+}
+
 export function AllocationHeatmap({ result }: { result: DisplayResult }) {
   const { times, poolNames, weights } = result.allocation;
+  const [containerRef, width] = useContainerWidth();
   if (times.length === 0 || poolNames.length === 0) return null;
   const axis = timeAxisFor(result);
 
-  // downsample columns for width sanity
-  const stride = Math.max(1, Math.ceil(times.length / MAX_COLS));
-  const cols: number[] = [];
-  for (let i = 0; i < times.length; i += stride) cols.push(i);
+  const t0 = times[0] ?? result.startTime;
+  const tN = times.at(-1) ?? t0;
+  const span = Math.max(1, tN - t0);
+  const gridLeft = TIME_AXIS_LEFT;
+  const gridRight = Math.max(gridLeft + 40, width - TIME_AXIS_RIGHT_PAD);
+  const gridW = gridRight - gridLeft;
+  const height = poolNames.length * ROW_H + TICK_ROW_H;
 
-  const width = LABEL_W + cols.length * CELL_W;
-  const height = poolNames.length * ROW_H + 22;
-  const t0 = result.startTime;
+  // identical time→x mapping to the chart's linear scale over [t0, tN]
+  const x = (ts: number) => gridLeft + ((ts - t0) / span) * gridW;
 
   return (
-    <div className="heatmap-scroll">
-      <svg width={width} height={height} role="img" aria-label="allocation weight per pool over time">
-        {poolNames.map((name, row) => (
-          <g key={name} transform={`translate(0 ${row * ROW_H})`}>
-            <text className="heatmap-label" x={LABEL_W - 8} y={ROW_H / 2 + 3} textAnchor="end">
-              {name.length > 24 ? `${name.slice(0, 23)}…` : name}
-            </text>
-            {cols.map((i, c) => (
-              <rect
-                key={i}
-                x={LABEL_W + c * CELL_W}
-                y={2}
-                width={CELL_W}
-                height={ROW_H - 4}
-                fill={cellColor(weights[i]?.[row] ?? 0)}
-              >
-                <title>
-                  {name} · {axis.label(times[i] ?? t0)} · {(100 * (weights[i]?.[row] ?? 0)).toFixed(1)}%
-                </title>
-              </rect>
-            ))}
-          </g>
-        ))}
-        {(() => {
-          // epoch-flip-aligned time ticks along the bottom, mirroring the equity axis
-          const first = times[0] ?? t0;
-          const last = times[cols.at(-1) ?? 0] ?? t0;
-          const span = Math.max(1, last - first);
-          const gridW = cols.length * CELL_W;
-          const maxTicks = Math.max(2, Math.min(8, Math.floor(gridW / 90)));
-          return axis.epochTicks(first, last, maxTicks).map((ts) => {
-            const x = LABEL_W + ((ts - first) / span) * gridW;
-            return (
+    <div ref={containerRef}>
+      {width > 0 && (
+        <svg width={width} height={height} role="img" aria-label="allocation weight per pool over time">
+          {poolNames.map((name, row) => (
+            <g key={name} transform={`translate(0 ${row * ROW_H})`}>
+              <text className="heatmap-label" x={gridLeft - 8} y={ROW_H / 2 + 3} textAnchor="end">
+                {name.length > 24 ? `${name.slice(0, 23)}…` : name}
+              </text>
+              {times.map((ts, i) => {
+                // a cell covers [tᵢ, tᵢ₊₁) — allocation holds between samples
+                const left = x(ts);
+                const right = i + 1 < times.length ? x(times[i + 1]!) : gridRight;
+                return (
+                  <rect
+                    key={ts}
+                    x={left}
+                    y={2}
+                    width={Math.max(0.5, right - left)}
+                    height={ROW_H - 4}
+                    fill={cellColor(weights[i]?.[row] ?? 0)}
+                  >
+                    <title>
+                      {name} · {axis.label(ts)} · {(100 * (weights[i]?.[row] ?? 0)).toFixed(1)}%
+                    </title>
+                  </rect>
+                );
+              })}
+            </g>
+          ))}
+          {/* epoch-flip-aligned time ticks, same positions as the chart above */}
+          {axis
+            .epochTicks(t0, tN, Math.max(2, Math.min(8, Math.floor(gridW / 118))))
+            .map((ts) => (
               <g key={ts}>
-                <line x1={x} x2={x} y1={0} y2={height - 18} stroke="#26303B" strokeDasharray="2 4" />
-                <text className="heatmap-label" x={x} y={height - 6} textAnchor="middle">
+                <line x1={x(ts)} x2={x(ts)} y1={0} y2={height - TICK_ROW_H + 4} stroke="#26303B" strokeDasharray="2 4" />
+                <text className="heatmap-label" x={x(ts)} y={height - 6} textAnchor="middle">
                   {axis.tick(ts)}
                 </text>
               </g>
-            );
-          });
-        })()}
-      </svg>
+            ))}
+        </svg>
+      )}
     </div>
   );
 }

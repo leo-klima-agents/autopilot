@@ -7,7 +7,7 @@ const THURSDAY = 1_752_710_400;
 describe("time axis labeling", () => {
   it("historical runs show real UTC dates", () => {
     const axis = timeAxisFor({ dataKind: "historical", startTime: THURSDAY });
-    expect(axis.tick(THURSDAY)).toBe("17 Jul");
+    expect(axis.tick(THURSDAY)).toBe("17 Jul 2025");
     expect(axis.label(THURSDAY)).toContain("Thu");
     expect(axis.label(THURSDAY)).toContain("2025");
   });

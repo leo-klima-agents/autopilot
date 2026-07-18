@@ -35,7 +35,12 @@ function weekGridTicks(anchor: number, minTs: number, maxTs: number, maxTicks: n
   return all.filter((_, i) => i % stride === 0);
 }
 
-const TICK_FMT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+const TICK_FMT = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
 const LABEL_FMT = new Intl.DateTimeFormat("en-GB", {
   weekday: "short",
   day: "numeric",
