@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfigPanel } from "./components/ConfigPanel.js";
 import { Guide } from "./components/Guide.js";
+import { Theory } from "./components/Theory.js";
 import { Gauges } from "./components/Gauges.js";
 import { EquityChart } from "./components/EquityChart.js";
 import { AllocationHeatmap, type HeatmapView } from "./components/AllocationHeatmap.js";
@@ -17,7 +18,7 @@ import type { DisplayResult, WorkerResponse } from "./lib/serialize.js";
 const STALE_AFTER_DAYS = 14;
 const DEBOUNCE_MS = 300;
 
-/** Strategy ↔ passive-benchmark switch shown on both heat-map panels; the two
+/** Strategy / market-bench / revenue-bench switch on both heat-map panels; the
  *  controls share one state so the maps always show the same portfolio. */
 function ViewToggle({
   view,
@@ -28,9 +29,9 @@ function ViewToggle({
 }) {
   return (
     <div className="seg-toggle" role="group" aria-label="heatmap portfolio">
-      {(["strategy", "passive", "revenue"] as const).map((v) => (
+      {(["strategy", "market", "revenue"] as const).map((v) => (
         <button key={v} className={view === v ? "active" : ""} onClick={() => onChange(v)}>
-          {v === "strategy" ? "strategy" : v === "passive" ? "passive bench" : "revenue bench"}
+          {v === "strategy" ? "strategy" : v === "market" ? "market bench" : "revenue bench"}
         </button>
       ))}
     </div>
@@ -39,7 +40,7 @@ function ViewToggle({
 
 /** Placard suffix for the non-strategy heat-map views. */
 function viewSuffix(view: HeatmapView): string {
-  if (view === "passive") return " — passive benchmark";
+  if (view === "market") return " — market benchmark";
   if (view === "revenue") return " — revenue benchmark (foresight)";
   return "";
 }
@@ -55,15 +56,16 @@ interface LiveState {
 
 export function App() {
   const [config, setConfig] = useState<RunConfig>(() => configFromHash(location.hash) ?? DEFAULT_RUN);
-  const [view, setView] = useState<"console" | "guide">(() =>
-    location.hash === "#guide" ? "guide" : "console",
+  const [view, setView] = useState<"console" | "guide" | "theory">(() =>
+    location.hash === "#guide" ? "guide" : location.hash === "#theory" ? "theory" : "console",
   );
   const [heatmapView, setHeatmapView] = useState<HeatmapView>("strategy");
 
-  // hash navigation (back button, pasted #guide links on an already-open page)
+  // hash navigation (back button, pasted #guide/#theory links on an open page)
   useEffect(() => {
     const onHashChange = () => {
       if (location.hash === "#guide") setView("guide");
+      else if (location.hash === "#theory") setView("theory");
       else if (location.hash.startsWith("#run=")) setView("console");
     };
     window.addEventListener("hashchange", onHashChange);
@@ -180,6 +182,17 @@ export function App() {
             guide
           </a>{" "}
           ·{" "}
+          <a
+            href="#theory"
+            onClick={(e) => {
+              e.preventDefault();
+              history.replaceState(null, "", "#theory");
+              setView("theory");
+            }}
+          >
+            theory
+          </a>{" "}
+          ·{" "}
           <a href="https://github.com/leo-klima-agents/autopilot" rel="noreferrer">
             source
           </a>
@@ -191,6 +204,13 @@ export function App() {
 
       {view === "guide" ? (
         <Guide
+          onClose={() => {
+            history.replaceState(null, "", configToHash(config));
+            setView("console");
+          }}
+        />
+      ) : view === "theory" ? (
+        <Theory
           onClose={() => {
             history.replaceState(null, "", configToHash(config));
             setView("console");
@@ -260,7 +280,7 @@ export function App() {
                 <Gauges result={live.result} />
               </div>
               <div className="panel">
-                <p className="placard">Equity vs passive benchmark</p>
+                <p className="placard">Equity vs benchmarks</p>
                 <EquityChart result={live.result} />
                 <div className="legend">
                   <span>
@@ -269,7 +289,7 @@ export function App() {
                   </span>
                   <span>
                     <span className="chip" style={{ background: "#E8B44F" }} />
-                    passive — global revenue ÷ global weight
+                    market bench — global revenue ÷ global weight
                   </span>
                   <span>
                     <span className="chip" style={{ background: "#6FB8D3" }} />

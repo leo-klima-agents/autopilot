@@ -1,8 +1,8 @@
 {
   "totalReturn": "15385627791559893479977",
-  "passiveReturn": "15379172599436467265628",
-  "returnVsPassive": "6455192123426214349",
-  "maxDrawdownVsBenchmark": "0",
+  "marketBenchmarkReturn": "15379172599436467265628",
+  "returnVsMarket": "6455192123426214349",
+  "maxDrawdownVsMarket": "0",
   "turnover": "2178328118872687360",
   "rotations": 572,
   "blockedSubmissions": 0,
@@ -11,5 +11,5 @@
   "poolSamples": 280,
   "equityPoints": 70,
   "finalEquity": "15385627791559893479977",
-  "finalBenchmark": "15379172599436467265628"
+  "finalMarketBenchmark": "15379172599436467265628"
 }

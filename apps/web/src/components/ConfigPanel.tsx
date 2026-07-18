@@ -4,14 +4,17 @@ import { probeStrategy } from "../lib/buildRun.js";
 import type { RunConfig, StrategyKind } from "../lib/runConfig.js";
 import { SchemaForm } from "./SchemaForm.js";
 
+// Display labels only — the `kind` ids are serialized into share URLs and
+// must stay stable. "Revenue mirror" names the POLICY (allocate proportional
+// to trailing revenue, see the Theory page); the suffix is the cadence.
 const STRATEGIES: { kind: StrategyKind; label: string }[] = [
-  { kind: "fixedGridWeekly", label: "FixedGrid — weekly (live on v2)" },
-  { kind: "fixedGrid48h", label: "FixedGrid — 48h" },
-  { kind: "fixedGrid24h", label: "FixedGrid — 24h" },
-  { kind: "fixedGrid1h", label: "FixedGrid — 1h" },
-  { kind: "persistenceCarry", label: "PersistenceCarry" },
-  { kind: "waterFilling", label: "WaterFilling" },
-  { kind: "continuousGreedy", label: "ContinuousGreedy" },
+  { kind: "fixedGridWeekly", label: "Revenue mirror — weekly (live on v2)" },
+  { kind: "fixedGrid48h", label: "Revenue mirror — 48h" },
+  { kind: "fixedGrid24h", label: "Revenue mirror — 24h" },
+  { kind: "fixedGrid1h", label: "Revenue mirror — 1h" },
+  { kind: "persistenceCarry", label: "Persistence carry" },
+  { kind: "waterFilling", label: "Water-filling (optimal response)" },
+  { kind: "continuousGreedy", label: "Continuous greedy" },
 ];
 
 const COOLDOWNS: { sec: number; label: string }[] = [

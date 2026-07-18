@@ -9,18 +9,18 @@ import type { BuiltRun } from "./buildRun.js";
 
 export interface DisplayResult {
   totalReturn: number;
-  passiveReturn: number;
+  marketBenchmarkReturn: number;
   /** Foresight (revenue-proportional) benchmark return — the ceiling reference. */
   revenueBenchmarkReturn: number;
-  returnVsPassive: number;
-  maxDrawdownVsBenchmark: number;
+  returnVsMarket: number;
+  maxDrawdownVsMarket: number;
   turnover: number;
   rotations: number;
   blockedSubmissions: number;
   onTargetPct: number;
   offTargetPct: number;
   poolSamples: number;
-  equity: { times: number[]; equity: number[]; benchmark: number[]; revenueBenchmark: number[] };
+  equity: { times: number[]; equity: number[]; marketBenchmark: number[]; revenueBenchmark: number[] };
   allocation: {
     times: number[];
     pools: string[];
@@ -28,10 +28,10 @@ export interface DisplayResult {
     weights: number[][];
     /** Cumulative revenue earned from each pool (raw units, not per weight). */
     earned: number[][];
-    /** Pool share of GLOBAL weight — the passive benchmark's holdings. */
-    benchmarkWeights: number[][];
-    /** Cumulative revenue a passive market-cap portfolio of our size earned. */
-    benchmarkEarned: number[][];
+    /** Pool share of GLOBAL weight — the market benchmark's holdings. */
+    marketBenchmarkWeights: number[][];
+    /** Cumulative revenue the market benchmark portfolio of our size earned. */
+    marketBenchmarkEarned: number[][];
     /** The foresight benchmark's holdings: each epoch's revenue shares. */
     revenueBenchmarkWeights: number[][];
     /** Cumulative revenue the foresight benchmark earned per pool. */
@@ -52,10 +52,10 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
   const { result } = run;
   return {
     totalReturn: Number(result.totalReturn) / WAD,
-    passiveReturn: Number(result.passiveReturn) / WAD,
+    marketBenchmarkReturn: Number(result.marketBenchmarkReturn) / WAD,
     revenueBenchmarkReturn: Number(result.revenueBenchmarkReturn) / WAD,
-    returnVsPassive: Number(result.returnVsPassive) / WAD,
-    maxDrawdownVsBenchmark: Number(result.maxDrawdownVsBenchmark) / WAD,
+    returnVsMarket: Number(result.returnVsMarket) / WAD,
+    maxDrawdownVsMarket: Number(result.maxDrawdownVsMarket) / WAD,
     turnover: Number(result.turnover) / WAD,
     rotations: result.rotations,
     blockedSubmissions: result.blockedSubmissions,
@@ -65,7 +65,7 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
     equity: {
       times: result.equityCurve.times,
       equity: result.equityCurve.equity.map((w) => Number(w) / WAD),
-      benchmark: result.equityCurve.benchmark.map((w) => Number(w) / WAD),
+      marketBenchmark: result.equityCurve.marketBenchmark.map((w) => Number(w) / WAD),
       revenueBenchmark: result.equityCurve.revenueBenchmark.map((w) => Number(w) / WAD),
     },
     allocation: {
@@ -74,10 +74,10 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
       poolNames: result.allocationHistory.pools.map((p) => run.poolNames.get(p) ?? p),
       weights: result.allocationHistory.weights.map((row) => row.map((w) => Number(w) / WAD)),
       earned: result.allocationHistory.earned.map((row) => row.map((w) => Number(w) / WAD)),
-      benchmarkWeights: result.allocationHistory.benchmarkWeights.map((row) =>
+      marketBenchmarkWeights: result.allocationHistory.marketBenchmarkWeights.map((row) =>
         row.map((w) => Number(w) / WAD),
       ),
-      benchmarkEarned: result.allocationHistory.benchmarkEarned.map((row) =>
+      marketBenchmarkEarned: result.allocationHistory.marketBenchmarkEarned.map((row) =>
         row.map((w) => Number(w) / WAD),
       ),
       revenueBenchmarkWeights: result.allocationHistory.revenueBenchmarkWeights.map((row) =>

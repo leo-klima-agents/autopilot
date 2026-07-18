@@ -11,10 +11,10 @@ import { TIME_AXIS_LEFT, TIME_AXIS_RIGHT_PAD } from "../lib/chartGeometry.js";
 const ROW_H = 18;
 const TICK_ROW_H = 22;
 
-/** Which portfolio the heat-maps display: ours, the passive benchmark's
- *  market-cap-weighted twin, or the revenue-proportional foresight (oracle)
- *  benchmark. Shared by both maps and the App-level toggle. */
-export type HeatmapView = "strategy" | "passive" | "revenue";
+/** Which portfolio the heat-maps display: ours, the market benchmark's
+ *  (weight-proportional), or the revenue benchmark's (foresight,
+ *  revenue-proportional). Shared by both maps and the App-level toggle. */
+export type HeatmapView = "strategy" | "market" | "revenue";
 
 function cellColor(w: number): string {
   if (w <= 0) return "#12171E";
@@ -51,8 +51,8 @@ export function AllocationHeatmap({
 }) {
   const { times, poolNames } = result.allocation;
   const weights =
-    view === "passive"
-      ? result.allocation.benchmarkWeights
+    view === "market"
+      ? result.allocation.marketBenchmarkWeights
       : view === "revenue"
         ? result.allocation.revenueBenchmarkWeights
         : result.allocation.weights;

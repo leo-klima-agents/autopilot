@@ -23,7 +23,8 @@ export function Guide({ onClose }: { onClose: () => void }) {
         </p>
         <p>
           The question every run answers: <em>did this strategy earn more than doing nothing clever?</em> "Nothing
-          clever" is the passive benchmark — the return of simply holding the market-average allocation.
+          clever" is the market benchmark — the return of simply holding the market-average allocation. For the full
+          reasoning behind the benchmarks, see the Theory page.
         </p>
       </div>
 
@@ -94,7 +95,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
             An adversarial pool that pumps fake fees in short bursts to look attractive, then pulls them. Strategies
             that only read trailing revenue chase it and get nothing; persistence-aware scoring discounts it.
           </dd>
-          <dt>Passive benchmark</dt>
+          <dt>Market benchmark</dt>
           <dd>
             The return per unit weight of holding the global average allocation: total market revenue divided by
             total allocated weight, accumulated over the run. USD-denominated on historical replays. Any strategy
@@ -129,20 +130,20 @@ export function Guide({ onClose }: { onClose: () => void }) {
             How many seconds before the Thursday flip to submit. Voting late uses the freshest information — voting
             early locks you in while better information keeps arriving.
           </dd>
-          <dt>buckets (PersistenceCarry)</dt>
+          <dt>buckets (Persistence carry)</dt>
           <dd>The lookback window is cut into this many equal sub-windows to estimate revenue volatility.</dd>
-          <dt>haircutWad (PersistenceCarry)</dt>
+          <dt>haircutWad (Persistence carry)</dt>
           <dd>
             Maximum score penalty applied at 100% volatility, as a Wad fraction. 0.5 = a maximally-noisy pool keeps
             only half its raw score.
           </dd>
-          <dt>sWad (PersistenceCarry)</dt>
+          <dt>sWad (Persistence carry)</dt>
           <dd>
             The (s,S) trigger: a new target is only proposed when it differs from the last one by more than this L1
             distance (sum of absolute per-pool weight changes). Below the threshold, the strategy deliberately sits
             still — churn costs turnover and burns cooldowns.
           </dd>
-          <dt>thresholdWad / costWad (ContinuousGreedy)</dt>
+          <dt>thresholdWad / costWad (Continuous greedy)</dt>
           <dd>
             The move trigger: reallocate only when the marginal-yield gap between the best pool and the worst pool
             you hold exceeds threshold + cost. Cost stands in for gas and slippage.
@@ -219,7 +220,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
       <div className="panel">
         <h2>The strategies</h2>
 
-        <h3>FixedGrid — weekly / 48h / 24h / 1h</h3>
+        <h3>Revenue mirror — weekly / 48h / 24h / 1h</h3>
         <p>
           The baseline family. On a fixed clock, allocate proportionally to each pool's trailing revenue over the
           lookback — no forecasting, no restraint, just "put weight where fees were." The four variants differ only
@@ -228,7 +229,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           strategy that can run live against Aerodrome v2 today.
         </p>
 
-        <h3>PersistenceCarry</h3>
+        <h3>Persistence carry</h3>
         <p>
           The reactive strategy tuned for a 48h cooldown world. It scores each pool by trailing revenue, then
           discounts noisy pools: the lookback is cut into <code>buckets</code> sub-windows, volatility is measured as
@@ -239,16 +240,16 @@ export function Guide({ onClose }: { onClose: () => void }) {
           and cooldown burn low.
         </p>
 
-        <h3>WaterFilling</h3>
+        <h3>Water-filling</h3>
         <p>
           The size-aware allocator. Revenue on a pool is shared pro-rata, so your own weight dilutes your yield:
-          pouring everything into the single best pool is wrong once your stake is large. WaterFilling maximizes
+          pouring everything into the single best pool is wrong once your stake is large. Water-filling maximizes
           total revenue Σ wᵢRᵢ/(Wᵢ+wᵢ) — R the pool's revenue rate, W the crowd's weight, w yours — by equalizing
           marginal yield across pools, like water finding one level across connected basins. Big portfolios spread
-          out; small ones concentrate. The same allocator runs inside ContinuousGreedy for sizing.
+          out; small ones concentrate. The same allocator runs inside Continuous greedy for sizing.
         </p>
 
-        <h3>ContinuousGreedy</h3>
+        <h3>Continuous greedy</h3>
         <p>
           The latency-race demonstrator. On every tick (down to one Base block, 2 seconds) it computes the
           water-filled ideal and the marginal yield of every pool. If any tranche is off cooldown and the gap between
@@ -266,7 +267,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dd>Cumulative revenue earned per unit of your staking weight over the run.</dd>
           <dt>Vs bench</dt>
           <dd>
-            Return minus the passive benchmark. Green and positive means the strategy beat holding the market
+            Return minus the market benchmark. Green and positive means the strategy beat holding the market
             average; red means you paid for activity and got nothing.
           </dd>
           <dt>Max DD vs bench</dt>
@@ -293,7 +294,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>Equity chart</dt>
           <dd>
-            Solid phosphor line: your cumulative return. Dashed amber: the passive (market) benchmark. Dashed cyan:
+            Solid phosphor line: your cumulative return. Dashed amber: the market benchmark. Dashed cyan:
             the revenue benchmark — the foresight ceiling (see the toggle entry below). Your line should live between
             the two dashed ones; how far up that band it sits is the strategy's skill. Time ticks land on epoch flips
             (Thursdays, UTC).
@@ -310,16 +311,16 @@ export function Guide({ onClose }: { onClose: () => void }) {
             pool's cumulative contribution over the whole run (USD on historical replays). A bright allocation row over
             a dark revenue row is weight parked where the fees never showed up.
           </dd>
-          <dt>strategy / passive bench / revenue bench toggle</dt>
+          <dt>strategy / market bench / revenue bench toggle</dt>
           <dd>
             Flips both heat-maps between three portfolios of the same size. <em>Strategy</em> is yours.{" "}
-            <em>Passive bench</em> is the market portfolio: every pool held in proportion to its global vote weight —
+            <em>Market bench</em> is the market portfolio: every pool held in proportion to its global vote weight —
             what doing nothing earns. <em>Revenue bench</em> is the foresight benchmark: each weekly epoch it holds
             pools in proportion to that epoch's realized revenue, which no real allocator could know in advance — it is
             the ceiling, not an investable alternative. Its weight replaces yours in each pool when computing earnings,
             so it answers "what if this portfolio had been allocated revenue-optimally instead". The strategy's worth
             lives between the two benchmarks: the "captured" figure on the Vs-bench gauge is the fraction of the
-            foresight edge (revenue bench − passive bench) the strategy actually collected. Note that with a reactive
+            foresight edge (revenue bench − market bench) the strategy actually collected. Note that with a reactive
             herd the crowd itself chases revenue, so the foresight edge shrinks as the herd lag shortens — that is the
             market getting efficient, not a bug.
           </dd>
@@ -331,18 +332,18 @@ export function Guide({ onClose }: { onClose: () => void }) {
         <dl>
           <dt>Early allocator</dt>
           <dd>
-            A regime-switching market with a slow crowd (3-day lag). PersistenceCarry takes weight in a pool as it
+            A regime-switching market with a slow crowd (3-day lag). Persistence carry takes weight in a pool as it
             turns hot, earns an outsized revenue share while alone, and cedes it as the herd arrives — the cbBTC
             story from Aero's economic case, in miniature.
           </dd>
           <dt>Latency race</dt>
           <dd>
-            ContinuousGreedy at one-block cooldown against a fast crowd. Watch vs-bench hug zero: at this cadence
+            Continuous greedy at one-block cooldown against a fast crowd. Watch vs-market hug zero: at this cadence
             reaction has no edge, only costs. This preset exists to argue against itself.
           </dd>
           <dt>Wash-bait</dt>
           <dd>
-            One pool pumps fake fees in bursts (8× its organic rate, two days at a time). PersistenceCarry with a
+            One pool pumps fake fees in bursts (8× its organic rate, two days at a time). Persistence carry with a
             deep haircut refuses the bait a naive trailing-fee grid would chase into losses.
           </dd>
         </dl>

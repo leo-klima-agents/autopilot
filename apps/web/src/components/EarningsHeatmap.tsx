@@ -33,8 +33,8 @@ export function EarningsHeatmap({
 }) {
   const { times, poolNames } = result.allocation;
   const earned =
-    view === "passive"
-      ? result.allocation.benchmarkEarned
+    view === "market"
+      ? result.allocation.marketBenchmarkEarned
       : view === "revenue"
         ? result.allocation.revenueBenchmarkEarned
         : result.allocation.earned;

@@ -43,9 +43,9 @@ const crowd = reactiveHerd({ revenue, totalWeight: 100n * WAD, lagSeconds: WEEK,
 function goldenPayload(result: BacktestResult): unknown {
   return toJsonValue({
     totalReturn: result.totalReturn,
-    passiveReturn: result.passiveReturn,
-    returnVsPassive: result.returnVsPassive,
-    maxDrawdownVsBenchmark: result.maxDrawdownVsBenchmark,
+    marketBenchmarkReturn: result.marketBenchmarkReturn,
+    returnVsMarket: result.returnVsMarket,
+    maxDrawdownVsMarket: result.maxDrawdownVsMarket,
     turnover: result.turnover,
     rotations: result.rotations,
     blockedSubmissions: result.blockedSubmissions,
@@ -54,7 +54,7 @@ function goldenPayload(result: BacktestResult): unknown {
     poolSamples: result.poolSamples,
     equityPoints: result.equityCurve.times.length,
     finalEquity: result.equityCurve.equity.at(-1) ?? 0n,
-    finalBenchmark: result.equityCurve.benchmark.at(-1) ?? 0n,
+    finalMarketBenchmark: result.equityCurve.marketBenchmark.at(-1) ?? 0n,
   });
 }
 

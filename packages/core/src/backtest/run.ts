@@ -68,16 +68,16 @@ export interface AllocationHistory {
    *  unit weight) earned from the pool across all tranches. Each row sums
    *  exactly to Σ model.earned(tranche) at that sample. */
   earned: Wad[][];
-  /** benchmarkWeights[sampleIndex][poolIndex]: the pool's Wad share of the
-   *  GLOBAL weight — the market portfolio the passive benchmark holds. */
-  benchmarkWeights: Wad[][];
-  /** benchmarkEarned[sampleIndex][poolIndex]: cumulative revenue a passive
+  /** marketBenchmarkWeights[sampleIndex][poolIndex]: the pool's Wad share of the
+   *  GLOBAL weight — the portfolio the market benchmark holds. */
+  marketBenchmarkWeights: Wad[][];
+  /** marketBenchmarkEarned[sampleIndex][poolIndex]: cumulative revenue a passive
    *  market-cap-weighted portfolio of our size (portfolioWeight) would have
    *  earned from the pool, accrued per step as
    *  mulDiv(poolRevenueDelta, portfolioWeight, globalWeight) — the per-pool
-   *  twin of the equity chart's passive benchmark (same timing, floor per
+   *  twin of the equity chart's market benchmark (same timing, floor per
    *  pool instead of on the aggregate). */
-  benchmarkEarned: Wad[][];
+  marketBenchmarkEarned: Wad[][];
   /** revenueBenchmarkWeights[sampleIndex][poolIndex]: the FORESIGHT (oracle)
    *  benchmark's portfolio fractions — each weekly epoch it holds pools in
    *  proportion to that epoch's TOTAL per-pool revenue. Not investable
@@ -95,8 +95,8 @@ export interface EquityCurve {
   times: number[];
   /** Cumulative portfolio return per unit weight, Wad. */
   equity: Wad[];
-  /** Cumulative passive benchmark return per unit weight, Wad. */
-  benchmark: Wad[];
+  /** Cumulative market benchmark return per unit weight, Wad. */
+  marketBenchmark: Wad[];
   /** Cumulative revenue-proportional (foresight) benchmark return per unit
    *  weight, Wad. */
   revenueBenchmark: Wad[];
@@ -106,16 +106,16 @@ export interface EquityCurve {
 export interface BacktestResult {
   /** Cumulative revenue earned per unit of portfolio weight, Wad. */
   totalReturn: Wad;
-  /** Passive benchmark: global revenue per unit of global weight, Wad. */
-  passiveReturn: Wad;
+  /** Market benchmark: global revenue per unit of global weight, Wad. */
+  marketBenchmarkReturn: Wad;
   /** Revenue-proportional (foresight) benchmark return per unit weight, Wad.
-   *  The ceiling reference: capture = (totalReturn - passiveReturn) /
-   *  (revenueBenchmarkReturn - passiveReturn). */
+   *  The ceiling reference: capture = (totalReturn - marketBenchmarkReturn) /
+   *  (revenueBenchmarkReturn - marketBenchmarkReturn). */
   revenueBenchmarkReturn: Wad;
-  /** totalReturn - passiveReturn (signed). */
-  returnVsPassive: bigint;
-  /** Max peak-to-trough drawdown of (equity - benchmark), Wad. */
-  maxDrawdownVsBenchmark: bigint;
+  /** totalReturn - marketBenchmarkReturn (signed). */
+  returnVsMarket: bigint;
+  /** Max peak-to-trough drawdown of (equity - market benchmark), Wad. */
+  maxDrawdownVsMarket: bigint;
   /** Σ L1(Δallocation)/2 per executed rotation, Wad fractions, cumulated. */
   turnover: Wad;
   /** Number of executed rotations. */
@@ -184,14 +184,14 @@ export function runBacktest(
   let turnover = 0n;
   let rotations = 0;
   let blockedSubmissions = 0;
-  let benchmark = 0n;
+  let marketBenchmark = 0n;
   let prevRevenueTotal = 0n;
   let onCount = 0;
   let offCount = 0;
   let poolSamples = 0;
   const times: number[] = [];
   const equitySeries: Wad[] = [];
-  const benchmarkSeries: Wad[] = [];
+  const marketBenchmarkSeries: Wad[] = [];
   const allocPools = [...model.marketState().pools];
   const allocWeights: Wad[][] = [];
   const allocEarned: Wad[][] = [];
@@ -276,7 +276,7 @@ export function runBacktest(
     const equity = portfolioEquity();
     times.push(t);
     equitySeries.push(equity);
-    benchmarkSeries.push(benchmark);
+    marketBenchmarkSeries.push(marketBenchmark);
     allocWeights.push(
       allocPools.map((pool) => {
         let onPool = 0n;
@@ -305,7 +305,7 @@ export function runBacktest(
     oracleEarned.push([]);
     oracleEquity.push(0n);
     pendingOracleSamples.push({ row: oracleEarned.length - 1, steps: epochStepDeltas.length });
-    const rel = equity - benchmark;
+    const rel = equity - marketBenchmark;
     if (rel > peak) peak = rel;
     const drawdown = peak - rel;
     if (drawdown > maxDrawdown) maxDrawdown = drawdown;
@@ -382,10 +382,10 @@ export function runBacktest(
       (pool) => (revByPool.get(pool) ?? 0n) - (prevRevByPool.get(pool) ?? 0n),
     );
     prevRevByPool = revByPool;
-    // per-pool twin of the passive benchmark: a market-cap portfolio of our
+    // per-pool twin of the market benchmark: a market-cap portfolio of our
     // size takes portfolioWeight/globalWeight of each pool's revenue delta
     if (globalWeight > 0n) {
-      benchmark += divWad(deltaRev, globalWeight);
+      marketBenchmark += divWad(deltaRev, globalWeight);
       for (let p = 0; p < allocPools.length; p += 1) {
         const delta = deltas[p]!;
         if (delta > 0n) {
@@ -411,14 +411,14 @@ export function runBacktest(
   const totalReturn = portfolioEquity();
   return {
     totalReturn,
-    passiveReturn: benchmark,
+    marketBenchmarkReturn: marketBenchmark,
     revenueBenchmarkReturn: (() => {
       let sum = 0n;
       for (const value of oracleEarnedCum) sum += value;
       return divWad(sum, portfolioWeight);
     })(),
-    returnVsPassive: totalReturn - benchmark,
-    maxDrawdownVsBenchmark: maxDrawdown,
+    returnVsMarket: totalReturn - marketBenchmark,
+    maxDrawdownVsMarket: maxDrawdown,
     turnover,
     rotations,
     blockedSubmissions,
@@ -429,7 +429,7 @@ export function runBacktest(
     equityCurve: {
       times,
       equity: equitySeries,
-      benchmark: benchmarkSeries,
+      marketBenchmark: marketBenchmarkSeries,
       revenueBenchmark: oracleEquity,
     },
     allocationHistory: {
@@ -437,8 +437,8 @@ export function runBacktest(
       pools: allocPools,
       weights: allocWeights,
       earned: allocEarned,
-      benchmarkWeights: benchWeights,
-      benchmarkEarned: benchEarned,
+      marketBenchmarkWeights: benchWeights,
+      marketBenchmarkEarned: benchEarned,
       revenueBenchmarkWeights: oracleWeights,
       revenueBenchmarkEarned: oracleEarned,
     },
