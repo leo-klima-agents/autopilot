@@ -97,7 +97,14 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
   const allTs = dataset.pools.flatMap((p) => p.epochs.map((e) => e.ts));
   if (allTs.length === 0) throw new Error("dataset has no epochs");
   const dataStart = Math.min(...allTs);
-  const dataEnd = Math.max(...allTs) + WEEK;
+  const lastEpochStart = Math.max(...allTs);
+  // The newest historical epoch is usually still in progress at index time
+  // (generatedAt falls inside it): its rewards are partially accumulated and
+  // its week extends past "now". Replay only through complete epochs.
+  const generatedAtSec = Date.parse(dataset.generatedAt) / 1000;
+  const lastEpochPartial =
+    config.data.kind === "historical" && generatedAtSec < lastEpochStart + WEEK;
+  const dataEnd = lastEpochPartial ? lastEpochStart : lastEpochStart + WEEK;
 
   const wash = config.crowd.washBait;
   if (wash) {
@@ -116,8 +123,17 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
 
   // -- timing ----------------------------------------------------------------
   const stepSec = config.run.stepSec;
-  // one week of history for signals, clear of the v2 distribute window
-  const startTime = dataStart + WEEK + 2 * HOUR;
+  // Earliest allowed start: one week of history for signals. Historical runs
+  // anchor the window at the dataset's END so a short duration replays the
+  // LATEST weeks (the ones that reflect the venue today), not the oldest;
+  // synthetic processes are stationary, so they keep the fixed start.
+  const earliestStart = dataStart + WEEK;
+  const anchoredStart =
+    config.data.kind === "historical"
+      ? Math.max(earliestStart, dataEnd - config.run.durationWeeks * WEEK)
+      : earliestStart;
+  // +2h clears the v2 distribute window at the epoch flip
+  const startTime = anchoredStart + 2 * HOUR;
   const maxDuration = dataEnd - startTime;
   let durationSec = Math.min(config.run.durationWeeks * WEEK, maxDuration);
   durationSec -= durationSec % stepSec;
