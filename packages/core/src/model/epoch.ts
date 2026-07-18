@@ -46,6 +46,7 @@ interface PositionState {
   allocation: Map<PoolId, Wad>; // Wad fractions summing to WAD (or empty)
   lastVoted: number; // unix ts of last vote; -1 = never
   accrued: Wad;
+  accruedByPool: Map<PoolId, Wad>; // same payouts as accrued — sums exactly
   whitelisted: boolean;
 }
 
@@ -128,6 +129,7 @@ export function createEpochModel(config: EpochModelConfig): ProtocolModel {
         if (w === 0n) continue;
         const payout = mulDiv(reward, w, total);
         pos.accrued += payout;
+        pos.accruedByPool.set(pool, (pos.accruedByPool.get(pool) ?? 0n) + payout);
         paid += payout;
       }
       const crowdW = crowd.get(pool) ?? 0n;
@@ -180,6 +182,7 @@ export function createEpochModel(config: EpochModelConfig): ProtocolModel {
         allocation: new Map(),
         lastVoted: -1,
         accrued: 0n,
+        accruedByPool: new Map(),
         whitelisted: whitelisted.has(positionId),
       });
     },
@@ -197,10 +200,12 @@ export function createEpochModel(config: EpochModelConfig): ProtocolModel {
       return gate === null ? t : (gate.retryAt ?? t);
     },
     earned: (positionId) => getPosition(positionId).accrued,
+    earnedByPool: (positionId) => new Map(getPosition(positionId).accruedByPool),
     claim(positionId: string): Wad {
       const pos = getPosition(positionId);
       const amount = pos.accrued;
       pos.accrued = 0n;
+      pos.accruedByPool.clear();
       return amount;
     },
     setCrowdWeights(weights: ReadonlyMap<PoolId, Wad>): void {

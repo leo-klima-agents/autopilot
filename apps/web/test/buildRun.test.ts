@@ -4,6 +4,7 @@
  *  their fixed start (the process is stationary and seeds must reproduce). */
 import { describe, expect, it } from "vitest";
 import { buildAndRun } from "../src/lib/buildRun.js";
+import { toDisplayResult } from "../src/lib/serialize.js";
 import { DEFAULT_RUN, type RunConfig } from "../src/lib/runConfig.js";
 
 const WEEK = 604_800;
@@ -83,5 +84,21 @@ describe("historical window anchoring", () => {
     const long = buildAndRun({ ...DEFAULT_RUN, run: { ...DEFAULT_RUN.run, durationWeeks: 4 } }, null);
     expect(short.startTime).toBe(long.startTime);
     expect(short.result.equityCurve.times[0]).toBe(long.result.equityCurve.times[0]);
+  });
+});
+
+describe("per-pool earned revenue passthrough", () => {
+  it("earned matches the allocation grid dims and serializes to floats", () => {
+    const run = buildAndRun(historicalConfig(2), historicalDataset(completeAt));
+    const { times, pools, weights, earned } = run.result.allocationHistory;
+    expect(earned).toHaveLength(times.length);
+    expect(earned.every((row) => row.length === pools.length)).toBe(true);
+    expect(weights).toHaveLength(times.length);
+    for (const value of earned.at(-1)!) expect(value >= 0n).toBe(true);
+
+    const display = toDisplayResult(run);
+    expect(display.allocation.earned).toHaveLength(times.length);
+    expect(display.allocation.earned.every((row) => row.length === pools.length)).toBe(true);
+    expect(display.allocation.earned.flat().every((n) => typeof n === "number" && n >= 0)).toBe(true);
   });
 });

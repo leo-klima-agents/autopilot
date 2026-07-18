@@ -81,6 +81,7 @@ interface PositionState {
   allocation: Map<PoolId, Wad>;
   lastActionAt: number;
   accrued: Wad;
+  accruedByPool: Map<PoolId, Wad>; // same payouts as accrued — sums exactly
 }
 
 function assertValidTarget(pools: readonly PoolId[], target: TargetAllocation): void {
@@ -181,6 +182,7 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
             if (w === 0n) continue;
             const payout = mulDiv(rev, w, poolW);
             pos.accrued += payout;
+            pos.accruedByPool.set(pool, (pos.accruedByPool.get(pool) ?? 0n) + payout);
             paid += payout;
           }
           const crowdW = crowd.get(pool) ?? 0n;
@@ -262,6 +264,7 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
         allocation: new Map(),
         lastActionAt: startTime - cooldownSec, // new positions may allocate immediately
         accrued: 0n,
+        accruedByPool: new Map(),
       });
     },
     submitAllocation(positionId: string, target: TargetAllocation): void {
@@ -283,10 +286,12 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
       return gate === null ? t : (gate.retryAt ?? t);
     },
     earned: (positionId) => getPosition(positionId).accrued,
+    earnedByPool: (positionId) => new Map(getPosition(positionId).accruedByPool),
     claim(positionId: string): Wad {
       const pos = getPosition(positionId);
       const amount = pos.accrued;
       pos.accrued = 0n;
+      pos.accruedByPool.clear();
       return amount;
     },
     setCrowdWeights(weights: ReadonlyMap<PoolId, Wad>): void {

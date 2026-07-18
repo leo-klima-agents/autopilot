@@ -304,6 +304,11 @@ button.engage:disabled {
   fill: var(--placard);
 }
 
+/* cumulative row total overlaid on the earnings heat-map's right edge */
+.heatmap-total {
+  fill: #e8b44f;
+}
+
 .legend {
   display: flex;
   gap: 18px;

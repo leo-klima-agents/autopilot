@@ -4,6 +4,7 @@ import { Guide } from "./components/Guide.js";
 import { Gauges } from "./components/Gauges.js";
 import { EquityChart } from "./components/EquityChart.js";
 import { AllocationHeatmap } from "./components/AllocationHeatmap.js";
+import { EarningsHeatmap } from "./components/EarningsHeatmap.js";
 import {
   DEFAULT_RUN,
   PRESETS,
@@ -247,6 +248,10 @@ export function App() {
               <div className="panel">
                 <p className="placard">Allocation over time</p>
                 <AllocationHeatmap result={live.result} />
+              </div>
+              <div className="panel">
+                <p className="placard">Earned revenue per pool</p>
+                <EarningsHeatmap result={live.result} />
               </div>
             </>
           ) : (

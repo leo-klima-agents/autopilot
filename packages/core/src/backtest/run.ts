@@ -56,12 +56,17 @@ export interface BacktestConfig {
   optimalWindowSec?: number;
 }
 
-/** Our portfolio's allocation share per pool over time (for the heat-map). */
+/** Our portfolio's allocation share and earned revenue per pool over time
+ *  (for the heat-maps). */
 export interface AllocationHistory {
   times: number[];
   pools: PoolId[];
   /** weights[sampleIndex][poolIndex]: portfolio Wad fraction on the pool. */
   weights: Wad[][];
+  /** earned[sampleIndex][poolIndex]: cumulative revenue (raw Wad, NOT per
+   *  unit weight) earned from the pool across all tranches. Each row sums
+   *  exactly to Σ model.earned(tranche) at that sample. */
+  earned: Wad[][];
 }
 
 /** Equity curve time series for the web app (bigint arrays + times). */
@@ -161,6 +166,7 @@ export function runBacktest(
   const benchmarkSeries: Wad[] = [];
   const allocPools = [...model.marketState().pools];
   const allocWeights: Wad[][] = [];
+  const allocEarned: Wad[][] = [];
   let peak = 0n;
   let maxDrawdown = 0n;
 
@@ -189,6 +195,13 @@ export function runBacktest(
         return portfolioWeight === 0n ? 0n : divWad(onPool, portfolioWeight);
       }),
     );
+    const earnedNow = new Map<string, Wad>();
+    for (const tranche of tranches) {
+      for (const [pool, amount] of model.earnedByPool(tranche.id)) {
+        earnedNow.set(pool, (earnedNow.get(pool) ?? 0n) + amount);
+      }
+    }
+    allocEarned.push(allocPools.map((pool) => earnedNow.get(pool) ?? 0n));
     const rel = equity - benchmark;
     if (rel > peak) peak = rel;
     const drawdown = peak - rel;
@@ -267,6 +280,11 @@ export function runBacktest(
     offTargetPct: poolSamples === 0 ? 0 : offCount / poolSamples,
     poolSamples,
     equityCurve: { times, equity: equitySeries, benchmark: benchmarkSeries },
-    allocationHistory: { times: [...times], pools: allocPools, weights: allocWeights },
+    allocationHistory: {
+      times: [...times],
+      pools: allocPools,
+      weights: allocWeights,
+      earned: allocEarned,
+    },
   };
 }

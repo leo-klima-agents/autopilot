@@ -19,7 +19,14 @@ export interface DisplayResult {
   offTargetPct: number;
   poolSamples: number;
   equity: { times: number[]; equity: number[]; benchmark: number[] };
-  allocation: { times: number[]; pools: string[]; poolNames: string[]; weights: number[][] };
+  allocation: {
+    times: number[];
+    pools: string[];
+    poolNames: string[];
+    weights: number[][];
+    /** Cumulative revenue earned from each pool (raw units, not per weight). */
+    earned: number[][];
+  };
   datasetGeneratedAt: string | undefined;
   /** Historical timestamps are real dates; synthetic ones are an arbitrary anchor. */
   dataKind: "historical" | "synthetic";
@@ -54,6 +61,7 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
       pools: result.allocationHistory.pools,
       poolNames: result.allocationHistory.pools.map((p) => run.poolNames.get(p) ?? p),
       weights: result.allocationHistory.weights.map((row) => row.map((w) => Number(w) / WAD)),
+      earned: result.allocationHistory.earned.map((row) => row.map((w) => Number(w) / WAD)),
     },
     datasetGeneratedAt: run.datasetGeneratedAt,
     dataKind: run.dataKind,

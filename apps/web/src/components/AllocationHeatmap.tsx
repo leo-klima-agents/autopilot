@@ -19,8 +19,9 @@ function cellColor(w: number): string {
   return `rgb(${mix(18, 111)}, ${mix(23, 211)}, ${mix(30, 166)})`;
 }
 
-/** Container width via ResizeObserver — the heat-map stretches like the chart. */
-function useContainerWidth(): [React.RefObject<HTMLDivElement>, number] {
+/** Container width via ResizeObserver — the heat-map stretches like the chart.
+ *  Shared with EarningsHeatmap. */
+export function useContainerWidth(): [React.RefObject<HTMLDivElement>, number] {
   const ref = useRef<HTMLDivElement>(null as unknown as HTMLDivElement);
   const [width, setWidth] = useState(0);
   useEffect(() => {

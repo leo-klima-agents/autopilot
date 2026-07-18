@@ -301,6 +301,13 @@ export function Guide({ onClose }: { onClose: () => void }) {
             Pools × time; brighter cells mean more of your weight on that pool at that moment. Vertical banding shows
             rotation waves; a bright row that starts before the crowd's arrival is the early-allocator pattern.
           </dd>
+          <dt>Earned-revenue heat-map</dt>
+          <dd>
+            The allocation map's payoff twin: same pools, same timeline, but amber intensity is the revenue your
+            portfolio actually earned from that pool during each interval. The figure at the right end of a row is that
+            pool's cumulative contribution over the whole run (USD on historical replays). A bright allocation row over
+            a dark revenue row is weight parked where the fees never showed up.
+          </dd>
         </dl>
       </div>
 

@@ -73,6 +73,35 @@ describe("runBacktest", () => {
     expect(result.totalReturn).toBe(eq[eq.length - 1]);
   });
 
+  it("tracks cumulative earned per pool consistently with totalReturn", () => {
+    const revenue = constantRevenue({ a: 10n * WAD, b: 4n * WAD });
+    const model = createContinuousModel({ revenue, startTime: T0, cooldownSec: HOUR });
+    const portfolioWeight = 2n * WAD; // 2 tranches × WAD
+    const result = runBacktest(fixedGrid(HOUR, { lookbackSec: HOUR }), model, {
+      startTime: T0,
+      durationSec: 6 * HOUR,
+      stepSec: HOUR,
+      sampleIntervalSec: 2 * HOUR,
+      trancheCount: 2,
+      trancheWeight: WAD,
+      cooldownSec: HOUR,
+      crowd: staticCrowd(new Map([["a", WAD], ["b", WAD]])),
+    });
+    const { times, pools, weights, earned } = result.allocationHistory;
+    expect(earned).toHaveLength(times.length);
+    for (const row of earned) expect(row).toHaveLength(pools.length);
+    expect(weights).toHaveLength(times.length);
+    // Cumulative accrual: each pool column is non-decreasing.
+    for (let i = 1; i < earned.length; i += 1) {
+      for (let p = 0; p < pools.length; p += 1) {
+        expect(earned[i]![p]! >= earned[i - 1]![p]!).toBe(true);
+      }
+    }
+    // Exact in the un-divided domain: the last sample's per-pool sum is the
+    // same Σ model.earned that totalReturn was derived from.
+    expect(divWad(sumBig(earned.at(-1)!), portfolioWeight)).toBe(result.totalReturn);
+  });
+
   it("counts blocked submissions instead of throwing", () => {
     const revenue = constantRevenue({ a: WAD, b: WAD });
     // Model cooldown much longer than the scheduler thinks: submissions

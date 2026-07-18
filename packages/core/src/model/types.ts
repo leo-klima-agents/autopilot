@@ -120,6 +120,12 @@ export interface ProtocolModel {
   nextAllocationTime(positionId: string): number;
   /** Revenue accrued and not yet claimed by the position. */
   earned(positionId: string): Wad;
+  /**
+   * Accrued-and-unclaimed revenue broken down by source pool. The values sum
+   * exactly to `earned(positionId)` — both are incremented by the same bigint
+   * payouts. Pools with zero accrual may be absent. Returns a snapshot copy.
+   */
+  earnedByPool(positionId: string): ReadonlyMap<PoolId, Wad>;
   /** Claims accrued revenue; returns the amount and zeroes the accrual. */
   claim(positionId: string): Wad;
   /** Replaces the external (non-portfolio) crowd weight per pool. */

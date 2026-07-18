@@ -1,22 +1,13 @@
 /** Headline instruments: square gauges with EFIS color semantics —
  *  phosphor = good, amber = caution, red = negative. */
 import type { DisplayResult } from "../lib/serialize.js";
-
-function fmt(n: number, digits = 4): string {
-  if (!Number.isFinite(n)) return "—";
-  if (Math.abs(n) >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
-  return n.toLocaleString("en-US", { maximumFractionDigits: digits });
-}
-
-function pct(n: number): string {
-  return `${(n * 100).toFixed(1)}%`;
-}
+import { fmt, moneyFor, pct } from "../lib/format.js";
 
 export function Gauges({ result }: { result: DisplayResult }) {
   const vs = result.returnVsPassive;
   const usd = result.revenueUnit === "usd";
   // USD runs are Alchemy-priced fees + bribes; index runs are synthetic units
-  const money = (n: number, digits?: number) => (usd ? `$${fmt(n, digits)}` : fmt(n, digits));
+  const money = moneyFor(result.revenueUnit);
   return (
     <div className="gauge-row">
       <div className="gauge">
