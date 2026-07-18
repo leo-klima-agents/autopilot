@@ -4,7 +4,7 @@
  * the Vyper sources (Vyper struct returns map to ABI tuples):
  * - RewardsSugar.epochsByAddress(limit, offset, pool) -> LpEpoch[]
  *   (contracts/RewardsSugar.vy @ velodrome-finance/sugar main)
- * - LpSugar.all(limit, offset, filter) -> Lp[] and byAddress(pool) -> Lp
+ * - LpSugar.all(limit, offset, filter) -> Lp[]
  *   (contracts/LpSugar.vy @ main; `filter` 0 = every pool category)
  *
  * RPC comes from process.env.BASE_RPC_URL. Never commit secrets.
@@ -21,8 +21,17 @@ import { base } from "viem/chains";
 import { WEEK } from "../model/types.js";
 import type { EpochRecord, TokenAmount } from "./schema.js";
 
-/** LpSugar on Base (A11; re-verify on chain before funds move). */
-export const BASE_LP_SUGAR_ADDRESS: Address = "0x69dD9db6d8f8E7d83887A704f447b1a584b599A1";
+/**
+ * LpSugar on Base (A11; re-verify on chain before funds move).
+ *
+ * This is the NEWER deployment (also used by ldeso/aerodrome). The older
+ * 0x69dD9db6d8f8E7d83887A704f447b1a584b599A1 does NOT index Slipstream CL
+ * pools at all (verified on chain: its list has no `type > 0` rows and CL
+ * addresses revert). This one was verified on chain 2026-07-18: `all()`
+ * decodes with the 32-field Lp ABI below and enumerates 34,330 pools —
+ * v2 first, CL pools from roughly offset 28,000 (6,101 CL, 449 alive gauges).
+ */
+export const BASE_LP_SUGAR_ADDRESS: Address = "0x3058f92ebf83e2536f2084f20f7c0357d7d3ccfe";
 /** RewardsSugar on Base (A11). */
 export const BASE_REWARDS_SUGAR_ADDRESS: Address = "0x1b121EfDaF4ABb8785a315C51D29BCE0552A7678";
 
@@ -40,7 +49,7 @@ const lpEpochComponents = [
   { name: "fees", type: "tuple[]", components: lpEpochRewardComponents },
 ] as const;
 
-/** Minimal RewardsSugar ABI (epochsByAddress only). */
+/** Minimal RewardsSugar ABI (epochsByAddress + epochsLatest). */
 export const rewardsSugarAbi = [
   {
     type: "function",
@@ -50,6 +59,16 @@ export const rewardsSugarAbi = [
       { name: "_limit", type: "uint256" },
       { name: "_offset", type: "uint256" },
       { name: "_address", type: "address" },
+    ],
+    outputs: [{ name: "", type: "tuple[]", components: lpEpochComponents }],
+  },
+  {
+    type: "function",
+    name: "epochsLatest",
+    stateMutability: "view",
+    inputs: [
+      { name: "_limit", type: "uint256" },
+      { name: "_offset", type: "uint256" },
     ],
     outputs: [{ name: "", type: "tuple[]", components: lpEpochComponents }],
   },
@@ -91,7 +110,7 @@ const lpComponents = [
   { name: "root", type: "address" },
 ] as const;
 
-/** Minimal LpSugar ABI (all + byAddress). */
+/** Minimal LpSugar ABI (`all` only — the one entry point we call). */
 export const lpSugarAbi = [
   {
     type: "function",
@@ -103,13 +122,6 @@ export const lpSugarAbi = [
       { name: "_filter", type: "uint256" },
     ],
     outputs: [{ name: "", type: "tuple[]", components: lpComponents }],
-  },
-  {
-    type: "function",
-    name: "byAddress",
-    stateMutability: "view",
-    inputs: [{ name: "_address", type: "address" }],
-    outputs: [{ name: "", type: "tuple", components: lpComponents }],
   },
 ] as const;
 
@@ -170,14 +182,15 @@ export async function fetchLpPage(
 }
 
 /**
- * Top pools by current gauge emission rate (descending; ties by address).
- * Emission rate is the comparable single-token proxy for TVL/volume rank —
- * USD TVL needs prices the chain does not provide. Dead gauges (A12: killed
- * gauges return no epoch data) are excluded.
+ * Pages LpSugar.all until the pool list truly ends (first short page).
+ * The full list is LONG — 34,330 pools as of 2026-07, with all Slipstream CL
+ * pools sitting past offset ~28,000 — so `maxPages` is only a runaway
+ * backstop, never an expected stop: stopping early silently drops every CL
+ * pool from the universe.
  */
-export async function fetchTopPools(
+export async function fetchAllLps(
   client: SugarClient,
-  { count = 30, pageSize = 200n, maxPages = 25 }: { count?: number; pageSize?: bigint; maxPages?: number } = {},
+  { pageSize = 500n, maxPages = 400 }: { pageSize?: bigint; maxPages?: number } = {},
 ): Promise<SugarLp[]> {
   const all: SugarLp[] = [];
   for (let page = 0; page < maxPages; page += 1) {
@@ -188,6 +201,24 @@ export async function fetchTopPools(
     all.push(...batch);
     if (batch.length < Number(pageSize)) break;
   }
+  return all;
+}
+
+/**
+ * FALLBACK ranking: top pools by current gauge emission rate (descending;
+ * ties by address), dead gauges excluded. Empirically this surfaces only
+ * vAMM/sAMM pools and misses the Slipstream CL pools that dominate fees —
+ * prefer the two-stage vote/USD selection in cli.ts (selectVoteCandidates +
+ * rankPoolsByUsdRevenue). Kept for offline use and comparison.
+ */
+export async function fetchTopPools(
+  client: SugarClient,
+  {
+    count = 30,
+    ...paging
+  }: { count?: number; pageSize?: bigint; maxPages?: number } = {},
+): Promise<SugarLp[]> {
+  const all = await fetchAllLps(client, paging);
   return all
     .filter((lp) => lp.gauge_alive)
     .sort((a, b) => {
@@ -195,6 +226,66 @@ export async function fetchTopPools(
       return a.lp < b.lp ? -1 : 1;
     })
     .slice(0, count);
+}
+
+/**
+ * Pages RewardsSugar.epochsLatest — the CURRENT epoch of every gauged pool.
+ * The offset walks the POOL list and pools without a live gauge yield no row,
+ * so the contract returns SHORT PAGES MID-STREAM: pagination must run
+ * ceil(totalPools / pageSize) pages and never stop early on a short page
+ * (confirmed against ldeso/aerodrome's fetcher, which hit the same trap).
+ */
+export async function fetchLatestEpochs(
+  client: SugarClient,
+  totalPools: number,
+  { pageSize = 100n }: { pageSize?: bigint } = {},
+): Promise<SugarLpEpoch[]> {
+  const epochs: SugarLpEpoch[] = [];
+  for (let offset = 0n; offset < BigInt(totalPools); offset += pageSize) {
+    const raw = await client.readContract({
+      address: BASE_REWARDS_SUGAR_ADDRESS,
+      abi: rewardsSugarAbi,
+      functionName: "epochsLatest",
+      args: [pageSize, offset],
+    });
+    epochs.push(
+      ...raw.map((e) => ({
+        ts: e.ts,
+        lp: e.lp,
+        votes: e.votes,
+        emissions: e.emissions,
+        bribes: e.bribes.map((r) => ({ token: r.token, amount: r.amount })),
+        fees: e.fees.map((r) => ({ token: r.token, amount: r.amount })),
+      })),
+    );
+  }
+  return epochs;
+}
+
+/**
+ * Stage-1 candidate selection: top `count` alive-gauge pools by CURRENT-epoch
+ * votes (descending; ties by address). Votes are the crowd's own live estimate
+ * of where the revenue is, and they naturally include Slipstream CL pools.
+ * Pure — unit-tested against faked inputs. (Stage 2, in cli.ts, re-ranks the
+ * candidates by trailing USD revenue once epochs are priced.)
+ */
+export function selectVoteCandidates(
+  lps: readonly SugarLp[],
+  latest: readonly SugarLpEpoch[],
+  count: number,
+): SugarLp[] {
+  const byAddress = new Map(lps.map((lp) => [lp.lp.toLowerCase(), lp]));
+  const rows: { lp: SugarLp; votes: bigint }[] = [];
+  for (const epoch of latest) {
+    const lp = byAddress.get(epoch.lp.toLowerCase());
+    if (!lp || !lp.gauge_alive) continue;
+    rows.push({ lp, votes: epoch.votes });
+  }
+  rows.sort((a, b) => {
+    if (a.votes !== b.votes) return a.votes > b.votes ? -1 : 1;
+    return a.lp.lp < b.lp.lp ? -1 : 1;
+  });
+  return rows.slice(0, count).map((r) => r.lp);
 }
 
 /** Pages RewardsSugar.epochsByAddress until `maxEpochs` or history ends. */

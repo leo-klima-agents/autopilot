@@ -97,8 +97,8 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dt>Passive benchmark</dt>
           <dd>
             The return per unit weight of holding the global average allocation: total market revenue divided by
-            total allocated weight, accumulated over the run. Any strategy worth running must beat this after
-            turnover.
+            total allocated weight, accumulated over the run. USD-denominated on historical replays. Any strategy
+            worth running must beat this after turnover.
           </dd>
           <dt>Wad</dt>
           <dd>
@@ -179,8 +179,9 @@ export function Guide({ onClose }: { onClose: () => void }) {
         <dl>
           <dt>source</dt>
           <dd>
-            <em>Aerodrome historical</em>: real per-epoch fees and incentives for the top ~30 pools, indexed on-chain
-            — the x axis shows real dates. <em>Synthetic scenario</em>: a generated market, exactly reproducible from
+            <em>Aerodrome historical</em>: real per-epoch fees and bribes for the top ~30 pools by trailing
+            revenue (Slipstream CL and v2 AMM pools alike), indexed on-chain and priced in USD from daily
+            Alchemy price history — the x axis shows real dates and the instruments show dollars. <em>Synthetic scenario</em>: a generated market, exactly reproducible from
             the seed — the x axis shows relative days (d0, d7, …) because its calendar anchor is arbitrary.
           </dd>
           <dt>seed</dt>

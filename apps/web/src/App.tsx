@@ -236,7 +236,7 @@ export function App() {
                 <div className="legend">
                   <span>
                     <span className="chip" style={{ background: "#6FD3A6" }} />
-                    strategy — cumulative revenue per unit weight
+                    strategy — cumulative {live.result.revenueUnit === "usd" ? "USD " : ""}revenue per unit weight
                   </span>
                   <span>
                     <span className="chip" style={{ background: "#E8B44F" }} />

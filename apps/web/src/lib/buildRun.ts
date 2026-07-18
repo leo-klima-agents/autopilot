@@ -66,6 +66,9 @@ export interface BuiltRun {
   datasetGeneratedAt: string | undefined;
   /** Historical timestamps are real dates; synthetic ones are an arbitrary anchor. */
   dataKind: "historical" | "synthetic";
+  /** "usd" when the dataset carries Alchemy-priced revenue; "index" otherwise
+   *  (synthetic data sets feesUsd too, but its values are index units). */
+  revenueUnit: "usd" | "index";
   startTime: number;
   durationSec: number;
 }
@@ -186,11 +189,17 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
     ...(crowd ? { crowd } : {}),
   });
 
+  const revenueUnit: "usd" | "index" =
+    dataset.source === "sugar" && dataset.pools.some((p) => p.epochs.some((e) => e.feesUsd !== undefined))
+      ? "usd"
+      : "index";
+
   return {
     result,
     poolNames,
     datasetGeneratedAt: (dataset as { generatedAt?: string }).generatedAt,
     dataKind: config.data.kind,
+    revenueUnit,
     startTime,
     durationSec,
   };

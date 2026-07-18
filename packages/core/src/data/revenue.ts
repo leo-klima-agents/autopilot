@@ -14,9 +14,16 @@ import { sumBig } from "../math/fixed.js";
 import { WEEK, type PoolId, type RevenueProcess, type Wad } from "../model/types.js";
 import { parseAmount, type DatasetV1, type EpochRecord } from "./schema.js";
 
-/** Exact Wad revenue attributed to one epoch record. */
+/**
+ * Exact Wad revenue attributed to one epoch record: total voter income.
+ * Priced datasets carry `feesUsd`/`bribesUsd` (Wad USD) — their sum is the
+ * revenue. Unpriced records fall back to the raw fee+bribe amount sum (the
+ * single-quote-token caveat above).
+ */
 export function epochRevenueWad(epoch: EpochRecord): Wad {
-  if (epoch.feesUsd !== undefined) return parseAmount(epoch.feesUsd);
+  if (epoch.feesUsd !== undefined || epoch.bribesUsd !== undefined) {
+    return parseAmount(epoch.feesUsd ?? "0") + parseAmount(epoch.bribesUsd ?? "0");
+  }
   return (
     sumBig(epoch.fees.map((f) => parseAmount(f.amount))) +
     sumBig(epoch.bribes.map((b) => parseAmount(b.amount)))

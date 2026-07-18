@@ -7,7 +7,17 @@ import { WEEK } from "../src/model/types.js";
 import { parseAmount, validateDataset, type DatasetV1 } from "../src/data/schema.js";
 import { epochRevenueWad, revenueProcessFromDataset } from "../src/data/revenue.js";
 import { generateSyntheticDataset } from "../src/data/synthetic.js";
-import { epochsForMonths, sugarEpochToRecord } from "../src/data/sugar.js";
+import {
+  epochsForMonths,
+  fetchLatestEpochs,
+  selectVoteCandidates,
+  sugarEpochToRecord,
+  type SugarClient,
+  type SugarLp,
+  type SugarLpEpoch,
+} from "../src/data/sugar.js";
+import { computeEpochUsd, usdWadOf } from "../src/data/usd.js";
+import { rankPoolsByUsdRevenue } from "../src/data/cli.js";
 import {
   composeDisplayName,
   loadTokenCache,
@@ -313,5 +323,229 @@ describe("resolveTokens (offline, injected clients)", () => {
     expect(cache.tokens["0xdd"]!.symbol).toHaveLength(32);
     expect(cache.tokens["0xdd"]!.symbol.includes("\u0000")).toBe(false);
     expect(cache.tokens["0xdd"]!.name).toBe("badname");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// USD pricing pipeline (ldeso-inspired): computeEpochUsd, schema extensions,
+// combined revenue branch, vote-candidate selection, USD ranking
+// ---------------------------------------------------------------------------
+
+describe("computeEpochUsd", () => {
+  // Thu 2025-07-17 00:00 UTC
+  const TS = 1_752_710_400;
+  const USDC = "0x00000000000000000000000000000000000000c1";
+  const WETH = "0x00000000000000000000000000000000000000c2";
+  const JUNK = "0x00000000000000000000000000000000000000c3";
+  const decimals = new Map([
+    [USDC, 6],
+    [WETH, 18],
+  ]);
+  const prices = new Map([
+    [`${USDC}|2025-07-17`, WAD], // $1
+    [`${WETH}|2025-07-17`, 3_000n * WAD], // $3000
+  ]);
+  const deps = {
+    decimalsOf: (addr: string) => decimals.get(addr),
+    priceWadAt: (addr: string, date: string) => prices.get(`${addr}|${date}`),
+  };
+
+  it("prices mixed-decimal fees and bribes into separate buckets, exactly", () => {
+    const result = computeEpochUsd(
+      {
+        ts: TS,
+        votes: "0",
+        emissions: "0",
+        fees: [
+          { token: USDC, amount: "20184366214" }, // 20,184.366214 USDC
+          { token: WETH, amount: "1500000000000000000" }, // 1.5 WETH
+        ],
+        bribes: [{ token: WETH, amount: "250000000000000000" }], // 0.25 WETH
+      },
+      deps,
+    );
+    expect(result.feesUsd).toBe(20_184_366_214n * WAD / 1_000_000n + 4_500n * WAD);
+    expect(result.bribesUsd).toBe(750n * WAD);
+    expect(result.pricedAmounts).toBe(3);
+    expect(result.totalAmounts).toBe(3);
+  });
+
+  it("floors indivisible conversions (per-amount floor, order-independent)", () => {
+    // 1 wei of an 18-dec token at $1 -> floor(1 * 1e18 / 1e18) = 1 wei-USD
+    expect(usdWadOf(1n, WAD, 18)).toBe(1n);
+    // 1 raw unit of a 6-dec token at $0.000001999... floors
+    expect(usdWadOf(1n, 1_999_999_999_999n, 6)).toBe(1_999_999n);
+  });
+
+  it("skips and counts unpriced or unknown-decimals tokens", () => {
+    const result = computeEpochUsd(
+      {
+        ts: TS,
+        votes: "0",
+        emissions: "0",
+        fees: [{ token: USDC, amount: "1000000" }],
+        bribes: [{ token: JUNK, amount: "5" }],
+      },
+      deps,
+    );
+    expect(result.feesUsd).toBe(WAD);
+    expect(result.bribesUsd).toBe(0n);
+    expect(result.pricedAmounts).toBe(1);
+    expect(result.totalAmounts).toBe(2);
+  });
+
+  it("ignores zero amounts entirely", () => {
+    const result = computeEpochUsd(
+      { ts: TS, votes: "0", emissions: "0", fees: [{ token: USDC, amount: "0" }], bribes: [] },
+      deps,
+    );
+    expect(result.totalAmounts).toBe(0);
+  });
+});
+
+describe("schema: USD fields", () => {
+  const priced: DatasetV1 = {
+    schemaVersion: 1,
+    chainId: 8453,
+    generatedAt: "2026-07-18T00:00:00Z",
+    source: "sugar",
+    pricedAt: "2026-07-18T00:00:00Z",
+    pools: [
+      {
+        address: "0xpool",
+        symbol: "s",
+        displayName: "CL100-WETH/USDC",
+        token0: "0x1",
+        token1: "0x2",
+        stable: false,
+        tickSpacing: 100,
+        gaugeAlive: true,
+        pricing: { pricedAmounts: 3, totalAmounts: 4 },
+        epochs: [
+          {
+            ts: 1_752_710_400,
+            votes: "1",
+            emissions: "2",
+            feesUsd: "3000000000000000000",
+            bribesUsd: "1000000000000000000",
+            bribes: [],
+            fees: [],
+          },
+        ],
+      },
+    ],
+  };
+
+  it("round-trips bribesUsd, pricing, and pricedAt", () => {
+    expect(validateDataset(JSON.parse(JSON.stringify(priced)))).toEqual(priced);
+  });
+
+  it("rejects malformed bribesUsd and negative pricing counts", () => {
+    const bad1 = JSON.parse(JSON.stringify(priced)) as DatasetV1;
+    bad1.pools[0]!.epochs[0]!.bribesUsd = "1.5";
+    expect(() => validateDataset(bad1)).toThrow(/bribesUsd/);
+
+    const bad2 = JSON.parse(JSON.stringify(priced)) as DatasetV1;
+    bad2.pools[0]!.pricing = { pricedAmounts: -1, totalAmounts: 4 };
+    expect(() => validateDataset(bad2)).toThrow(/pricing/);
+  });
+
+  it("epochRevenueWad sums feesUsd + bribesUsd when priced", () => {
+    expect(epochRevenueWad(priced.pools[0]!.epochs[0]!)).toBe(4n * WAD);
+    // bribesUsd-only edge
+    expect(
+      epochRevenueWad({ ts: 0, votes: "0", emissions: "0", bribesUsd: "7", bribes: [], fees: [] }),
+    ).toBe(7n);
+  });
+});
+
+describe("pool selection", () => {
+  const mkLp = (lp: string, type: number, alive = true): SugarLp => ({
+    lp: lp as SugarLp["lp"],
+    symbol: lp,
+    type,
+    token0: "0x1" as SugarLp["token0"],
+    token1: "0x2" as SugarLp["token1"],
+    gauge_alive: alive,
+    liquidity: 0n,
+    emissions: 0n,
+  });
+  const mkLatest = (lp: string, votes: bigint): SugarLpEpoch => ({
+    ts: 1n,
+    lp: lp as SugarLpEpoch["lp"],
+    votes,
+    emissions: 0n,
+    bribes: [],
+    fees: [],
+  });
+
+  it("selectVoteCandidates: votes-desc, CL included, dead gauges excluded, address tie-break", () => {
+    const lps = [mkLp("0xa", -1), mkLp("0xb", 100), mkLp("0xc", 0, false), mkLp("0xd", 50)];
+    const latest = [
+      mkLatest("0xa", 5n),
+      mkLatest("0xb", 9n), // CL pool, most votes
+      mkLatest("0xc", 100n), // dead gauge — excluded despite votes
+      mkLatest("0xd", 5n), // ties 0xa — address order
+      mkLatest("0xe", 3n), // not in the Lp map — ignored
+    ];
+    const picked = selectVoteCandidates(lps, latest, 3);
+    expect(picked.map((p) => p.lp)).toEqual(["0xb", "0xa", "0xd"]);
+    expect(picked[0]!.type).toBe(100); // the CL pool made it
+  });
+
+  it("rankPoolsByUsdRevenue: USD-desc, unpriced pools last, deterministic ties", () => {
+    const mkPool = (address: string, feesUsd?: string, bribesUsd?: string) => ({
+      address,
+      symbol: "s",
+      displayName: address,
+      token0: "0x1",
+      token1: "0x2",
+      stable: false,
+      gaugeAlive: true,
+      epochs: [
+        {
+          ts: 1_752_710_400,
+          votes: "0",
+          emissions: "0",
+          ...(feesUsd !== undefined ? { feesUsd } : {}),
+          ...(bribesUsd !== undefined ? { bribesUsd } : {}),
+          bribes: [],
+          fees: [],
+        },
+      ],
+    });
+    const ranked = rankPoolsByUsdRevenue(
+      [mkPool("0xa", "5"), mkPool("0xb", "3", "4"), mkPool("0xc"), mkPool("0xd")],
+      3,
+    );
+    expect(ranked.map((p) => p.address)).toEqual(["0xb", "0xa", "0xc"]);
+  });
+});
+
+describe("fetchLatestEpochs pagination", () => {
+  it("never stops on short mid-stream pages (gaugeless pools yield no row)", async () => {
+    // 250 pools, pageSize 100: page offsets 0/100/200; the FIRST page is short
+    // (only 10 rows — most pools in it have no gauge), later pages still have data.
+    const pages: Record<string, number> = { "0": 10, "100": 90, "200": 50 };
+    const calls: bigint[] = [];
+    const fake = {
+      readContract: ({ args }: { args: readonly [bigint, bigint] }) => {
+        calls.push(args[1]);
+        const n = pages[String(args[1])] ?? 0;
+        return Promise.resolve(
+          Array.from({ length: n }, (_, i) => ({
+            ts: 1n,
+            lp: `0x${String(args[1])}-${i}`,
+            votes: 1n,
+            emissions: 0n,
+            bribes: [],
+            fees: [],
+          })),
+        );
+      },
+    } as unknown as SugarClient;
+    const epochs = await fetchLatestEpochs(fake, 250, { pageSize: 100n });
+    expect(calls).toEqual([0n, 100n, 200n]);
+    expect(epochs.length).toBe(150);
   });
 });

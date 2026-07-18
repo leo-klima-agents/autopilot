@@ -14,25 +14,28 @@ function pct(n: number): string {
 
 export function Gauges({ result }: { result: DisplayResult }) {
   const vs = result.returnVsPassive;
+  const usd = result.revenueUnit === "usd";
+  // USD runs are Alchemy-priced fees + bribes; index runs are synthetic units
+  const money = (n: number, digits?: number) => (usd ? `$${fmt(n, digits)}` : fmt(n, digits));
   return (
     <div className="gauge-row">
       <div className="gauge">
         <p className="placard">Return</p>
-        <div className="gauge-value">{fmt(result.totalReturn)}</div>
-        <div className="sub">revenue / unit weight</div>
+        <div className="gauge-value">{money(result.totalReturn)}</div>
+        <div className="sub">{usd ? "USD revenue / unit vote weight" : "revenue / unit weight"}</div>
       </div>
       <div className="gauge">
         <p className="placard">Vs bench</p>
         <div className={`gauge-value ${vs > 0 ? "good" : vs < 0 ? "bad" : ""}`}>
           {vs > 0 ? "+" : ""}
-          {fmt(vs)}
+          {money(vs)}
         </div>
-        <div className="sub">passive: {fmt(result.passiveReturn)}</div>
+        <div className="sub">passive: {money(result.passiveReturn)}</div>
       </div>
       <div className="gauge">
         <p className="placard">Max DD vs bench</p>
         <div className={`gauge-value ${result.maxDrawdownVsBenchmark > 0 ? "caution" : ""}`}>
-          {fmt(result.maxDrawdownVsBenchmark)}
+          {money(result.maxDrawdownVsBenchmark)}
         </div>
         <div className="sub">peak-to-trough of (equity − bench)</div>
       </div>

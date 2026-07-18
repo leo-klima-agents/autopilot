@@ -20,6 +20,8 @@ export interface EpochRecord {
   emissions: string;
   /** Pool fees in USD, Wad-scaled decimal integer string. Optional. */
   feesUsd?: string;
+  /** Bribes (incentives) in USD, Wad-scaled decimal integer string. Optional. */
+  bribesUsd?: string;
   /** Bribe (incentive) amounts by token. */
   bribes: TokenAmount[];
   /** Fee amounts by token. */
@@ -38,6 +40,8 @@ export interface PoolRecord {
   /** Present for Slipstream (CL) pools only. */
   tickSpacing?: number;
   gaugeAlive: boolean;
+  /** USD-pricing coverage: TokenAmount entries priced vs seen across all epochs. */
+  pricing?: { pricedAmounts: number; totalAmounts: number };
   epochs: EpochRecord[];
 }
 
@@ -49,6 +53,8 @@ export interface DatasetV1 {
   generatedAt: string;
   /** 'sugar' for on-chain datasets; 'synthetic' for generated scenarios. */
   source: "sugar" | "synthetic";
+  /** ISO-8601 timestamp of the USD price snapshot, when the dataset is priced. */
+  pricedAt?: string;
   pools: PoolRecord[];
 }
 
@@ -87,6 +93,9 @@ function validateEpoch(v: unknown, path: string): EpochRecord {
   if (v.feesUsd !== undefined && (typeof v.feesUsd !== "string" || !DECIMAL_RE.test(v.feesUsd))) {
     fail(path, "feesUsd must be a decimal string when present");
   }
+  if (v.bribesUsd !== undefined && (typeof v.bribesUsd !== "string" || !DECIMAL_RE.test(v.bribesUsd))) {
+    fail(path, "bribesUsd must be a decimal string when present");
+  }
   if (!Array.isArray(v.bribes) || !Array.isArray(v.fees)) fail(path, "bribes/fees must be arrays");
   const epoch: EpochRecord = {
     ts: v.ts as number,
@@ -96,6 +105,7 @@ function validateEpoch(v: unknown, path: string): EpochRecord {
     fees: v.fees.map((f, i) => validateTokenAmount(f, `${path}.fees[${i}]`)),
   };
   if (v.feesUsd !== undefined) epoch.feesUsd = v.feesUsd as string;
+  if (v.bribesUsd !== undefined) epoch.bribesUsd = v.bribesUsd as string;
   return epoch;
 }
 
@@ -111,6 +121,17 @@ function validatePool(v: unknown, path: string): PoolRecord {
   if (v.tickSpacing !== undefined && !Number.isInteger(v.tickSpacing)) {
     fail(path, "tickSpacing must be an integer when present");
   }
+  if (v.pricing !== undefined) {
+    if (
+      !isRecord(v.pricing) ||
+      !Number.isInteger(v.pricing.pricedAmounts) ||
+      (v.pricing.pricedAmounts as number) < 0 ||
+      !Number.isInteger(v.pricing.totalAmounts) ||
+      (v.pricing.totalAmounts as number) < 0
+    ) {
+      fail(path, "pricing must hold non-negative integer pricedAmounts/totalAmounts when present");
+    }
+  }
   if (!Array.isArray(v.epochs)) fail(path, "epochs must be an array");
   const pool: PoolRecord = {
     address: v.address as string,
@@ -123,6 +144,10 @@ function validatePool(v: unknown, path: string): PoolRecord {
     epochs: v.epochs.map((e, i) => validateEpoch(e, `${path}.epochs[${i}]`)),
   };
   if (v.tickSpacing !== undefined) pool.tickSpacing = v.tickSpacing as number;
+  if (v.pricing !== undefined) {
+    const p = v.pricing as { pricedAmounts: number; totalAmounts: number };
+    pool.pricing = { pricedAmounts: p.pricedAmounts, totalAmounts: p.totalAmounts };
+  }
   return pool;
 }
 
@@ -135,12 +160,17 @@ export function validateDataset(value: unknown): DatasetV1 {
   if (value.source !== "sugar" && value.source !== "synthetic") {
     fail("$.source", "expected 'sugar' or 'synthetic'");
   }
+  if (value.pricedAt !== undefined && typeof value.pricedAt !== "string") {
+    fail("$.pricedAt", "expected string when present");
+  }
   if (!Array.isArray(value.pools)) fail("$.pools", "expected array");
-  return {
+  const dataset: DatasetV1 = {
     schemaVersion: 1,
     chainId: value.chainId as number,
     generatedAt: value.generatedAt,
     source: value.source,
     pools: value.pools.map((p, i) => validatePool(p, `$.pools[${i}]`)),
   };
+  if (value.pricedAt !== undefined) dataset.pricedAt = value.pricedAt as string;
+  return dataset;
 }
