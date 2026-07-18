@@ -61,7 +61,7 @@ export function AllocationHeatmap({ result }: { result: DisplayResult }) {
           const last = times[cols.at(-1) ?? 0] ?? t0;
           const span = Math.max(1, last - first);
           const gridW = cols.length * CELL_W;
-          const maxTicks = Math.max(2, Math.min(8, Math.floor(gridW / 90)));
+          const maxTicks = Math.max(2, Math.min(8, Math.floor(gridW / 118)));
           return axis.epochTicks(first, last, maxTicks).map((ts) => {
             const x = LABEL_W + ((ts - first) / span) * gridW;
             return (
