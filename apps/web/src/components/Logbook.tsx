@@ -99,7 +99,7 @@ export const LOGBOOK: LogEntry[] = [
     why:
       "Water-filling against a static equal-weight crowd on persistent synthetic revenue: captured exceeds 100% — " +
       "the strategy finishes ABOVE the revenue benchmark, with no foresight. Proof that revenue-proportional is " +
-      "not the ceiling (Theory §4): the optimal response concentrates where revenue is high relative to the " +
+      "not the ceiling (Theory §7): the optimal response concentrates where revenue is high relative to the " +
       "crowd's weight, and a static crowd is maximally exploitable.",
     read:
       "The phosphor line crosses and stays above the cyan one. In the earned heat-map, compare the strategy view " +
