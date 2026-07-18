@@ -64,6 +64,8 @@ export interface BuiltRun {
   result: BacktestResult;
   poolNames: Map<string, string>;
   datasetGeneratedAt: string | undefined;
+  /** Historical timestamps are real dates; synthetic ones are an arbitrary anchor. */
+  dataKind: "historical" | "synthetic";
   startTime: number;
   durationSec: number;
 }
@@ -188,6 +190,7 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
     result,
     poolNames,
     datasetGeneratedAt: (dataset as { generatedAt?: string }).generatedAt,
+    dataKind: config.data.kind,
     startTime,
     durationSec,
   };

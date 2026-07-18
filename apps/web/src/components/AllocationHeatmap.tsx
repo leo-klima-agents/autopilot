@@ -1,6 +1,8 @@
 /** Allocation over time: pools × samples, phosphor intensity = portfolio
- *  weight fraction. Plain SVG — wide content scrolls in its own container. */
+ *  weight fraction. Plain SVG — wide content scrolls in its own container.
+ *  Historical runs label the time edges with real UTC dates. */
 import type { DisplayResult } from "../lib/serialize.js";
+import { timeAxisFor } from "../lib/timeAxis.js";
 
 const CELL_W = 4;
 const ROW_H = 18;
@@ -18,6 +20,7 @@ function cellColor(w: number): string {
 export function AllocationHeatmap({ result }: { result: DisplayResult }) {
   const { times, poolNames, weights } = result.allocation;
   if (times.length === 0 || poolNames.length === 0) return null;
+  const axis = timeAxisFor(result);
 
   // downsample columns for width sanity
   const stride = Math.max(1, Math.ceil(times.length / MAX_COLS));
@@ -46,18 +49,17 @@ export function AllocationHeatmap({ result }: { result: DisplayResult }) {
                 fill={cellColor(weights[i]?.[row] ?? 0)}
               >
                 <title>
-                  {name} · day {(((times[i] ?? t0) - t0) / 86_400).toFixed(1)} ·{" "}
-                  {(100 * (weights[i]?.[row] ?? 0)).toFixed(1)}%
+                  {name} · {axis.label(times[i] ?? t0)} · {(100 * (weights[i]?.[row] ?? 0)).toFixed(1)}%
                 </title>
               </rect>
             ))}
           </g>
         ))}
         <text className="heatmap-label" x={LABEL_W} y={height - 6}>
-          d0
+          {axis.tick(times[0] ?? t0)}
         </text>
         <text className="heatmap-label" x={width - 4} y={height - 6} textAnchor="end">
-          d{Math.round((((times[cols.at(-1) ?? 0] ?? t0) - t0) / 86_400) * 10) / 10}
+          {axis.tick(times[cols.at(-1) ?? 0] ?? t0)}
         </text>
       </svg>
     </div>
