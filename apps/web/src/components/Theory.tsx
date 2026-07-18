@@ -20,12 +20,66 @@ export function Theory({ onClose }: { onClose: () => void }) {
           This page explains the reasoning behind the console's two benchmarks and the "captured" figure, and why
           the same strategy can look brilliant on Aerodrome v2 and merely competent on Aero v3. Everything here is
           implemented literally in the deterministic core; the Guide explains <em>what</em> each control does, this
-          page explains <em>why</em> the instruments are built this way.
+          page explains <em>why</em> the instruments are built this way. Sections 1–3 are the background — how these
+          exchanges actually work; if you already live in ve(3,3) land, start at §4.
         </p>
       </div>
 
       <div className="panel">
-        <h2>1. Vote revenue is zero-sum around the average</h2>
+        <h2>1. The machine: a ve(3,3) exchange in one loop</h2>
+        <p>
+          Aerodrome is a decentralized exchange on Base. Traders swap tokens in <em>pools</em> and pay fees.
+          Liquidity providers fund those pools — but on a ve(3,3) exchange they are mostly paid in freshly emitted
+          protocol tokens (AERO), not in the fees they generate. The fees go somewhere else, and that is the whole
+          game: holders who <em>lock</em> AERO receive vote-escrowed voting weight (veAERO), and each week they vote
+          that weight across the pools. Votes decide two things at once. First, they steer the week's AERO
+          emissions: each pool's <em>gauge</em> receives emissions in proportion to the votes on it, which is what
+          attracts liquidity providers to the pool. Second — and this is what the console simulates — voters are
+          paid the <strong>trading fees plus incentives ("bribes")</strong> of exactly the pools they voted on, pro
+          rata to their share of that pool's votes.
+        </p>
+        <p>
+          The loop closes on itself: projects that want liquidity post bribes to attract votes, votes direct
+          emissions, emissions attract liquidity, liquidity generates volume and fees, and fees plus bribes reward
+          the voters. A veAERO position is therefore a claim on a slice of the venue's revenue —{" "}
+          <em>which slice</em> depends entirely on where you place your votes. "Allocation" on this console means
+          exactly that placement: spreading a fixed voting weight across pools to maximize the fees and bribes it
+          collects. Locks can be made permanent, so the console treats your weight as constant; everything
+          interesting is in where it sits.
+        </p>
+      </div>
+
+      <div className="panel">
+        <h2>2. Aerodrome v2: weekly epochs that pay backwards</h2>
+        <p>
+          v2 runs on a hard weekly clock. An <em>epoch</em> flips every Thursday 00:00 UTC. During the epoch,
+          fees and bribes accumulate publicly in each pool's reward contracts — anyone can watch them grow. Each
+          veAERO position may vote <strong>once per epoch</strong> (re-voting reverts), voting is restricted in the
+          final hour before the flip (whitelisted positions excepted), and votes <em>persist</em>: an untouched
+          allocation keeps counting in later epochs at full weight. At the flip, the entire week's accumulated
+          rewards are distributed to the vote weights standing <strong>at the end of the epoch</strong> — a vote
+          cast Wednesday night earns the same share of the whole week's rewards as one cast the previous Thursday.
+          Payouts are retroactive within the epoch, and that single property shapes every v2 strategy (§8).
+        </p>
+      </div>
+
+      <div className="panel">
+        <h2>3. Aero v3: continuous streaming (as published)</h2>
+        <p>
+          Aero replaces the weekly clock with continuous time. Revenue <em>streams</em> to allocators as it
+          accrues, paid to whatever the weights are <strong>right now</strong> — there is no end-of-epoch
+          checkpoint to arrive at late. Allocations can change at any moment, but each position carries a{" "}
+          <strong>48-hour cooldown</strong> after acting. Emissions run per-second, and each gauge's emission rate
+          is <em>capped</em> at a multiple (κ) of the pool's trailing revenue — emissions a pool "earns" above its
+          cap are burned, which punishes vote weight parked where no revenue happens. An optional decay mechanism
+          bleeds influence from stale allocations. One caveat this console is honest about: v3's code is not yet
+          published — this description follows Aero's published articles, the model is rewritten against real code
+          when it drops, and every deviation gets logged in the architecture fact table.
+        </p>
+      </div>
+
+      <div className="panel">
+        <h2>4. Vote revenue is zero-sum around the average</h2>
         <p>
           Each pool's revenue (fees plus incentives) is split among allocators in proportion to the weight they have
           on that pool. Summed across all allocators, everyone's return per unit weight is, by construction, the
@@ -37,7 +91,7 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>2. The two benchmarks</h2>
+        <h2>5. The two benchmarks</h2>
         <dl>
           <dt>Market benchmark (amber, dashed)</dt>
           <dd>
@@ -52,7 +106,7 @@ export function Theory({ onClose }: { onClose: () => void }) {
             A portfolio of your size holding every pool in proportion to <em>that epoch's total realized
             revenue</em>, refreshed weekly. Its weight displaces yours pool-by-pool when computing earnings, so it
             answers: "what if this exact capital had been allocated revenue-proportionally instead?" Its weights
-            require the epoch's revenue — on Aero v3 that means foresight (see §5), so it is a reference, not an
+            require the epoch's revenue — on Aero v3 that means foresight (see §8), so it is a reference, not an
             investable alternative. It is also the allocation Aero's own on-target methodology scores against: in an
             efficient vote market, crowd weights converge to revenue shares, so this benchmark is simultaneously
             "the efficient market's portfolio".
@@ -61,7 +115,7 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>3. Which benchmark must a strategy beat?</h2>
+        <h2>6. Which benchmark must a strategy beat?</h2>
         <p>
           <strong>The market benchmark — it is the opportunity cost.</strong> If a strategy cannot beat it net of
           friction (cooldowns spent, keeper gas, operational risk), the rational move is to hold the market and
@@ -90,7 +144,7 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>4. The ceiling that isn't: revenue-proportional vs water-filling</h2>
+        <h2>7. The ceiling that isn't: revenue-proportional vs water-filling</h2>
         <p>
           The revenue benchmark is <em>not</em> the maximum a foresighted allocator could earn. With crowd weight
           w and your budget spread as x across pools, your earnings are Σ rev·x/(w+x) — concave in each pool. The
@@ -111,12 +165,11 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>5. v2 pays backwards; v3 doesn't — why this project exists</h2>
+        <h2>8. The consequence: the late voter dies in v3</h2>
         <p>
-          <strong>Aerodrome v2 is retroactive.</strong> Fees and bribes accrue publicly all week, but they are paid
-          to vote weights checkpointed at the epoch flip — a Wednesday-night vote earns the same share of the whole
-          week's rewards as one cast the previous Thursday. Since the accruing revenue is observable on-chain in
-          real time, a voter who waits until just before the last-hour gate and votes proportional to
+          <strong>On v2, retroactivity makes revenue-mirroring nearly optimal.</strong> Recall from §2 that the whole
+          week's rewards go to end-of-epoch vote weights while the accruing revenue is observable on-chain in real
+          time. So a voter who waits until just before the last-hour gate and votes proportional to
           revenue-so-far holds ~95–99% of the revenue benchmark's portfolio with zero foresight. This "late voter"
           play (the $/vote meta) makes the revenue benchmark <em>nearly investable on v2</em> — approximated here by
           the weekly Revenue mirror strategy phased late in the epoch. What still separates a real late voter from
@@ -134,7 +187,7 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>6. Where each strategy sits in this theory</h2>
+        <h2>9. Where each strategy sits in this theory</h2>
         <dl>
           <dt>Revenue mirror — weekly / 48h / 24h / 1h</dt>
           <dd>
@@ -144,7 +197,7 @@ export function Theory({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>Water-filling</dt>
           <dd>
-            The optimal-response allocator of §4, fed trailing signals: maximizes expected share against the
+            The optimal-response allocator of §7, fed trailing signals: maximizes expected share against the
             observed crowd instead of mirroring revenue. The only strategy here that can legitimately exceed the
             revenue benchmark when the crowd misprices.
           </dd>
