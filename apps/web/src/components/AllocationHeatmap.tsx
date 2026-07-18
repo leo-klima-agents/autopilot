@@ -55,12 +55,25 @@ export function AllocationHeatmap({ result }: { result: DisplayResult }) {
             ))}
           </g>
         ))}
-        <text className="heatmap-label" x={LABEL_W} y={height - 6}>
-          {axis.tick(times[0] ?? t0)}
-        </text>
-        <text className="heatmap-label" x={width - 4} y={height - 6} textAnchor="end">
-          {axis.tick(times[cols.at(-1) ?? 0] ?? t0)}
-        </text>
+        {(() => {
+          // epoch-flip-aligned time ticks along the bottom, mirroring the equity axis
+          const first = times[0] ?? t0;
+          const last = times[cols.at(-1) ?? 0] ?? t0;
+          const span = Math.max(1, last - first);
+          const gridW = cols.length * CELL_W;
+          const maxTicks = Math.max(2, Math.min(8, Math.floor(gridW / 90)));
+          return axis.epochTicks(first, last, maxTicks).map((ts) => {
+            const x = LABEL_W + ((ts - first) / span) * gridW;
+            return (
+              <g key={ts}>
+                <line x1={x} x2={x} y1={0} y2={height - 18} stroke="#26303B" strokeDasharray="2 4" />
+                <text className="heatmap-label" x={x} y={height - 6} textAnchor="middle">
+                  {axis.tick(ts)}
+                </text>
+              </g>
+            );
+          });
+        })()}
       </svg>
     </div>
   );

@@ -35,7 +35,7 @@ export function EquityChart({ result }: { result: DisplayResult }) {
             stroke="#7C8A96"
             tick={{ fontSize: 10, fontFamily: "B612 Mono" }}
             tickFormatter={(ts: number) => axis.tick(ts)}
-            minTickGap={42}
+            ticks={axis.epochTicks(times[0] ?? 0, times.at(-1) ?? 0)}
           />
           <YAxis
             stroke="#7C8A96"
