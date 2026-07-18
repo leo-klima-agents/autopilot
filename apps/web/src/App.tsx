@@ -180,17 +180,6 @@ export function App() {
         <span className="links">
           live replay · deterministic core · shared links replay exactly ·{" "}
           <a
-            href="#guide"
-            onClick={(e) => {
-              e.preventDefault();
-              history.replaceState(null, "", "#guide");
-              setView("guide");
-            }}
-          >
-            guide
-          </a>{" "}
-          ·{" "}
-          <a
             href="#theory"
             onClick={(e) => {
               e.preventDefault();
@@ -199,6 +188,17 @@ export function App() {
             }}
           >
             theory
+          </a>{" "}
+          ·{" "}
+          <a
+            href="#guide"
+            onClick={(e) => {
+              e.preventDefault();
+              history.replaceState(null, "", "#guide");
+              setView("guide");
+            }}
+          >
+            guide
           </a>{" "}
           ·{" "}
           <a

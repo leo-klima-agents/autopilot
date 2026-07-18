@@ -17,11 +17,12 @@ export function Theory({ onClose }: { onClose: () => void }) {
         </button>
         <h2>Theory — benchmarks, ceilings, and where the edge comes from</h2>
         <p>
-          This page explains the reasoning behind the console's two benchmarks and the "captured" figure, and why
-          the same strategy can look brilliant on Aerodrome v2 and merely competent on Aero v3. Everything here is
-          implemented literally in the deterministic core; the Guide explains <em>what</em> each control does, this
-          page explains <em>why</em> the instruments are built this way. Sections 1–3 are the background — how these
-          exchanges actually work; if you already live in ve(3,3) land, start at §4.
+          Start here. This page owns the concepts everything else references: how these exchanges work, where
+          returns come from, what the two benchmarks and the "captured" figure mean, and why the same strategy can
+          look brilliant on Aerodrome v2 and merely competent on Aero v3. Everything is implemented literally in
+          the deterministic core. When you're oriented, the Guide is the operator's manual for the controls and
+          instruments, and the Logbook is a shelf of runs that demonstrate each claim made here. Sections 1–3 are
+          the background — how these exchanges actually work; if you already live in ve(3,3) land, start at §4.
         </p>
       </div>
 
