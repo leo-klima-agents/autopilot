@@ -21,6 +21,8 @@ export interface DisplayResult {
   equity: { times: number[]; equity: number[]; benchmark: number[] };
   allocation: { times: number[]; pools: string[]; poolNames: string[]; weights: number[][] };
   datasetGeneratedAt: string | undefined;
+  /** Historical timestamps are real dates; synthetic ones are an arbitrary anchor. */
+  dataKind: "historical" | "synthetic";
   startTime: number;
   durationSec: number;
 }
@@ -52,6 +54,7 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
       weights: result.allocationHistory.weights.map((row) => row.map((w) => Number(w) / WAD)),
     },
     datasetGeneratedAt: run.datasetGeneratedAt,
+    dataKind: run.dataKind,
     startTime: run.startTime,
     durationSec: run.durationSec,
   };

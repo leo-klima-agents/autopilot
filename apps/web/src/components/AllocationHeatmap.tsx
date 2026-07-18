@@ -1,6 +1,8 @@
 /** Allocation over time: pools × samples, phosphor intensity = portfolio
- *  weight fraction. Plain SVG — wide content scrolls in its own container. */
+ *  weight fraction. Plain SVG — wide content scrolls in its own container.
+ *  Historical runs label the time edges with real UTC dates. */
 import type { DisplayResult } from "../lib/serialize.js";
+import { timeAxisFor } from "../lib/timeAxis.js";
 
 const CELL_W = 4;
 const ROW_H = 18;
@@ -18,6 +20,7 @@ function cellColor(w: number): string {
 export function AllocationHeatmap({ result }: { result: DisplayResult }) {
   const { times, poolNames, weights } = result.allocation;
   if (times.length === 0 || poolNames.length === 0) return null;
+  const axis = timeAxisFor(result);
 
   // downsample columns for width sanity
   const stride = Math.max(1, Math.ceil(times.length / MAX_COLS));
@@ -46,19 +49,31 @@ export function AllocationHeatmap({ result }: { result: DisplayResult }) {
                 fill={cellColor(weights[i]?.[row] ?? 0)}
               >
                 <title>
-                  {name} · day {(((times[i] ?? t0) - t0) / 86_400).toFixed(1)} ·{" "}
-                  {(100 * (weights[i]?.[row] ?? 0)).toFixed(1)}%
+                  {name} · {axis.label(times[i] ?? t0)} · {(100 * (weights[i]?.[row] ?? 0)).toFixed(1)}%
                 </title>
               </rect>
             ))}
           </g>
         ))}
-        <text className="heatmap-label" x={LABEL_W} y={height - 6}>
-          d0
-        </text>
-        <text className="heatmap-label" x={width - 4} y={height - 6} textAnchor="end">
-          d{Math.round((((times[cols.at(-1) ?? 0] ?? t0) - t0) / 86_400) * 10) / 10}
-        </text>
+        {(() => {
+          // epoch-flip-aligned time ticks along the bottom, mirroring the equity axis
+          const first = times[0] ?? t0;
+          const last = times[cols.at(-1) ?? 0] ?? t0;
+          const span = Math.max(1, last - first);
+          const gridW = cols.length * CELL_W;
+          const maxTicks = Math.max(2, Math.min(8, Math.floor(gridW / 90)));
+          return axis.epochTicks(first, last, maxTicks).map((ts) => {
+            const x = LABEL_W + ((ts - first) / span) * gridW;
+            return (
+              <g key={ts}>
+                <line x1={x} x2={x} y1={0} y2={height - 18} stroke="#26303B" strokeDasharray="2 4" />
+                <text className="heatmap-label" x={x} y={height - 6} textAnchor="middle">
+                  {axis.tick(ts)}
+                </text>
+              </g>
+            );
+          });
+        })()}
       </svg>
     </div>
   );
