@@ -38,6 +38,7 @@ they publish (code drops from Aug 3, launch September — see
 | --- | --- |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | The v3 model restated, the [fact table](docs/ARCHITECTURE.md#2-fact-table-every-v3v2-fact-this-build-depends-on) every design choice depends on (with confidence markers), [where the design breaks if a fact is wrong](docs/ARCHITECTURE.md#3-where-the-design-breaks-if-a-fact-is-wrong), the append-only [spec-delta log](docs/ARCHITECTURE.md#4-spec-delta-log-append-only-from-aug-3), and [decisions taken at M0](docs/ARCHITECTURE.md#5-decisions-taken-at-m0) |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Governors & maintainers guide: [roles & keys](docs/OPERATIONS.md#1-roles--keys), [deployment](docs/OPERATIONS.md#2-deployment-runbook) / [cut](docs/OPERATIONS.md#5-cut-runbook-diamond-governance) / [verification](docs/OPERATIONS.md#6-contract-verification-sourcify-first-explorer-second) runbooks, [keeper operations](docs/OPERATIONS.md#3-keeper-operations), [failure modes](docs/OPERATIONS.md#4-failure-modes--gotchas), and the [emergency runbook](docs/OPERATIONS.md#7-sunset--emergency) |
+| [docs/MILESTONES.md](docs/MILESTONES.md) | The M0–M5 milestone plan and definition of done from the initiating build brief (the phases referenced throughout the repo), plus current status |
 | [docs/SLITHER-TRIAGE.md](docs/SLITHER-TRIAGE.md) | Static-analysis triage policy and the pinned, accepted findings (vendored diamond + our facets) |
 
 ## Quick start
@@ -67,7 +68,8 @@ Diamond introspection: [louper.dev](https://louper.dev) pointed at the diamond o
 
 ## Status
 
-M0–M2-scale PoC scaffold: see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for every
+[M0–M2](docs/MILESTONES.md)-scale PoC scaffold: see
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for every
 protocol fact this build depends on (with confidence markers) and
 [the places the design breaks](docs/ARCHITECTURE.md#3-where-the-design-breaks-if-a-fact-is-wrong)
 if a fact is wrong. The `AeroFacet` is a spec-draft shape only — it is rewritten against
