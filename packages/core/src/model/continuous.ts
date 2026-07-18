@@ -81,6 +81,7 @@ interface PositionState {
   allocation: Map<PoolId, Wad>;
   lastActionAt: number;
   accrued: Wad;
+  accruedByPool: Map<PoolId, Wad>; // same payouts as accrued — sums exactly
 }
 
 function assertValidTarget(pools: readonly PoolId[], target: TargetAllocation): void {
@@ -123,6 +124,7 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
     revenueTotal: 0n,
     crowdRevenue: 0n,
   };
+  const revenueByPool = new Map<PoolId, Wad>(); // same increments as revenueTotal
 
   /** cap_pool = mulWad(κ, trailingRevenue / window) — exact floor semantics. */
   function recalibrateCaps(now: number): void {
@@ -170,6 +172,7 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
     for (const pool of pools) {
       const rev = revenue.revenueBetween(pool, from, to);
       totals.revenueTotal += rev;
+      if (rev > 0n) revenueByPool.set(pool, (revenueByPool.get(pool) ?? 0n) + rev);
       const poolW = poolWeight(pool);
       if (rev > 0n) {
         if (poolW === 0n) {
@@ -181,6 +184,7 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
             if (w === 0n) continue;
             const payout = mulDiv(rev, w, poolW);
             pos.accrued += payout;
+            pos.accruedByPool.set(pool, (pos.accruedByPool.get(pool) ?? 0n) + payout);
             paid += payout;
           }
           const crowdW = crowd.get(pool) ?? 0n;
@@ -262,6 +266,7 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
         allocation: new Map(),
         lastActionAt: startTime - cooldownSec, // new positions may allocate immediately
         accrued: 0n,
+        accruedByPool: new Map(),
       });
     },
     submitAllocation(positionId: string, target: TargetAllocation): void {
@@ -283,10 +288,12 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
       return gate === null ? t : (gate.retryAt ?? t);
     },
     earned: (positionId) => getPosition(positionId).accrued,
+    earnedByPool: (positionId) => new Map(getPosition(positionId).accruedByPool),
     claim(positionId: string): Wad {
       const pos = getPosition(positionId);
       const amount = pos.accrued;
       pos.accrued = 0n;
+      pos.accruedByPool.clear();
       return amount;
     },
     setCrowdWeights(weights: ReadonlyMap<PoolId, Wad>): void {
@@ -314,5 +321,6 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
       return shares;
     },
     totals: () => ({ ...totals }),
+    revenueByPool: () => new Map(revenueByPool),
   };
 }

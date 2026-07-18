@@ -57,6 +57,64 @@ describe("ContinuousModel revenue streaming", () => {
     model.advance(100);
     expect(model.totals().revenueDust).toBe(200n);
   });
+
+  it("earnedByPool sums exactly to earned across split allocations and rotations", () => {
+    const model = createContinuousModel({
+      revenue: constantRevenue({ a: 7n, b: 3n }),
+      startTime: T0,
+      cooldownSec: 0,
+    });
+    model.addPosition("p1", WAD);
+    model.addPosition("p2", WAD);
+    model.setCrowdWeights(new Map([["a", WAD / 3n]]));
+    model.submitAllocation("p1", new Map([["a", WAD / 2n], ["b", WAD - WAD / 2n]]));
+    model.submitAllocation("p2", wholeTo("a"));
+    model.advance(100);
+    model.submitAllocation("p1", wholeTo("b")); // rotate fully off a
+    model.advance(100);
+    for (const id of ["p1", "p2"]) {
+      const byPool = model.earnedByPool(id);
+      let sum = 0n;
+      for (const amount of byPool.values()) sum += amount;
+      expect(sum).toBe(model.earned(id));
+    }
+    // p2 is 100% on pool a throughout — its breakdown has exactly one entry
+    expect([...model.earnedByPool("p2").keys()]).toEqual(["a"]);
+    // p1 earned from b in both segments, from a only in the first
+    expect(model.earnedByPool("p1").get("b")! > 0n).toBe(true);
+    expect(model.earnedByPool("p1").get("a")! > 0n).toBe(true);
+  });
+
+  it("revenueByPool sums exactly to revenueTotal, including dust-only pools", () => {
+    const model = createContinuousModel({
+      revenue: constantRevenue({ a: 5n, b: 2n }), // b stays unweighted → dust
+      startTime: T0,
+    });
+    model.addPosition("p1", WAD);
+    model.submitAllocation("p1", wholeTo("a"));
+    model.advance(100);
+    const byPool = model.revenueByPool();
+    let sum = 0n;
+    for (const amount of byPool.values()) sum += amount;
+    expect(sum).toBe(model.totals().revenueTotal);
+    expect(byPool.get("a")).toBe(500n);
+    expect(byPool.get("b")).toBe(200n); // produced revenue even though undistributed
+  });
+
+  it("claim clears the per-pool breakdown and the invariant restarts", () => {
+    const model = createContinuousModel({
+      revenue: constantRevenue({ a: 4n }),
+      startTime: T0,
+      cooldownSec: 0,
+    });
+    model.addPosition("p1", WAD);
+    model.submitAllocation("p1", wholeTo("a"));
+    model.advance(50);
+    expect(model.claim("p1")).toBe(200n);
+    expect(model.earnedByPool("p1").size).toBe(0);
+    model.advance(50);
+    expect(model.earnedByPool("p1").get("a")).toBe(model.earned("p1"));
+  });
 });
 
 describe("ContinuousModel cooldown", () => {

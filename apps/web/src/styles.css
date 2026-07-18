@@ -304,6 +304,36 @@ button.engage:disabled {
   fill: var(--placard);
 }
 
+/* cumulative row total overlaid on the earnings heat-map's right edge */
+.heatmap-total {
+  fill: #e8b44f;
+}
+
+/* heat-map panel header: placard left, strategy/passive toggle right */
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.seg-toggle {
+  display: flex;
+  gap: 2px;
+}
+
+.seg-toggle button {
+  padding: 2px 8px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  border-radius: 3px;
+}
+
+.seg-toggle button.active {
+  border-color: var(--phosphor);
+  color: var(--phosphor);
+}
+
 .legend {
   display: flex;
   gap: 18px;

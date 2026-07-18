@@ -19,7 +19,18 @@ export interface DisplayResult {
   offTargetPct: number;
   poolSamples: number;
   equity: { times: number[]; equity: number[]; benchmark: number[] };
-  allocation: { times: number[]; pools: string[]; poolNames: string[]; weights: number[][] };
+  allocation: {
+    times: number[];
+    pools: string[];
+    poolNames: string[];
+    weights: number[][];
+    /** Cumulative revenue earned from each pool (raw units, not per weight). */
+    earned: number[][];
+    /** Pool share of GLOBAL weight — the passive benchmark's holdings. */
+    benchmarkWeights: number[][];
+    /** Cumulative revenue a passive market-cap portfolio of our size earned. */
+    benchmarkEarned: number[][];
+  };
   datasetGeneratedAt: string | undefined;
   /** Historical timestamps are real dates; synthetic ones are an arbitrary anchor. */
   dataKind: "historical" | "synthetic";
@@ -54,6 +65,13 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
       pools: result.allocationHistory.pools,
       poolNames: result.allocationHistory.pools.map((p) => run.poolNames.get(p) ?? p),
       weights: result.allocationHistory.weights.map((row) => row.map((w) => Number(w) / WAD)),
+      earned: result.allocationHistory.earned.map((row) => row.map((w) => Number(w) / WAD)),
+      benchmarkWeights: result.allocationHistory.benchmarkWeights.map((row) =>
+        row.map((w) => Number(w) / WAD),
+      ),
+      benchmarkEarned: result.allocationHistory.benchmarkEarned.map((row) =>
+        row.map((w) => Number(w) / WAD),
+      ),
     },
     datasetGeneratedAt: run.datasetGeneratedAt,
     dataKind: run.dataKind,

@@ -148,6 +148,40 @@ describe("EpochModel rewards", () => {
     expect(earned > 0n).toBe(true);
     expect(model.claim("p1")).toBe(earned);
     expect(model.earned("p1")).toBe(0n);
+    expect(model.earnedByPool("p1").size).toBe(0);
+  });
+
+  it("earnedByPool sums exactly to earned across flips and a vote change", () => {
+    const model = createEpochModel({
+      revenue: constantRevenue({ a: 7n, b: 3n }),
+      startTime: T0 + 2 * HOUR,
+    });
+    model.addPosition("p1", WAD);
+    model.addPosition("p2", WAD);
+    model.setCrowdWeights(new Map([["b", WAD / 3n]]));
+    model.submitAllocation("p1", new Map([["a", WAD / 2n], ["b", WAD - WAD / 2n]]));
+    model.submitAllocation("p2", wholeTo("b"));
+    model.advance(WEEK); // first flip pays epoch 1
+    model.submitAllocation("p1", wholeTo("a")); // new epoch, vote gate reopens
+    model.advance(WEEK); // second flip pays epoch 2
+    for (const id of ["p1", "p2"]) {
+      const byPool = model.earnedByPool(id);
+      let sum = 0n;
+      for (const amount of byPool.values()) sum += amount;
+      expect(sum).toBe(model.earned(id));
+      expect(sum > 0n).toBe(true);
+    }
+    // p1 earned from both pools (split epoch 1, a-only epoch 2)
+    expect(model.earnedByPool("p1").get("a")! > 0n).toBe(true);
+    expect(model.earnedByPool("p1").get("b")! > 0n).toBe(true);
+    // p2 voted b throughout — exactly one entry
+    expect([...model.earnedByPool("p2").keys()]).toEqual(["b"]);
+    // per-pool revenue sums exactly to the aggregate conservation counter
+    const byPool = model.revenueByPool();
+    let revSum = 0n;
+    for (const amount of byPool.values()) revSum += amount;
+    expect(revSum).toBe(model.totals().revenueTotal);
+    expect(byPool.get("a")! > 0n && byPool.get("b")! > 0n).toBe(true);
   });
 
   it("emissionShares reflect weight shares", () => {

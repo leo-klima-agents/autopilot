@@ -56,12 +56,27 @@ export interface BacktestConfig {
   optimalWindowSec?: number;
 }
 
-/** Our portfolio's allocation share per pool over time (for the heat-map). */
+/** Our portfolio's allocation share and earned revenue per pool over time
+ *  (for the heat-maps). */
 export interface AllocationHistory {
   times: number[];
   pools: PoolId[];
   /** weights[sampleIndex][poolIndex]: portfolio Wad fraction on the pool. */
   weights: Wad[][];
+  /** earned[sampleIndex][poolIndex]: cumulative revenue (raw Wad, NOT per
+   *  unit weight) earned from the pool across all tranches. Each row sums
+   *  exactly to Σ model.earned(tranche) at that sample. */
+  earned: Wad[][];
+  /** benchmarkWeights[sampleIndex][poolIndex]: the pool's Wad share of the
+   *  GLOBAL weight — the market portfolio the passive benchmark holds. */
+  benchmarkWeights: Wad[][];
+  /** benchmarkEarned[sampleIndex][poolIndex]: cumulative revenue a passive
+   *  market-cap-weighted portfolio of our size (portfolioWeight) would have
+   *  earned from the pool, accrued per step as
+   *  mulDiv(poolRevenueDelta, portfolioWeight, globalWeight) — the per-pool
+   *  twin of the equity chart's passive benchmark (same timing, floor per
+   *  pool instead of on the aggregate). */
+  benchmarkEarned: Wad[][];
 }
 
 /** Equity curve time series for the web app (bigint arrays + times). */
@@ -161,6 +176,11 @@ export function runBacktest(
   const benchmarkSeries: Wad[] = [];
   const allocPools = [...model.marketState().pools];
   const allocWeights: Wad[][] = [];
+  const allocEarned: Wad[][] = [];
+  const benchWeights: Wad[][] = [];
+  const benchEarned: Wad[][] = [];
+  const passiveEarned = new Map<string, Wad>();
+  let prevRevByPool: ReadonlyMap<string, Wad> = new Map();
   let peak = 0n;
   let maxDrawdown = 0n;
 
@@ -189,6 +209,19 @@ export function runBacktest(
         return portfolioWeight === 0n ? 0n : divWad(onPool, portfolioWeight);
       }),
     );
+    const earnedNow = new Map<string, Wad>();
+    for (const tranche of tranches) {
+      for (const [pool, amount] of model.earnedByPool(tranche.id)) {
+        earnedNow.set(pool, (earnedNow.get(pool) ?? 0n) + amount);
+      }
+    }
+    allocEarned.push(allocPools.map((pool) => earnedNow.get(pool) ?? 0n));
+    const market = model.marketState();
+    const totalW = market.totalWeight();
+    benchWeights.push(
+      allocPools.map((pool) => (totalW === 0n ? 0n : divWad(market.poolWeight(pool), totalW))),
+    );
+    benchEarned.push(allocPools.map((pool) => passiveEarned.get(pool) ?? 0n));
     const rel = equity - benchmark;
     if (rel > peak) peak = rel;
     const drawdown = peak - rel;
@@ -249,7 +282,22 @@ export function runBacktest(
     const revenueTotal = model.totals().revenueTotal;
     const deltaRev = revenueTotal - prevRevenueTotal;
     prevRevenueTotal = revenueTotal;
-    if (globalWeight > 0n) benchmark += divWad(deltaRev, globalWeight);
+    // per-pool twin of the passive benchmark: a market-cap portfolio of our
+    // size takes portfolioWeight/globalWeight of each pool's revenue delta
+    const revByPool = model.revenueByPool();
+    if (globalWeight > 0n) {
+      benchmark += divWad(deltaRev, globalWeight);
+      for (const [pool, total] of revByPool) {
+        const delta = total - (prevRevByPool.get(pool) ?? 0n);
+        if (delta > 0n) {
+          passiveEarned.set(
+            pool,
+            (passiveEarned.get(pool) ?? 0n) + mulDiv(delta, portfolioWeight, globalWeight),
+          );
+        }
+      }
+    }
+    prevRevByPool = revByPool;
     if ((t + stepSec - startTime) % sampleIntervalSec === 0) sample(t + stepSec);
   }
 
@@ -267,6 +315,13 @@ export function runBacktest(
     offTargetPct: poolSamples === 0 ? 0 : offCount / poolSamples,
     poolSamples,
     equityCurve: { times, equity: equitySeries, benchmark: benchmarkSeries },
-    allocationHistory: { times: [...times], pools: allocPools, weights: allocWeights },
+    allocationHistory: {
+      times: [...times],
+      pools: allocPools,
+      weights: allocWeights,
+      earned: allocEarned,
+      benchmarkWeights: benchWeights,
+      benchmarkEarned: benchEarned,
+    },
   };
 }

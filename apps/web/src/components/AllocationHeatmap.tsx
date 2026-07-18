@@ -11,6 +11,10 @@ import { TIME_AXIS_LEFT, TIME_AXIS_RIGHT_PAD } from "../lib/chartGeometry.js";
 const ROW_H = 18;
 const TICK_ROW_H = 22;
 
+/** Which portfolio the heat-maps display: ours, or the passive benchmark's
+ *  market-cap-weighted twin. Shared by both maps and the App-level toggle. */
+export type HeatmapView = "strategy" | "passive";
+
 function cellColor(w: number): string {
   if (w <= 0) return "#12171E";
   // panel face → phosphor ramp
@@ -19,8 +23,9 @@ function cellColor(w: number): string {
   return `rgb(${mix(18, 111)}, ${mix(23, 211)}, ${mix(30, 166)})`;
 }
 
-/** Container width via ResizeObserver — the heat-map stretches like the chart. */
-function useContainerWidth(): [React.RefObject<HTMLDivElement>, number] {
+/** Container width via ResizeObserver — the heat-map stretches like the chart.
+ *  Shared with EarningsHeatmap. */
+export function useContainerWidth(): [React.RefObject<HTMLDivElement>, number] {
   const ref = useRef<HTMLDivElement>(null as unknown as HTMLDivElement);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -36,8 +41,16 @@ function useContainerWidth(): [React.RefObject<HTMLDivElement>, number] {
   return [ref, width];
 }
 
-export function AllocationHeatmap({ result }: { result: DisplayResult }) {
-  const { times, poolNames, weights } = result.allocation;
+export function AllocationHeatmap({
+  result,
+  view = "strategy",
+}: {
+  result: DisplayResult;
+  view?: HeatmapView;
+}) {
+  const { times, poolNames } = result.allocation;
+  const weights =
+    view === "passive" ? result.allocation.benchmarkWeights : result.allocation.weights;
   const [containerRef, width] = useContainerWidth();
   if (times.length === 0 || poolNames.length === 0) return null;
   const axis = timeAxisFor(result);
