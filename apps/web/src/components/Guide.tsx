@@ -14,17 +14,14 @@ export function Guide({ onClose }: { onClose: () => void }) {
         </button>
         <h2>Operator's guide</h2>
         <p>
-          This console replays <em>allocation strategies</em> against the Aero/Aerodrome economy. You hold a fixed
-          amount of staking weight, split into tranches. A strategy decides, over and over, how to spread that weight
-          across liquidity pools. Pools generate revenue (trading fees plus incentives), and revenue flows back to
-          allocators in proportion to the weight they have on each pool. The whole run is deterministic: the same
-          flight plan always produces exactly the same result, which is why a copied link reproduces a run bit for
-          bit.
+          The operator's manual for the replay console: every control, strategy knob, and instrument, in the order
+          you meet them on screen. Concepts live on the Theory page — how the exchange works, what the benchmarks
+          mean, which one a strategy must beat — and this page assumes them; if this is your first visit, read
+          Theory first.
         </p>
         <p>
-          The question every run answers: <em>did this strategy earn more than doing nothing clever?</em> "Nothing
-          clever" is the market benchmark — the return of simply holding the market-average allocation. For the full
-          reasoning behind the benchmarks, see the Theory page.
+          One property matters everywhere here: runs are deterministic. The same flight plan always produces exactly
+          the same result, which is why a copied link reproduces a run bit for bit.
         </p>
       </div>
 
@@ -34,8 +31,8 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dt>Pool</dt>
           <dd>
             A trading pair on the exchange (e.g. vAMM-WETH/USDC). The prefix encodes the pool type: vAMM = volatile
-            pair, sAMM = stable pair. Pools earn trading fees; those fees (plus any incentives) are the revenue that
-            allocators compete for.
+            pair, sAMM = stable pair, CL&lt;n&gt; = concentrated-liquidity (Slipstream) pool with tick spacing n.
+            Pools earn trading fees; those fees (plus any incentives) are the revenue that allocators compete for.
           </dd>
           <dt>Staking weight / allocation</dt>
           <dd>
@@ -95,11 +92,11 @@ export function Guide({ onClose }: { onClose: () => void }) {
             An adversarial pool that pumps fake fees in short bursts to look attractive, then pulls them. Strategies
             that only read trailing revenue chase it and get nothing; persistence-aware scoring discounts it.
           </dd>
-          <dt>Market benchmark</dt>
+          <dt>Market / revenue benchmark</dt>
           <dd>
-            The return per unit weight of holding the global average allocation: total market revenue divided by
-            total allocated weight, accumulated over the run. USD-denominated on historical replays. Any strategy
-            worth running must beat this after turnover.
+            The two dashed reference portfolios on every instrument: the market benchmark holds pools in proportion
+            to global vote weight, the revenue benchmark holds each epoch's realized revenue shares with foresight.
+            USD-denominated on historical replays. What they mean and which one a strategy must beat is Theory §5–6.
           </dd>
           <dt>Wad</dt>
           <dd>
@@ -339,10 +336,9 @@ export function Guide({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>Equity chart</dt>
           <dd>
-            Solid phosphor line: your cumulative return. Dashed amber: the market benchmark. Dashed cyan:
-            the revenue benchmark — the foresight ceiling (see the toggle entry below). Your line should live between
-            the two dashed ones; how far up that band it sits is the strategy's skill. Time ticks land on epoch flips
-            (Thursdays, UTC).
+            Solid phosphor line: your cumulative return. Dashed amber: the market benchmark. Dashed cyan: the
+            revenue benchmark. Your line should live between the two dashed ones — how far up that band it sits is
+            the strategy's skill (Theory §6). Time ticks land on epoch flips (Thursdays, UTC).
           </dd>
           <dt>Allocation heat-map</dt>
           <dd>
@@ -358,16 +354,11 @@ export function Guide({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>strategy / market bench / revenue bench toggle</dt>
           <dd>
-            Flips both heat-maps between three portfolios of the same size. <em>Strategy</em> is yours.{" "}
-            <em>Market bench</em> is the market portfolio: every pool held in proportion to its global vote weight —
-            what doing nothing earns. <em>Revenue bench</em> is the foresight benchmark: each weekly epoch it holds
-            pools in proportion to that epoch's realized revenue, which no real allocator could know in advance — it is
-            the ceiling, not an investable alternative. Its weight replaces yours in each pool when computing earnings,
-            so it answers "what if this portfolio had been allocated revenue-optimally instead". The strategy's worth
-            lives between the two benchmarks: the "captured" figure on the Vs-bench gauge is the fraction of the
-            foresight edge (revenue bench − market bench) the strategy actually collected. Note that with a reactive
-            herd the crowd itself chases revenue, so the foresight edge shrinks as the herd lag shortens — that is the
-            market getting efficient, not a bug.
+            Flips both heat-maps between three same-size portfolios: yours and the two benchmarks (Theory §5). Use
+            it as a diff. A row bright in the strategy view but dark in the revenue-bench view is weight the revenue
+            never justified; bright in revenue-bench but dark in yours is a pool the strategy missed. The "captured"
+            figure on the Vs-market gauge condenses that comparison into one number (Theory §6); if it looks oddly
+            low, check whether the edge itself collapsed before blaming the strategy (Theory §8–9).
           </dd>
         </dl>
       </div>
