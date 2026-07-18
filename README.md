@@ -68,9 +68,19 @@ Diamond introspection: [louper.dev](https://louper.dev) pointed at the diamond o
 
 ## Status
 
-[M0–M2](docs/BRIEF.md#13-milestones)-scale PoC scaffold: see
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for every
-protocol fact this build depends on (with confidence markers) and
+Measured against the brief's [M0–M5 milestone plan](docs/BRIEF.md#13-milestones), the
+build has delivered the *engineering* deliverables of M0–M3 (scaffold, core, contracts +
+test suites, simulator site). Items that require human action remain open and are owned
+outside this repo:
+
+- Safes deployment on Base + recorded addresses (M0).
+- GitHub Actions secrets + Pages enablement so the data refresh and site deploy run (M3).
+- The Aug 3 spec-delta loop, the Sepolia dry run, and the canary go-ahead (M2/M4) — the
+  canary is funded **only** on explicit human approval.
+- Everything in M5 (launch week) by definition.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for every protocol fact this build
+depends on (with confidence markers) and
 [the places the design breaks](docs/ARCHITECTURE.md#3-where-the-design-breaks-if-a-fact-is-wrong)
 if a fact is wrong. The `AeroFacet` is a spec-draft shape only — it is rewritten against
 published Aero code before any funds move (P8).
