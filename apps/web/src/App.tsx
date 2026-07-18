@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfigPanel } from "./components/ConfigPanel.js";
+import { Guide } from "./components/Guide.js";
 import { Gauges } from "./components/Gauges.js";
 import { EquityChart } from "./components/EquityChart.js";
 import { AllocationHeatmap } from "./components/AllocationHeatmap.js";
@@ -26,6 +27,19 @@ interface LiveState {
 
 export function App() {
   const [config, setConfig] = useState<RunConfig>(() => configFromHash(location.hash) ?? DEFAULT_RUN);
+  const [view, setView] = useState<"console" | "guide">(() =>
+    location.hash === "#guide" ? "guide" : "console",
+  );
+
+  // hash navigation (back button, pasted #guide links on an already-open page)
+  useEffect(() => {
+    const onHashChange = () => {
+      if (location.hash === "#guide") setView("guide");
+      else if (location.hash.startsWith("#run=")) setView("console");
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
   const [live, setLive] = useState<LiveState>({ result: null, elapsedMs: 0, running: false, error: null });
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -126,6 +140,17 @@ export function App() {
         </h1>
         <span className="links">
           live replay · deterministic core · shared links replay exactly ·{" "}
+          <a
+            href="#guide"
+            onClick={(e) => {
+              e.preventDefault();
+              history.replaceState(null, "", "#guide");
+              setView("guide");
+            }}
+          >
+            guide
+          </a>{" "}
+          ·{" "}
           <a href="https://github.com/leo-klima-agents/autopilot" rel="noreferrer">
             source
           </a>
@@ -135,6 +160,14 @@ export function App() {
         <div className="horizon" />
       </div>
 
+      {view === "guide" ? (
+        <Guide
+          onClose={() => {
+            history.replaceState(null, "", configToHash(config));
+            setView("console");
+          }}
+        />
+      ) : (
       <main className="deck">
         <section aria-label="flight plan">
           <div className="panel">
@@ -227,6 +260,7 @@ export function App() {
           )}
         </section>
       </main>
+      )}
     </>
   );
 }
