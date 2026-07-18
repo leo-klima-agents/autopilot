@@ -79,7 +79,7 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>4. Vote revenue is zero-sum around the average</h2>
+        <h2>4. Zero-sum around the average, and the dilution that shapes it</h2>
         <p>
           Each pool's revenue (fees plus incentives) is split among allocators in proportion to the weight they have
           on that pool. Summed across all allocators, everyone's return per unit weight is, by construction, the
@@ -87,6 +87,17 @@ export function Theory({ onClose }: { onClose: () => void }) {
           <em>collectively</em> — one allocator's above-average return is exactly another's below-average one. Every
           strategy on this console is therefore playing a single game: <strong>take revenue share from other
           voters</strong> — specifically from the lagged, inattentive, or misallocated part of the crowd.
+        </p>
+        <p>
+          The individual side of the same arithmetic is <strong>dilution</strong>. Put weight w on a pool with
+          revenue rate R where everyone else holds W, and you earn R·w/(W+w) — your own weight competes with
+          itself. What the <em>next</em> unit of weight actually buys is the derivative of that,{" "}
+          <strong>marginal yield = R·W/(W+w)²</strong>, and it falls as you pile on. Two consequences run through
+          everything below: concentration is self-limiting (a modest pool nobody stands on can out-yield the
+          biggest earner on the board), and the best allocation depends on <em>your size</em> — a small wallet and
+          a large relay looking at the same market should not hold the same portfolio. Marginal yield is the
+          quantity the water-filling result in §7 equalizes, and the quantity the Continuous greedy strategy's
+          dead-band is measured in.
         </p>
       </div>
 
@@ -146,13 +157,14 @@ export function Theory({ onClose }: { onClose: () => void }) {
       <div className="panel">
         <h2>7. The ceiling that isn't: revenue-proportional vs water-filling</h2>
         <p>
-          The revenue benchmark is <em>not</em> the maximum a foresighted allocator could earn. With crowd weight
-          w and your budget spread as x across pools, your earnings are Σ rev·x/(w+x) — concave in each pool. The
-          maximum is characterized by equal marginal returns, rev·w/(w+x)² = λ, whose solution is a{" "}
-          <strong>water-filling allocation</strong>: concentrate where revenue is high <em>relative to the crowd's
-          weight</em>, skip pools where the crowd already sits, and fill thin pools first because a little weight
-          there captures nearly all of their revenue. Revenue-proportional allocation coincides with the optimum
-          only when the crowd is already efficient (weights proportional to revenue).
+          The revenue benchmark is <em>not</em> the maximum a foresighted allocator could earn. Total earnings
+          Σ R·w/(W+w) are concave in each pool's w, so the maximum is where no reallocation helps: the marginal
+          yield of §4, R·W/(W+w)², <em>equal across every funded pool</em> — like water poured into connected
+          basins finding one level. That solution is a <strong>water-filling allocation</strong>: concentrate where
+          revenue is high <em>relative to the crowd's weight</em>, skip pools where the crowd already sits, and
+          fill thin pools first because a little weight there captures nearly all of their revenue.
+          Revenue-proportional allocation coincides with the optimum only when the crowd is already efficient
+          (weights proportional to revenue).
         </p>
         <p>
           This is measurable on the console: against a persistently mispriced crowd, the Water-filling strategy —
@@ -188,6 +200,10 @@ export function Theory({ onClose }: { onClose: () => void }) {
 
       <div className="panel">
         <h2>9. Where each strategy sits in this theory</h2>
+        <p>
+          The mechanics — each strategy's signal, target, and the rule for when it actually moves — live in the
+          Guide's strategy section. This section only places them on the map the previous sections drew.
+        </p>
         <dl>
           <dt>Revenue mirror — weekly / 48h / 24h / 1h</dt>
           <dd>

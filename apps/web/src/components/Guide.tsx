@@ -220,43 +220,88 @@ export function Guide({ onClose }: { onClose: () => void }) {
       <div className="panel">
         <h2>The strategies</h2>
 
+        <h3>How every strategy works</h3>
+        <p>
+          A strategy is a pure function that wakes on a fixed clock (its <em>cadence</em>, possibly phase-shifted —
+          the weekly one wakes just before epoch flips) and, given the market right now, proposes a{" "}
+          <em>target allocation</em>: what fraction of the portfolio should sit on each pool, summing to 100%. The
+          only information it gets is public and backward-looking — each pool's current vote weight and its{" "}
+          <em>trailing revenue</em>, the fees + incentives accrued over the strategy's lookback window. No strategy
+          here sees the future; they differ in how they turn that trailing signal into a target and in how reluctant
+          they are to act on it.
+        </p>
+        <p>
+          Strategies never move weight themselves. The <em>scheduler</em> takes the proposed target, compares it to
+          what each tranche currently holds, and rotates only the tranches whose cooldown has expired — so the
+          portfolio converges to a new target in staggered steps across several wake-ups, and re-proposing the same
+          target is a no-op. This makes rotations the scarce resource: every move spends that tranche's cooldown,
+          locking it through whatever happens next.
+        </p>
+        <p>
+          Two ideas recur across the strategies. First, <em>marginal yield</em> — what the next unit of weight
+          actually earns on a pool, R·W/(W+w)². It falls as your own weight w piles onto the crowd's W, which is
+          why a modest pool nobody stands on can beat the biggest earner on the board; the Theory page (§4) derives
+          it and builds the optimal allocation from it (§7). Second, <em>restraint</em>: because acting costs a
+          cooldown (and, live, gas), the better strategies carry an explicit device — a drift threshold, a
+          dead-band — that refuses trades too small to pay for themselves.
+        </p>
+
         <h3>Revenue mirror — weekly / 48h / 24h / 1h</h3>
         <p>
-          The baseline family. On a fixed clock, allocate proportionally to each pool's trailing revenue over the
-          lookback — no forecasting, no restraint, just "put weight where fees were." The four variants differ only
-          in cadence, which isolates the value of being allowed to act more often. The weekly variant submits{" "}
-          <code>submitOffsetSec</code> before the Thursday flip (late votes use the freshest signal) and is the only
-          strategy that can run live against Aerodrome v2 today.
+          <strong>Signal:</strong> trailing revenue per pool over <code>lookbackSec</code>.{" "}
+          <strong>Target:</strong> exactly proportional — a pool that produced 12% of the lookback's revenue gets
+          12% of the portfolio, dilution ignored. <strong>Moves:</strong> every wake-up, unconditionally; no
+          restraint device at all. <strong>Why it exists:</strong> it is the investable twin of the revenue
+          benchmark, lagged by one window — the honest baseline any cleverer strategy must justify itself against.
+          The four variants share everything but the clock, so running them side by side isolates what acting more
+          often is worth. The weekly variant wakes <code>submitOffsetSec</code> before the Thursday flip, making it
+          the late voter of Theory §8, and is the only strategy that can run live against Aerodrome v2 today.
         </p>
 
         <h3>Persistence carry</h3>
         <p>
-          The reactive strategy tuned for a 48h cooldown world. It scores each pool by trailing revenue, then
-          discounts noisy pools: the lookback is cut into <code>buckets</code> sub-windows, volatility is measured as
-          mean absolute deviation over the mean (capped at 1), and the score is haircut in proportion — a pool that
-          earned the same fees steadily outranks one that earned them in a single spike. It then applies an (s,S)
-          rule: only propose a new allocation when the ideal has drifted more than <code>sWad</code> from the last
-          submitted target. The volatility haircut is what rejects wash-bait; the (s,S) rule is what keeps turnover
-          and cooldown burn low.
+          <strong>Signal:</strong> trailing revenue, discounted by how erratically it arrived. The lookback is cut
+          into <code>buckets</code> equal sub-windows; volatility is the mean absolute deviation of the bucket
+          revenues over their mean, capped at 100%; each pool's revenue is then haircut in proportion, up to{" "}
+          <code>haircutWad</code> at full volatility. Two pools with identical totals stop being identical: the one
+          that earned steadily keeps its score, the one that earned everything in a single spike loses up to half of
+          it. <strong>Target:</strong> proportional to the haircut scores. <strong>Moves:</strong> only when the new
+          ideal has drifted more than <code>sWad</code> (in total allocation moved) from the last target it actually
+          submitted — an (s,S) rule, and it is careful not to "spend" that trigger while every tranche is still
+          locked. <strong>Why it exists:</strong> this is the strategy shaped for the v3 world, where a 48h cooldown
+          makes every move a commitment. The haircut is what refuses wash-bait (a pumped pool is maximally
+          volatile); the drift threshold is what keeps turnover low enough that the cooldowns are spent on moves
+          that matter.
         </p>
 
         <h3>Water-filling</h3>
         <p>
-          The size-aware allocator. Revenue on a pool is shared pro-rata, so your own weight dilutes your yield:
-          pouring everything into the single best pool is wrong once your stake is large. Water-filling maximizes
-          total revenue Σ wᵢRᵢ/(Wᵢ+wᵢ) — R the pool's revenue rate, W the crowd's weight, w yours — by equalizing
-          marginal yield across pools, like water finding one level across connected basins. Big portfolios spread
-          out; small ones concentrate. The same allocator runs inside Continuous greedy for sizing.
+          <strong>Signal:</strong> trailing revenue per pool, plus each pool's current external weight — this is the
+          one family that looks at the crowd, not just the fees. <strong>Target:</strong> the allocation that
+          maximizes total expected revenue Σ wᵢRᵢ/(Wᵢ+wᵢ) for a portfolio of your size. At the optimum every funded
+          pool has the same marginal yield — like pouring water into connected basins until one level holds — which
+          the implementation finds exactly by binary-searching that common level (λ) in integer arithmetic. Pools
+          whose marginal yield never reaches the level get nothing. <strong>Moves:</strong> every wake-up (default
+          48h), no restraint device. <strong>Why it exists:</strong> it is the optimal response to a mispriced
+          crowd, and the reason "captured" can exceed 100% (Theory §7): where the mirror family copies revenue
+          shares, water-filling deliberately over-weights thin pools with real revenue and under-weights crowded
+          ones — big portfolios spread out, small ones concentrate. It is also the sizing engine inside Continuous
+          greedy.
         </p>
 
         <h3>Continuous greedy</h3>
         <p>
-          The latency-race demonstrator. On every tick (down to one Base block, 2 seconds) it computes the
-          water-filled ideal and the marginal yield of every pool. If any tranche is off cooldown and the gap between
-          the best pool's marginal yield and the worst pool you hold exceeds <code>thresholdWad + costWad</code>, it
-          moves; otherwise it re-affirms the last target. Run it in the "latency race" preset to see the point: at
-          block-speed cadence everyone converges on the same signal, and reactive returns collapse toward the system
-          average minus costs. Speed is not a strategy.
+          <strong>Signal:</strong> the same inputs as Water-filling, re-read on every tick — down to one Base block
+          (2 seconds). <strong>Target:</strong> the water-filled ideal. <strong>Moves:</strong> almost never, and
+          that is the design. Each tick it measures how much better the best marginal yield anywhere is than the
+          worst one it currently holds — exactly what moving one unit of weight would gain. If no tranche is off
+          cooldown, nothing can move and it waits; if the gap is smaller than <code>thresholdWad + costWad</code>{" "}
+          (the noise floor plus what a rotation costs), moving would be churn and it re-affirms the last target;
+          only when the gap clears that dead-band does it jump to the full ideal. <strong>Why it exists:</strong> to
+          answer whether block-speed reaction is worth anything. Run the "latency race" Logbook entry: against a
+          fast crowd reading the same public signal the gap almost never clears the dead-band, and returns converge
+          to the market average minus the few rotations' cost — design principle P3, demonstrated rather than
+          asserted.
         </p>
       </div>
 
