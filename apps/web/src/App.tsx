@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfigPanel } from "./components/ConfigPanel.js";
 import { Guide } from "./components/Guide.js";
 import { Theory } from "./components/Theory.js";
+import { Logbook } from "./components/Logbook.js";
 import { Gauges } from "./components/Gauges.js";
 import { EquityChart } from "./components/EquityChart.js";
 import { AllocationHeatmap, type HeatmapView } from "./components/AllocationHeatmap.js";
@@ -56,8 +57,14 @@ interface LiveState {
 
 export function App() {
   const [config, setConfig] = useState<RunConfig>(() => configFromHash(location.hash) ?? DEFAULT_RUN);
-  const [view, setView] = useState<"console" | "guide" | "theory">(() =>
-    location.hash === "#guide" ? "guide" : location.hash === "#theory" ? "theory" : "console",
+  const [view, setView] = useState<"console" | "guide" | "theory" | "logbook">(() =>
+    location.hash === "#guide"
+      ? "guide"
+      : location.hash === "#theory"
+        ? "theory"
+        : location.hash === "#logbook"
+          ? "logbook"
+          : "console",
   );
   const [heatmapView, setHeatmapView] = useState<HeatmapView>("strategy");
 
@@ -66,6 +73,7 @@ export function App() {
     const onHashChange = () => {
       if (location.hash === "#guide") setView("guide");
       else if (location.hash === "#theory") setView("theory");
+      else if (location.hash === "#logbook") setView("logbook");
       else if (location.hash.startsWith("#run=")) setView("console");
     };
     window.addEventListener("hashchange", onHashChange);
@@ -193,6 +201,17 @@ export function App() {
             theory
           </a>{" "}
           ·{" "}
+          <a
+            href="#logbook"
+            onClick={(e) => {
+              e.preventDefault();
+              history.replaceState(null, "", "#logbook");
+              setView("logbook");
+            }}
+          >
+            logbook
+          </a>{" "}
+          ·{" "}
           <a href="https://github.com/leo-klima-agents/autopilot" rel="noreferrer">
             source
           </a>
@@ -213,6 +232,19 @@ export function App() {
         <Theory
           onClose={() => {
             history.replaceState(null, "", configToHash(config));
+            setView("console");
+          }}
+        />
+      ) : view === "logbook" ? (
+        <Logbook
+          onClose={() => {
+            history.replaceState(null, "", configToHash(config));
+            setView("console");
+          }}
+          onOpenRun={(runConfig) => {
+            setConfig(runConfig);
+            setActivePreset(null);
+            history.replaceState(null, "", configToHash(runConfig));
             setView("console");
           }}
         />

@@ -22,6 +22,15 @@ describe("run-config URL serialization", () => {
     }
   });
 
+  it("round-trips every logbook entry through the full hash", async () => {
+    const { LOGBOOK } = await import("../src/components/Logbook.js");
+    expect(LOGBOOK.length).toBeGreaterThan(0);
+    for (const entry of LOGBOOK) {
+      const hash = configToHash(entry.config);
+      expect(configFromHash(hash), entry.id).toEqual(entry.config);
+    }
+  });
+
   it("hash payload is URL-safe base64 only", () => {
     expect(configToHash(DEFAULT_RUN)).toMatch(/^#run=[A-Za-z0-9_-]+$/);
   });
