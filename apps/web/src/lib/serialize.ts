@@ -57,7 +57,7 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
   };
 }
 
-export type WorkerRequest = { type: "run"; config: unknown; historical: unknown | null };
+export type WorkerRequest = { type: "run"; seq: number; config: unknown; historical: unknown | null };
 export type WorkerResponse =
-  | { type: "done"; result: DisplayResult; elapsedMs: number }
-  | { type: "error"; message: string };
+  | { type: "done"; seq: number; result: DisplayResult; elapsedMs: number }
+  | { type: "error"; seq: number; message: string };

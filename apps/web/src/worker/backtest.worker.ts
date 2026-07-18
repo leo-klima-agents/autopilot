@@ -16,12 +16,17 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     const run = buildAndRun(msg.config as RunConfig, msg.historical);
     const response: WorkerResponse = {
       type: "done",
+      seq: msg.seq,
       result: toDisplayResult(run),
       elapsedMs: performance.now() - started,
     };
     self.postMessage(response);
   } catch (err) {
-    const response: WorkerResponse = { type: "error", message: err instanceof Error ? err.message : String(err) };
+    const response: WorkerResponse = {
+      type: "error",
+      seq: msg.seq,
+      message: err instanceof Error ? err.message : String(err),
+    };
     self.postMessage(response);
   }
 };

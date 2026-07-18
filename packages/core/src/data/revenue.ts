@@ -23,42 +23,76 @@ export function epochRevenueWad(epoch: EpochRecord): Wad {
   );
 }
 
-interface RateSegment {
-  start: number;
-  end: number;
-  ratePerSec: Wad;
+interface PoolSegments {
+  /** Segment starts, ascending (weekly epoch boundaries, non-overlapping). */
+  starts: number[];
+  /** Segment ends (start + WEEK). */
+  ends: number[];
+  /** Per-second rate of each segment. */
+  rates: Wad[];
+  /** cum[i] = exact total revenue of segments 0..i-1 in full. */
+  cum: Wad[];
+}
+
+/**
+ * Exact cumulative revenue up to `t`: full segments before `t` via the
+ * prefix sum, plus the partial overlap of the segment containing `t`.
+ * O(log segments) by binary search — revenueBetween(t0, t1) = C(t1) − C(t0)
+ * is arithmetically identical to the per-segment overlap sum because
+ * segments are sorted and non-overlapping, so this is a pure speedup with
+ * bit-identical results (the golden and differential suites pin that down).
+ */
+function cumulativeAt(p: PoolSegments, t: number): Wad {
+  const n = p.starts.length;
+  // rightmost segment with start <= t (binary search); -1 = before all
+  let lo = 0;
+  let hi = n - 1;
+  let k = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (p.starts[mid]! <= t) {
+      k = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  if (k < 0) return 0n;
+  const within = Math.min(t, p.ends[k]!) - p.starts[k]!;
+  return p.cum[k]! + (within > 0 ? p.rates[k]! * BigInt(within) : 0n);
 }
 
 /**
  * Builds a RevenueProcess from a dataset. Rates are floor(epochRevenue /
  * WEEK) per second (the sub-1-wei-per-second remainder is dropped, i.e. at
  * most WEEK-1 wei per pool-epoch); outside recorded epochs revenue is zero.
+ * Precondition (holds for sugar and synthetic datasets): one epoch per week
+ * boundary per pool — segments never overlap.
  */
 export function revenueProcessFromDataset(dataset: DatasetV1): RevenueProcess {
-  const segments = new Map<PoolId, RateSegment[]>();
+  const segments = new Map<PoolId, PoolSegments>();
   for (const pool of dataset.pools) {
-    const segs = [...pool.epochs]
-      .sort((a, b) => a.ts - b.ts)
-      .map((epoch) => ({
-        start: epoch.ts,
-        end: epoch.ts + WEEK,
-        ratePerSec: epochRevenueWad(epoch) / BigInt(WEEK),
-      }));
-    segments.set(pool.address, segs);
+    const sorted = [...pool.epochs].sort((a, b) => a.ts - b.ts);
+    const p: PoolSegments = { starts: [], ends: [], rates: [], cum: [] };
+    let running = 0n;
+    for (const epoch of sorted) {
+      p.starts.push(epoch.ts);
+      p.ends.push(epoch.ts + WEEK);
+      const rate = epochRevenueWad(epoch) / BigInt(WEEK);
+      p.rates.push(rate);
+      p.cum.push(running);
+      running += rate * BigInt(WEEK);
+    }
+    segments.set(pool.address, p);
   }
   const pools = dataset.pools.map((p) => p.address);
   return {
     pools,
     revenueBetween(pool: PoolId, t0: number, t1: number): Wad {
       if (t1 <= t0) return 0n;
-      const segs = segments.get(pool);
-      if (!segs) return 0n;
-      let total = 0n;
-      for (const seg of segs) {
-        const overlap = Math.min(t1, seg.end) - Math.max(t0, seg.start);
-        if (overlap > 0) total += seg.ratePerSec * BigInt(overlap);
-      }
-      return total;
+      const p = segments.get(pool);
+      if (!p || p.starts.length === 0) return 0n;
+      return cumulativeAt(p, t1) - cumulativeAt(p, t0);
     },
   };
 }

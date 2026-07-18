@@ -168,6 +168,9 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
   const cooldownSec = config.model.kind === "epoch" ? WEEK : config.model.cooldownSec;
   const steps = durationSec / stepSec;
   const sampleEvery = Math.max(1, Math.floor(steps / 400));
+  // herd re-weighting every 6h of sim time (not every step) — the dominant
+  // cost of a run; negligible fidelity change at day-scale information lags
+  const crowdUpdateSec = Math.max(stepSec, Math.floor(21_600 / stepSec) * stepSec);
 
   const result = runBacktest(strategy, model, {
     startTime,
@@ -177,6 +180,7 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
     trancheWeight,
     cooldownSec,
     sampleIntervalSec: sampleEvery * stepSec,
+    crowdUpdateSec,
     ...(crowd ? { crowd } : {}),
   });
 
