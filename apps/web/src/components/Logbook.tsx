@@ -195,8 +195,10 @@ export function Logbook({
             <h2>{entry.title}</h2>
             <a
               className="copy-link"
-              href={configToHash(entry.config)}
+              // real console URL (base path + run hash) so cmd-click opens it too
+              href={`${import.meta.env.BASE_URL}${configToHash(entry.config)}`}
               onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                 e.preventDefault();
                 onOpenRun(entry.config);
               }}

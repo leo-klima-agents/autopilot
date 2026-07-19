@@ -1,8 +1,8 @@
 /* ---------------------------------------------------------------------------
    Aero Autopilot: Strategy Replay Console
    Design: a flight-instrument panel (EFIS), not a dashboard template.
-   Type: B612 / B612 Mono, the typeface Airbus commissioned for cockpit
-   displays; every numeral on this page is data and set in the mono cut.
+   Type: the platform's native UI stack; numerals (data) are set in the
+   native monospace cut. No web fonts are loaded.
    Palette (committed dark, per instrument convention):
      bezel      #0B0E12   instrument face #12171E   bezel edge #26303B
      text       #D8E1E8   placard labels  #7C8A96
@@ -25,6 +25,10 @@
   --amber: #e8b44f;
   --alert: #e0654f;
   --focus: #8ab8d8;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    "Courier New", monospace;
 }
 
 * {
@@ -36,7 +40,7 @@ body {
   margin: 0;
   background: var(--bezel);
   color: var(--text);
-  font-family: "B612", system-ui, sans-serif;
+  font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.45;
 }
@@ -46,7 +50,7 @@ code,
 .gauge-value,
 input,
 select {
-  font-family: "B612 Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
 }
 
 :focus-visible {
@@ -200,7 +204,7 @@ input[type="checkbox"] {
 }
 
 button {
-  font-family: "B612", system-ui, sans-serif;
+  font-family: var(--font-sans);
   background: var(--face-raised);
   color: var(--text);
   border: 1px solid var(--edge);
@@ -299,7 +303,7 @@ button.engage:disabled {
 }
 
 .heatmap-label {
-  font-family: "B612 Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   fill: var(--placard);
 }
@@ -432,7 +436,7 @@ button.engage:disabled {
 }
 
 .guide dt {
-  font-family: "B612 Mono", ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--amber);
   padding-top: 1px;

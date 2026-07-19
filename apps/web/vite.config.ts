@@ -5,6 +5,30 @@ import { join, resolve } from "node:path";
 
 const repoData = resolve(__dirname, "../../data");
 
+/** Doc-page path segments (kept in sync with DOC_PAGES in App.tsx). */
+const DOC_SEGMENTS = ["theory", "strategies", "guide", "vocabulary", "logbook"];
+
+/** Static multi-page routing on a plain file host (GitHub Pages): the SPA is a
+ *  single index.html, so emit a copy at each doc-page path (dist/theory/
+ *  index.html, …) plus a dist/404.html fallback. A direct hit on /theory/ (or
+ *  any unknown path) then loads the app, which routes by pathname. */
+function staticPagesPlugin(): Plugin {
+  return {
+    name: "static-pages",
+    closeBundle() {
+      const dist = resolve(__dirname, "dist");
+      const indexHtml = join(dist, "index.html");
+      if (!existsSync(indexHtml)) return;
+      for (const seg of DOC_SEGMENTS) {
+        const dir = join(dist, seg);
+        mkdirSync(dir, { recursive: true });
+        copyFileSync(indexHtml, join(dir, "index.html"));
+      }
+      copyFileSync(indexHtml, join(dist, "404.html"));
+    },
+  };
+}
+
 /** Serves the repo's /data JSON in dev and copies it into dist/data at build:
  *  the site only ever fetches committed, versioned files (P7). */
 function repoDataPlugin(): Plugin {
@@ -37,7 +61,7 @@ function repoDataPlugin(): Plugin {
 export default defineConfig({
   // Pages sets VITE_BASE_PATH=/<repo>/; a later Vercel move is a config flip (§9)
   base: process.env.VITE_BASE_PATH ?? "/",
-  plugins: [react(), repoDataPlugin()],
+  plugins: [react(), repoDataPlugin(), staticPagesPlugin()],
   build: { target: "es2022" },
   worker: { format: "es" },
 });

@@ -21,17 +21,41 @@ import type { DisplayResult, WorkerResponse } from "./lib/serialize.js";
 const STALE_AFTER_DAYS = 14;
 const DEBOUNCE_MS = 300;
 
-/** The doc pages, in reading order, one hash each, linked in the masthead. */
+/** The doc pages, in reading order. Each is a real path under the site base
+ *  (e.g. /theory/), so links behave like an ordinary multi-page site. The
+ *  console lives at the base path; its run config still travels in the
+ *  `#run=` hash. Static hosts serve a per-page index.html + a 404.html copy
+ *  of the SPA (see vite.config), so deep links resolve without a server. */
 type DocView = "theory" | "strategies" | "guide" | "vocabulary" | "logbook";
-const DOC_PAGES: { view: DocView; hash: string; label: string }[] = [
-  { view: "theory", hash: "#theory", label: "theory" },
-  { view: "strategies", hash: "#strategies", label: "strategies" },
-  { view: "guide", hash: "#guide", label: "guide" },
-  { view: "vocabulary", hash: "#vocabulary", label: "vocabulary" },
-  { view: "logbook", hash: "#logbook", label: "logbook" },
+const DOC_PAGES: { view: DocView; segment: string; label: string }[] = [
+  { view: "theory", segment: "theory", label: "theory" },
+  { view: "strategies", segment: "strategies", label: "strategies" },
+  { view: "guide", segment: "guide", label: "guide" },
+  { view: "vocabulary", segment: "vocabulary", label: "vocabulary" },
+  { view: "logbook", segment: "logbook", label: "logbook" },
 ];
-const VIEW_FOR_HASH = new Map(DOC_PAGES.map((p) => [p.hash, p.view]));
 type View = "console" | DocView;
+
+/** Vite's configured base path ("/" in dev, "/<repo>/" on Pages). */
+const BASE = import.meta.env.BASE_URL;
+
+/** The path segment below BASE, trailing slashes stripped ("" = console). */
+function currentSegment(): string {
+  let p = location.pathname;
+  p = p.startsWith(BASE) ? p.slice(BASE.length) : p.replace(/^\//, "");
+  return p.replace(/\/+$/, "");
+}
+function viewFromPath(): View {
+  const page = DOC_PAGES.find((d) => d.segment === currentSegment());
+  return page ? page.view : "console";
+}
+function pageUrl(view: DocView): string {
+  return BASE + DOC_PAGES.find((d) => d.view === view)!.segment + "/";
+}
+/** Console URL at the base path, carrying the run hash (e.g. "#run=…"). */
+function consoleUrl(hash = ""): string {
+  return BASE + hash;
+}
 
 /** Strategy / market-bench / revenue-bench switch on both heat-map panels; the
  *  controls share one state so the maps always show the same portfolio. */
@@ -71,18 +95,22 @@ interface LiveState {
 
 export function App() {
   const [config, setConfig] = useState<RunConfig>(() => configFromHash(location.hash) ?? DEFAULT_RUN);
-  const [view, setView] = useState<View>(() => VIEW_FOR_HASH.get(location.hash) ?? "console");
+  const [view, setView] = useState<View>(() => viewFromPath());
   const [heatmapView, setHeatmapView] = useState<HeatmapView>("strategy");
 
-  // hash navigation (back button, pasted doc-page links on an already-open page)
+  // browser back/forward: resync the page from the URL, and (on the console)
+  // the run config from its hash. In-app navigation uses pushState below.
   useEffect(() => {
-    const onHashChange = () => {
-      const docView = VIEW_FOR_HASH.get(location.hash);
-      if (docView) setView(docView);
-      else if (location.hash.startsWith("#run=")) setView("console");
+    const onPop = () => {
+      const v = viewFromPath();
+      setView(v);
+      if (v === "console") {
+        const c = configFromHash(location.hash);
+        if (c) setConfig(c);
+      }
     };
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
   const [live, setLive] = useState<LiveState>({ result: null, elapsedMs: 0, running: false, error: null });
   const [activePreset, setActivePreset] = useState<string | null>(null);
@@ -133,7 +161,11 @@ export function App() {
             historical = datasetRef.current;
           }
           if (seq !== seqRef.current) return; // superseded while fetching
-          history.replaceState(null, "", configToHash(config)); // replace, never push, no history spam
+          // keep the console's shareable URL current, but only while it is the
+          // visible page, never rewrite a doc-page path
+          if (viewFromPath() === "console") {
+            history.replaceState(null, "", configToHash(config)); // replace, never push, no history spam
+          }
           // true cancellation: a worker mid-computation can't be interrupted, so a
           // superseding run kills it and posts to a fresh one instead of queueing
           if (busyRef.current) {
@@ -156,12 +188,26 @@ export function App() {
   }, [config, spawnWorker]);
 
   const copyLink = useCallback(() => {
-    history.replaceState(null, "", configToHash(config));
+    history.replaceState(null, "", consoleUrl(configToHash(config)));
     void navigator.clipboard.writeText(location.href).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
   }, [config]);
+
+  /** Navigate to a doc page (real path, pushed so back/forward works). */
+  const openPage = useCallback((v: DocView) => {
+    history.pushState(null, "", pageUrl(v));
+    setView(v);
+  }, []);
+  /** Return to the console at the base path, carrying the current run hash. */
+  const openConsole = useCallback(
+    (runConfig: RunConfig) => {
+      history.pushState(null, "", consoleUrl(configToHash(runConfig)));
+      setView("console");
+    },
+    [],
+  );
 
   const staleness = useMemo(() => {
     // only meaningful for the published historical dataset (synthetic data is
@@ -187,11 +233,12 @@ export function App() {
           {DOC_PAGES.map((page) => (
             <span key={page.view}>
               <a
-                href={page.hash}
+                href={pageUrl(page.view)}
                 onClick={(e) => {
+                  // let modified clicks (new tab, etc.) behave like a real link
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                   e.preventDefault();
-                  history.replaceState(null, "", page.hash);
-                  setView(page.view);
+                  openPage(page.view);
                 }}
               >
                 {page.label}
@@ -210,10 +257,7 @@ export function App() {
 
       {view !== "console" ? (
         (() => {
-          const closeDoc = () => {
-            history.replaceState(null, "", configToHash(config));
-            setView("console");
-          };
+          const closeDoc = () => openConsole(config);
           if (view === "theory") return <Theory onClose={closeDoc} />;
           if (view === "strategies") return <Strategies onClose={closeDoc} />;
           if (view === "guide") return <Guide onClose={closeDoc} />;
@@ -224,8 +268,7 @@ export function App() {
               onOpenRun={(runConfig) => {
                 setConfig(runConfig);
                 setActivePreset(null);
-                history.replaceState(null, "", configToHash(runConfig));
-                setView("console");
+                openConsole(runConfig);
               }}
             />
           );

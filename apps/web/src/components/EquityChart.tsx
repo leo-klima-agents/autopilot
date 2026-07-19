@@ -16,6 +16,10 @@ import type { DisplayResult } from "../lib/serialize.js";
 import { timeAxisFor } from "../lib/timeAxis.js";
 import { TIME_AXIS_LEFT, TIME_AXIS_RIGHT_PAD, Y_AXIS_WIDTH } from "../lib/chartGeometry.js";
 
+// recharts sets tick/tooltip fonts via inline style, so mirror the CSS
+// --font-mono native stack here (SVG text can't read the CSS custom property).
+const MONO = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace';
+
 export function EquityChart({ result }: { result: DisplayResult }) {
   const { times, equity, marketBenchmark, revenueBenchmark } = result.equity;
   const axis = timeAxisFor(result);
@@ -41,13 +45,13 @@ export function EquityChart({ result }: { result: DisplayResult }) {
             type="number"
             domain={["dataMin", "dataMax"]}
             stroke="#7C8A96"
-            tick={{ fontSize: 10, fontFamily: "B612 Mono" }}
+            tick={{ fontSize: 10, fontFamily: MONO }}
             tickFormatter={(ts: number) => axis.tick(ts)}
             ticks={axis.epochTicks(times[0] ?? 0, times.at(-1) ?? 0)}
           />
           <YAxis
             stroke="#7C8A96"
-            tick={{ fontSize: 10, fontFamily: "B612 Mono" }}
+            tick={{ fontSize: 10, fontFamily: MONO }}
             tickFormatter={(v: number) => v.toPrecision(3)}
             width={Y_AXIS_WIDTH}
           />
@@ -55,7 +59,7 @@ export function EquityChart({ result }: { result: DisplayResult }) {
             contentStyle={{
               background: "#12171E",
               border: "1px solid #26303B",
-              fontFamily: "B612 Mono",
+              fontFamily: MONO,
               fontSize: 11,
             }}
             labelFormatter={(ts) => axis.label(Number(ts))}
