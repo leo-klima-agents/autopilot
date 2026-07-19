@@ -91,7 +91,7 @@ export function Vocabulary({ onClose }: { onClose: () => void }) {
           <dt>Market / revenue benchmark</dt>
           <dd>
             The two dashed reference portfolios on every instrument: the market benchmark holds pools in proportion
-            to global vote weight, the revenue benchmark holds each epoch's realized revenue shares with foresight.
+            to global vote weight, the revenue benchmark holds each week's realized revenue shares with foresight.
             USD-denominated on historical replays. What they mean and which one a strategy must beat is Theory §5–6.
           </dd>
           <dt>Captured</dt>

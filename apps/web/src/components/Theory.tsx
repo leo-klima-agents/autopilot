@@ -56,12 +56,14 @@ export function Theory({ onClose }: { onClose: () => void }) {
         <p>
           v2 runs on a hard weekly clock. An <em>epoch</em> flips every Thursday 00:00 UTC. During the epoch,
           fees and bribes accumulate publicly in each pool's reward contracts — anyone can watch them grow. Each
-          veAERO position may vote <strong>once per epoch</strong> (re-voting reverts), voting is restricted in the
-          final hour before the flip (whitelisted positions excepted), and votes <em>persist</em>: an untouched
-          allocation keeps counting in later epochs at full weight. At the flip, the entire week's accumulated
-          rewards are distributed to the vote weights standing <strong>at the end of the epoch</strong> — a vote
-          cast Wednesday night earns the same share of the whole week's rewards as one cast the previous Thursday.
-          Payouts are retroactive within the epoch, and that single property shapes every v2 strategy (§8).
+          veAERO position may vote <strong>once per epoch</strong> (re-voting reverts); voting is blocked in the
+          <strong> first hour after</strong> a flip (the distribute window), and — where the optional last-hour
+          whitelist gate is enforced — in the <strong>last hour before</strong> the next flip for non-whitelisted
+          positions. Votes <em>persist</em>: an untouched allocation keeps counting in later epochs at full weight.
+          At the flip, the entire week's accumulated rewards are distributed to the vote weights standing{" "}
+          <strong>at the end of the epoch</strong> — a vote cast Wednesday night earns the same share of the whole
+          week's rewards as one cast the previous Thursday. Payouts are retroactive within the epoch, and that
+          single property shapes every v2 strategy (§8).
         </p>
       </div>
 
@@ -116,10 +118,11 @@ export function Theory({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>Revenue benchmark (cyan, dashed)</dt>
           <dd>
-            A portfolio of your size holding every pool in proportion to <em>that epoch's total realized
-            revenue</em>, refreshed weekly. Its weight displaces yours pool-by-pool when computing earnings, so it
-            answers: "what if this exact capital had been allocated revenue-proportionally instead?" Its weights
-            require the epoch's revenue — on Aero v3 that means foresight (see §8), so it is a reference, not an
+            A portfolio of your size holding every pool in proportion to <em>that week's total realized
+            revenue</em> — a fixed weekly window in both economies. Its weight displaces yours pool-by-pool when
+            computing earnings, so it answers: "what if this exact capital had been allocated revenue-proportionally
+            instead?" Its weights require the window's revenue — on Aero v3 that means foresight (see §8), so it is a
+            reference, not an
             investable alternative. It is also the allocation Aero's own on-target methodology scores against: in an
             efficient vote market, crowd weights converge to revenue shares, so this benchmark is simultaneously
             "the efficient market's portfolio".
@@ -157,10 +160,10 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>7. The ceiling that isn't: revenue-proportional vs water-filling</h2>
+        <h2>7. Revenue-proportional is not the ceiling: water-filling is</h2>
         <p>
           The revenue benchmark is <em>not</em> the maximum a foresighted allocator could earn. Total earnings
-          Σ R·w/(W+w) are concave in each pool's w, so the maximum is where no reallocation helps: the marginal
+          Σ wᵢRᵢ/(Wᵢ+wᵢ) are concave in each pool's w, so the maximum is where no reallocation helps: the marginal
           yield of §4, R·W/(W+w)², <em>equal across every funded pool</em> — like water poured into connected
           basins finding one level. That solution is a <strong>water-filling allocation</strong>: concentrate where
           revenue is high <em>relative to the crowd's weight</em>, skip pools where the crowd already sits, and
@@ -179,12 +182,12 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>8. The consequence: the late voter dies in v3</h2>
+        <h2>8. Why the late voter works on v2 but not v3</h2>
         <p>
           <strong>On v2, retroactivity makes revenue-mirroring nearly optimal.</strong> Recall from §2 that the whole
           week's rewards go to end-of-epoch vote weights while the accruing revenue is observable on-chain in real
           time. So a voter who waits until just before the last-hour gate and votes proportional to
-          revenue-so-far holds ~95–99% of the revenue benchmark's portfolio with zero foresight. This "late voter"
+          revenue-so-far holds nearly all of the revenue benchmark's portfolio with zero foresight. This "late voter"
           play (the $/vote meta) makes the revenue benchmark <em>nearly investable on v2</em> — approximated here by
           the weekly Revenue mirror strategy phased late in the epoch. What still separates a real late voter from
           the benchmark: the final crowd weights (other late voters move the denominator simultaneously), revenue

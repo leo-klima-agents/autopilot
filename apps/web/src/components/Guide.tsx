@@ -41,7 +41,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>cadenceSec</dt>
           <dd>How often the strategy re-evaluates and (possibly) proposes a new allocation.</dd>
-          <dt>submitOffsetSec (weekly grid only)</dt>
+          <dt>submitOffsetSec (Revenue mirror — weekly only)</dt>
           <dd>
             How many seconds before the Thursday flip to submit. Voting late uses the freshest information — voting
             early locks you in while better information keeps arriving.
@@ -72,14 +72,15 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dd>
             The rule set, not the data. <em>Aero v3 — continuous</em>: revenue streams every second, allocations move
             any time subject to the cooldown. <em>Aerodrome v2 — weekly epochs</em>: one allocation change per epoch,
-            revenue settles at each flip, voting blocked in the first hour after a flip. The timeline (real dates vs
+            revenue settles at each flip, voting blocked in the first hour after a flip (the distribute window; the
+            last-hour whitelist gate is a separate, optional restriction — Theory §2). The timeline (real dates vs
             relative days) comes from the market data panel, not from this choice.
           </dd>
           <dt>allocation cooldown</dt>
           <dd>
             Minimum time between allocation changes per position: 7d mirrors v2's effective cadence, 48h is the v3
-            launch plan, 1h and 1-block are what-ifs. At 1 block the "latency race" preset shows why faster isn't
-            better.
+            launch plan, and 24h / 1h / 1-block are what-ifs. At 1 block the "latency race" preset shows why faster
+            isn't better.
           </dd>
           <dt>gauge caps + cap multiplier κ ×1000</dt>
           <dd>Enables the emission cap described above; 1200 = κ of 1.2×.</dd>
@@ -138,14 +139,14 @@ export function Guide({ onClose }: { onClose: () => void }) {
         <dl>
           <dt>Return</dt>
           <dd>Cumulative revenue earned per unit of your staking weight over the run.</dd>
-          <dt>Vs bench</dt>
+          <dt>Vs market</dt>
           <dd>
             Return minus the market benchmark. Green and positive means the strategy beat holding the market
             average; red means you paid for activity and got nothing.
           </dd>
-          <dt>Max DD vs bench</dt>
+          <dt>Max DD vs market</dt>
           <dd>
-            The deepest peak-to-trough fall of (your equity − benchmark). It measures the worst stretch of
+            The deepest peak-to-trough fall of (your equity − market benchmark). It measures the worst stretch of
             underperformance you'd have sat through, even if the run ends ahead.
           </dd>
           <dt>On target / Off target</dt>
@@ -158,7 +159,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dt>Turnover</dt>
           <dd>
             Total allocation movement: half the L1 distance of every executed rotation, summed. High turnover with a
-            thin vs-bench edge is a strategy that works only until costs exist.
+            thin vs-market edge is a strategy that works only until costs exist.
           </dd>
           <dt>Rotations / blocked</dt>
           <dd>
@@ -188,8 +189,8 @@ export function Guide({ onClose }: { onClose: () => void }) {
             Flips both heat-maps between three same-size portfolios: yours and the two benchmarks (Theory §5). Use
             it as a diff. A row bright in the strategy view but dark in the revenue-bench view is weight the revenue
             never justified; bright in revenue-bench but dark in yours is a pool the strategy missed. The "captured"
-            figure on the Vs-market gauge condenses that comparison into one number (Theory §6); if it looks oddly
-            low, check whether the edge itself collapsed before blaming the strategy (Theory §6).
+            figure on the Vs-market gauge condenses that comparison into one number; if it looks oddly low, check
+            whether the edge itself collapsed before blaming the strategy (Theory §6).
           </dd>
         </dl>
       </div>
@@ -206,7 +207,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dt>Latency race</dt>
           <dd>
             Continuous greedy at one-block cooldown against a fast crowd. Watch vs-market hug zero: at this cadence
-            reaction has no edge, only costs. This preset exists to argue against itself.
+            reaction has no edge, only costs.
           </dd>
           <dt>Wash-bait</dt>
           <dd>
@@ -216,7 +217,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
         </dl>
         <p>
           Every run — presets included — lives entirely in the URL. "Copy link to this run" hands someone your exact
-          flight plan, and the deterministic core guarantees their replay matches yours to the last wei.
+          flight plan, and the deterministic core guarantees their replay reproduces yours exactly.
         </p>
       </div>
     </main>
