@@ -1,6 +1,6 @@
 /**
  * Turns a RunConfig (+ optional historical dataset JSON) into a finished
- * BacktestResult. Pure with respect to its inputs — the core is deterministic,
+ * BacktestResult. Pure with respect to its inputs, the core is deterministic,
  * so the same config + dataset always replays identically (URL reproducibility).
  * Runs inside the web worker.
  */
@@ -93,7 +93,7 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
   let revenue: RevenueProcess = revenueProcessFromDataset(dataset);
   const epochs = dataset.pools[0]?.epochs ?? [];
   if (epochs.length < 3) throw new Error("dataset needs at least 3 epochs");
-  // epoch order is source-dependent (sugar returns newest-first) — scan all
+  // epoch order is source-dependent (sugar returns newest-first), scan all
   const allTs = dataset.pools.flatMap((p) => p.epochs.map((e) => e.ts));
   if (allTs.length === 0) throw new Error("dataset has no epochs");
   const dataStart = Math.min(...allTs);
@@ -189,7 +189,7 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
   const cooldownSec = config.model.kind === "epoch" ? WEEK : config.model.cooldownSec;
   const steps = durationSec / stepSec;
   const sampleEvery = Math.max(1, Math.floor(steps / 400));
-  // herd re-weighting every 6h of sim time (not every step) — the dominant
+  // herd re-weighting every 6h of sim time (not every step), the dominant
   // cost of a run; negligible fidelity change at day-scale information lags
   const crowdUpdateSec = Math.max(stepSec, Math.floor(21_600 / stepSec) * stepSec);
 

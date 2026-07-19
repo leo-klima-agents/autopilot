@@ -64,7 +64,7 @@ contract DiamondSuiteTest is TestBase {
     }
 
     // ------------------------------------------------------------------
-    // cut access control — diamondCut is the root permission (P4)
+    // cut access control, diamondCut is the root permission (P4)
     // ------------------------------------------------------------------
 
     function test_cut_nonOwnerReverts() public {
@@ -85,7 +85,7 @@ contract DiamondSuiteTest is TestBase {
     }
 
     // ------------------------------------------------------------------
-    // init idempotence — a replayed init cannot clobber state (§4.2 rule 4)
+    // init idempotence, a replayed init cannot clobber state (§4.2 rule 4)
     // ------------------------------------------------------------------
 
     function test_init_cannotReExecuteGenesis() public {

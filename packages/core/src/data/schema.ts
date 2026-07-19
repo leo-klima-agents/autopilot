@@ -1,6 +1,6 @@
 /**
  * Versioned dataset JSON schema (schemaVersion: 1). All amounts are decimal
- * strings of raw wei — JSON has no bigint. `feesUsd` is USD scaled to Wad
+ * strings of raw wei, JSON has no bigint. `feesUsd` is USD scaled to Wad
  * (1e18) as a decimal integer string so revenue stays bigint-exact.
  */
 

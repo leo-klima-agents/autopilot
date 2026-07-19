@@ -1,7 +1,7 @@
 /**
  * Differential fixture generators. Each family produces a seeded,
- * deterministic set of input/expected vectors — bigints as decimal strings
- * after serialization — that the Solidity twin replays and asserts EXACT
+ * deterministic set of input/expected vectors, bigints as decimal strings
+ * after serialization; that the Solidity twin replays and asserts EXACT
  * equality against (P2). Adversarial edges included per family: zero
  * weights, single pool, magnitudes up to 1e30, dust rounding.
  */

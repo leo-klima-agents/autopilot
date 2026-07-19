@@ -33,7 +33,7 @@ jobs:
             echo "::error::BASE_RPC_URL / ALCHEMY_API_KEY repository secrets not set (brief §11)"; exit 1
           fi
           pnpm data
-      - name: guard — no secrets in data artifacts
+      - name: guard (no secrets in data artifacts)
         run: |
           ! grep -rE "$ALCHEMY_API_KEY" data/ || (echo "::error::secret leaked into data/"; exit 1)
         env:

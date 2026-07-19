@@ -71,7 +71,7 @@ library LibDeterministic {
     }
 
     /// @notice cap rate from trailing revenue: capRate = κ × (trailingRevenue / windowSec)
-    ///         — mirrors packages/core capBurnExpected exactly (floor at each step)
+    ///        , mirrors packages/core capBurnExpected exactly (floor at each step)
     function capFromRevenue(uint256 trailingRevenue, uint256 windowSec, uint256 kappaWad)
         internal
         pure
@@ -85,7 +85,7 @@ library LibDeterministic {
     // Water-filling allocator (mirror of packages/core strategies/waterFilling.ts)
     // ---------------------------------------------------------------------
 
-    /// @notice bits needed to represent n (bitLength(0) == 0) — mirrors TS bitLength
+    /// @notice bits needed to represent n (bitLength(0) == 0), mirrors TS bitLength
     function bitLength(uint256 n) internal pure returns (uint256 bits) {
         while (n > 0) {
             n >>= 1;
@@ -93,7 +93,7 @@ library LibDeterministic {
         }
     }
 
-    /// @notice floor integer square root — the exact Newton iteration of the TS twin:
+    /// @notice floor integer square root, the exact Newton iteration of the TS twin:
     ///         x₀ = 2^(ceil(bitLength(n)/2)), xₖ₊₁ = (xₖ + n/xₖ) >> 1, stop when y >= x
     function isqrt(uint256 n) internal pure returns (uint256) {
         if (n < 2) return n;
@@ -173,7 +173,7 @@ library LibDeterministic {
 
     /// @notice L1 distance between an allocation and a target over the target's pool set
     /// @dev allocation weights for pools outside `targetWeights`' index space must be
-    ///      passed as entries with target 0 — both arrays are indexed identically.
+    ///      passed as entries with target 0, both arrays are indexed identically.
     function l1Distance(uint256[] memory current, uint256[] memory target) internal pure returns (uint256 d) {
         if (current.length != target.length) revert LengthMismatch();
         for (uint256 i; i < current.length; ++i) {

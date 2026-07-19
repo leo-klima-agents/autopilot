@@ -7,7 +7,7 @@
  * SANITIZATION: token strings are attacker-controlled. Control characters
  * are stripped, symbols clamped to 32 chars and names to 64; never trust
  * these strings anywhere else either. ALCHEMY_API_KEY comes from
- * process.env — never commit secrets.
+ * process.env, never commit secrets.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -81,7 +81,7 @@ export function loadTokenCache(path: string): TokenCacheV1 {
       return parsed as TokenCacheV1;
     }
   } catch {
-    // missing or malformed — start fresh
+    // missing or malformed, start fresh
   }
   return { schemaVersion: 1, tokens: {} };
 }

@@ -180,7 +180,7 @@ contract TargetsFacetTest is TestBase {
     }
 
     function test_setTargets_replacementZeroesOldWeights() public {
-        // target1: A/B — then target2: B/C. If A's stored weight is properly zeroed,
+        // target1: A/B, then target2: B/C. If A's stored weight is properly zeroed,
         // re-submitting A/B must price A's re-entry at 0.5e18 in the delta math:
         // delta = 0.5 (A: 0→0.5) + 0 (B) + 0.5 (C: 0.5→0) = 1.0e18.
         // A stale A weight of 0.5e18 would instead yield delta 0.5e18 and slip below the cap.

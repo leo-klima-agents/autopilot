@@ -24,7 +24,7 @@ function cellColor(w: number): string {
   return `rgb(${mix(18, 111)}, ${mix(23, 211)}, ${mix(30, 166)})`;
 }
 
-/** Container width via ResizeObserver — the heat-map stretches like the chart.
+/** Container width via ResizeObserver, the heat-map stretches like the chart.
  *  Shared with EarningsHeatmap. */
 export function useContainerWidth(): [React.RefObject<HTMLDivElement>, number] {
   const ref = useRef<HTMLDivElement>(null as unknown as HTMLDivElement);
@@ -81,7 +81,7 @@ export function AllocationHeatmap({
                 {name.length > 24 ? `${name.slice(0, 23)}…` : name}
               </text>
               {times.map((ts, i) => {
-                // a cell covers [tᵢ, tᵢ₊₁) — allocation holds between samples
+                // a cell covers [tᵢ, tᵢ₊₁), allocation holds between samples
                 const left = x(ts);
                 const right = i + 1 < times.length ? x(times[i + 1]!) : gridRight;
                 return (

@@ -1,7 +1,7 @@
 name: Fork tests
 
 # Nightly + PRs labeled `fork-tests` (brief §8.3). Requires the BASE_RPC_URL repository
-# secret — set by a maintainer; local env does NOT propagate to CI (brief §11).
+# secret, set by a maintainer; local env does NOT propagate to CI (brief §11).
 on:
   schedule:
     - cron: "17 3 * * *"

@@ -12,11 +12,11 @@ import {
     IAeroV3RewardsDraft
 } from "../../interfaces/external/IAeroV3Draft.sol";
 
-/// @title AeroFacet — ⚠️ DRAFT (M2), rewrite against published code before any funds move
+/// @title AeroFacet, ⚠️ DRAFT (M2), rewrite against published code before any funds move
 /// @notice v3 (Aero) integration drafted from the metadex-specs Idea Drafts. Expect to
-///         write this facet twice (P8): this draft fixes the SHAPE — createStake with the
+///         write this facet twice (P8): this draft fixes the SHAPE, createStake with the
 ///         permanent opt-in (F8), continuous allocation under a per-position cooldown
-///         (F1/F2), streamed revenue claims (F10) — while every external signature is
+///         (F1/F2), streamed revenue claims (F10), while every external signature is
 ///         provisional (F22). The September protocol transition is a single diamondCut
 ///         swapping AerodromeFacet's selectors for this facet's.
 /// @dev NOT in the default deployment manifest. Fork-test against published Aero code
@@ -67,7 +67,7 @@ contract AeroFacet is IProtocolFacet {
 
     /// @inheritdoc IProtocolFacet
     /// @dev v3 compounding is expected to route through the MetaRouter batch flow (F16);
-    ///      the draft cannot bind to an unpublished command encoding — finalize at M5.
+    ///      the draft cannot bind to an unpublished command encoding, finalize at M5.
     function compound(uint256, uint256, bytes calldata) external returns (uint256) {
         LibAccess.enforceSelfOrOwner();
         revert DraftNotFinalized();

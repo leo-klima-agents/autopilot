@@ -35,7 +35,7 @@ contract TrancheFacet {
         emit TrancheCreated(trancheId, tokenId, amount);
     }
 
-    /// @notice unregister a tranche (position stays in custody — rescue/migration is
+    /// @notice unregister a tranche (position stays in custody, rescue/migration is
     ///         CustodyFacet's job). Used during the September migration runbook.
     function retireTranche(uint256 trancheId) external {
         LibDiamond.enforceIsContractOwner();

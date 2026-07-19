@@ -1,5 +1,5 @@
 /**
- * Tranche/cooldown scheduler — the pure state machine used identically by
+ * Tranche/cooldown scheduler, the pure state machine used identically by
  * the simulator, the keeper, and fixture generation. Fixture-relevant (P2):
  * loop-simple, integer-only, deterministic under map insertion order (keys
  * are always sorted), replayable in Solidity.

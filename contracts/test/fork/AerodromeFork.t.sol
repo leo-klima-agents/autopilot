@@ -42,7 +42,7 @@ interface IMinterProbe {
     function updatePeriod() external returns (uint256);
 }
 
-// Aerodrome Voter custom errors, asserted empirically (§8.3) — never assumed from docs
+// Aerodrome Voter custom errors, asserted empirically (§8.3), never assumed from docs
 error AlreadyVotedOrDeposited();
 error DistributeWindow();
 
@@ -52,7 +52,7 @@ error DistributeWindow();
 ///         facet swap. Skips itself when BASE_RPC_URL is unset so `forge test` stays
 ///         offline-green; CI runs it nightly and on labeled PRs (fork-tests.yml).
 contract AerodromeForkTest is Test, DiamondBuilder {
-    // Base mainnet addresses (ARCHITECTURE.md A10 — README deployment table,
+    // Base mainnet addresses (ARCHITECTURE.md A10, README deployment table,
     // cross-checked against sugar deployments/base.env; probed on-chain in setUp)
     address internal constant VOTER = 0x16613524e02ad97eDfeF371bC883F2F5d6C480A5;
     address internal constant VOTING_ESCROW = 0xeBf418Fe2512e7E6bd9b87a8F0f294aCDC67e6B4;
@@ -115,7 +115,7 @@ contract AerodromeForkTest is Test, DiamondBuilder {
         deal(AERO, d.diamond, 100_000e18);
     }
 
-    /// @dev pick the first two factory pools with live gauges — discovered on-chain at
+    /// @dev pick the first two factory pools with live gauges, discovered on-chain at
     ///      the pinned block, nothing invented
     function _discoverPools() internal {
         IPoolFactoryProbe factory = IPoolFactoryProbe(POOL_FACTORY);
@@ -198,7 +198,7 @@ contract AerodromeForkTest is Test, DiamondBuilder {
     }
 
     // ------------------------------------------------------------------
-    // v2 constraints asserted empirically (A2/A4) — the P3 justification
+    // v2 constraints asserted empirically (A2/A4), the P3 justification
     // ------------------------------------------------------------------
 
     function test_fork_sameEpochRevoteReverts_AlreadyVotedOrDeposited() public onlyForked {

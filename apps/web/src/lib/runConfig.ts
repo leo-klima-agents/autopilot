@@ -87,7 +87,7 @@ export const PRESETS: { id: string; label: string; blurb: string; config: RunCon
     id: "latency-race",
     label: "Latency race",
     blurb:
-      "ContinuousGreedy at a one-block cooldown: reactive returns at this cadence converge to the system average minus costs — the demonstration of its own futility (P3).",
+      "ContinuousGreedy at a one-block cooldown: reactive returns at this cadence converge to the system average minus costs, the demonstration of its own futility (P3).",
     config: {
       strategy: { kind: "continuousGreedy", config: {} },
       model: {
@@ -126,7 +126,7 @@ export const PRESETS: { id: string; label: string; blurb: string; config: RunCon
 ];
 
 // ---------------------------------------------------------------------------
-// URL hash serialization — the whole config, base64url-encoded JSON
+// URL hash serialization, the whole config, base64url-encoded JSON
 // ---------------------------------------------------------------------------
 
 function toBase64Url(s: string): string {

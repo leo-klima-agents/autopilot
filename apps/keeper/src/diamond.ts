@@ -1,6 +1,6 @@
 /**
  * Typed viem clients over the diamond's merged ABI (assembled from facets.json by
- * scripts/merged-abi.mjs — the single ABI callers load against the one custody address).
+ * scripts/merged-abi.mjs, the single ABI callers load against the one custody address).
  */
 import {
   createPublicClient,
@@ -39,7 +39,7 @@ export interface KeeperContext {
   diamond: Address;
 }
 
-/** Secrets come from the environment only (brief §11) — never from argv or files. */
+/** Secrets come from the environment only (brief §11), never from argv or files. */
 export function contextFromEnv(): KeeperContext {
   const rpcUrl = process.env.BASE_RPC_URL;
   if (!rpcUrl) throw new Error("BASE_RPC_URL is not set");

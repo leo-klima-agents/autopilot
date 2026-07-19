@@ -1,7 +1,7 @@
 /**
  * Seeded synthetic scenario generator. Emits the same DatasetV1 schema the
  * sugar indexer produces, so the backtester consumes real and synthetic
- * data interchangeably. Entirely bigint + seeded PRNG — deterministic and
+ * data interchangeably. Entirely bigint + seeded PRNG, deterministic and
  * fixture-safe (no floats anywhere).
  *
  * Calibration constants (documented approximations of empirical Aerodrome
@@ -9,7 +9,7 @@
  * - Base weekly fees are log-uniform-ish across pools: $1k × 2^k for
  *   k ∈ [0, 10), i.e. ~$1k to ~$512k per week.
  * - persistent: multiplicative weekly drift uniform in [0.90, 1.10].
- * - bursty: persistent plus a Poisson-like burst overlay — each epoch has a
+ * - bursty: persistent plus a Poisson-like burst overlay, each epoch has a
  *   1/10 chance of a 5× revenue burst (wash-trading / incident weeks).
  * - regime-switching: 2-state Markov chain, P(stay) = 9/10 per epoch; the
  *   high state multiplies revenue 4× (meta rotations, incentive programs).
@@ -59,7 +59,7 @@ export function generateSyntheticDataset(config: SyntheticConfig): DatasetV1 {
 
   const pools: PoolRecord[] = [];
   for (let p = 0; p < poolCount; p += 1) {
-    // Base weekly fees: $1k × 2^k, k in [0, 10) — heavy-tailed across pools.
+    // Base weekly fees: $1k × 2^k, k in [0, 10), heavy-tailed across pools.
     const base = 1_000n * WAD * (1n << prng.nextBigintBelow(10n));
     let level = base;
     let regimeHigh = prng.nextBigintBelow(4n) === 0n; // 25% start in high state

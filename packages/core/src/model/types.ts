@@ -122,7 +122,7 @@ export interface ProtocolModel {
   earned(positionId: string): Wad;
   /**
    * Accrued-and-unclaimed revenue broken down by source pool. The values sum
-   * exactly to `earned(positionId)` — both are incremented by the same bigint
+   * exactly to `earned(positionId)`, both are incremented by the same bigint
    * payouts. Pools with zero accrual may be absent. Returns a snapshot copy.
    */
   earnedByPool(positionId: string): ReadonlyMap<PoolId, Wad>;
@@ -140,7 +140,7 @@ export interface ProtocolModel {
   /**
    * Total revenue produced per pool since model start, on the same accrual
    * timing as `totals().revenueTotal` (epoch models lump at flips, continuous
-   * models stream) — the values sum exactly to it. Returns a snapshot copy.
+   * models stream), the values sum exactly to it. Returns a snapshot copy.
    */
   revenueByPool(): ReadonlyMap<PoolId, Wad>;
 }

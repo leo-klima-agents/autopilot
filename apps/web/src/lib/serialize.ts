@@ -1,7 +1,7 @@
 /**
  * Explicit worker-boundary serialization. BacktestResult carries bigints
  * (Wads), which structured clone supports but our chart layer wants plain
- * floats — so the worker sends a display-ready shape and nothing downstream
+ * floats, so the worker sends a display-ready shape and nothing downstream
  * touches bigint again. Conversion Wad → float is analytics-only (P2 allows
  * floats outside fixture paths).
  */
@@ -10,7 +10,7 @@ import type { BuiltRun } from "./buildRun.js";
 export interface DisplayResult {
   totalReturn: number;
   marketBenchmarkReturn: number;
-  /** Foresight (revenue-proportional) benchmark return — the ceiling reference. */
+  /** Foresight (revenue-proportional) benchmark return, the ceiling reference. */
   revenueBenchmarkReturn: number;
   returnVsMarket: number;
   maxDrawdownVsMarket: number;
@@ -28,7 +28,7 @@ export interface DisplayResult {
     weights: number[][];
     /** Cumulative revenue earned from each pool (raw units, not per weight). */
     earned: number[][];
-    /** Pool share of GLOBAL weight — the market benchmark's holdings. */
+    /** Pool share of GLOBAL weight, the market benchmark's holdings. */
     marketBenchmarkWeights: number[][];
     /** Cumulative revenue the market benchmark portfolio of our size earned. */
     marketBenchmarkEarned: number[][];

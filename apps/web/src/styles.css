@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------------
-   Aero Autopilot — Strategy Replay Console
+   Aero Autopilot: Strategy Replay Console
    Design: a flight-instrument panel (EFIS), not a dashboard template.
-   Type: B612 / B612 Mono — the typeface Airbus commissioned for cockpit
+   Type: B612 / B612 Mono, the typeface Airbus commissioned for cockpit
    displays; every numeral on this page is data and set in the mono cut.
    Palette (committed dark, per instrument convention):
      bezel      #0B0E12   instrument face #12171E   bezel edge #26303B
@@ -9,7 +9,7 @@
      phosphor   #6FD3A6   (our equity, GO states)
      amber      #E8B44F   (benchmark, cautions)
      alert      #E0654F   (drawdown, wash-bait, failures)
-   Signature: the flight-director strip under the masthead — a horizon line
+   Signature: the flight-director strip under the masthead, a horizon line
    that becomes the replay progress indicator while a run is in flight.
 --------------------------------------------------------------------------- */
 

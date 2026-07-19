@@ -4,13 +4,13 @@
  *
  * PRICE-DATE CONVENTION: an epoch's revenue is priced at the UTC calendar date
  * of its Thursday-00:00 start. Fees accrue across the whole week, so any single
- * date is an approximation; the start date is the reproducible choice — by the
+ * date is an approximation; the start date is the reproducible choice, by the
  * time a weekly build runs, that day's price is final, and re-runs price the
  * same epoch identically.
  *
  * FLOAT BOUNDARY: the API returns decimal price strings. `parseUsdToWad`
  * converts them once, exactly, at this ingestion boundary; everything
- * downstream is bigint (P2 allows floats outside fixture paths — and even
+ * downstream is bigint (P2 allows floats outside fixture paths, and even
  * here a float is only touched for scientific-notation values).
  *
  * Methodology follows github.com/ldeso/aerodrome (fetch.ts): daily interval,
@@ -35,8 +35,8 @@ export interface PriceCacheV1 {
   prices: Record<string, Record<string, string>>;
   /**
    * addrLower -> ISO date of the attempt. Presence means Alchemy returned
-   * HTTP 400 (token not priceable); re-runs skip it. A separate map — never a
-   * magic value inside `prices` — so every price entry is a strict decimal.
+   * HTTP 400 (token not priceable); re-runs skip it. A separate map, never a
+   * magic value inside `prices`, so every price entry is a strict decimal.
    */
   unpriceable: Record<string, string>;
 }
@@ -73,7 +73,7 @@ export function savePriceCache(path: string, cache: PriceCacheV1): void {
 /**
  * Parses an Alchemy price value ("3245.1234", "0.000021") to Wad, exactly:
  * split on ".", pad/truncate the fraction to 18 digits (floor). Scientific
- * notation falls back to Number() — the one float touch, at this boundary.
+ * notation falls back to Number(), the one float touch, at this boundary.
  * Throws on non-numeric input.
  */
 export function parseUsdToWad(value: string): bigint {
@@ -93,7 +93,7 @@ export function priceDateForEpoch(ts: number): string {
 }
 
 /** Exact price lookup: undefined when the date is missing (pre-listing gap)
- *  or the token is unpriceable. No nearest-date fallback — callers skip and
+ *  or the token is unpriceable. No nearest-date fallback, callers skip and
  *  count the amount instead. */
 export function priceWadAt(cache: PriceCacheV1, token: string, date: string): bigint | undefined {
   const value = cache.prices[token.toLowerCase()]?.[date];
@@ -158,7 +158,7 @@ export async function fetchHistoricalPrices(
 
     for (let chunkStart = spanStart; chunkStart < spanEnd; chunkStart += CHUNK_S) {
       const chunkEnd = Math.min(chunkStart + CHUNK_S, spanEnd);
-      // HTTP 400 is a definitive "cannot price this token" — returned as null
+      // HTTP 400 is a definitive "cannot price this token", returned as null
       // without burning retries; transient failures go through withRetry.
       const points = await withRetry(
         `prices(${token})`,
@@ -183,7 +183,7 @@ export async function fetchHistoricalPrices(
       );
       if (points === null) {
         cache.unpriceable[token] = new Date().toISOString();
-        log(`  prices: ${token} not priceable by Alchemy — recorded sentinel`);
+        log(`  prices: ${token} not priceable by Alchemy, recorded sentinel`);
         unpriceable = true;
         break;
       }

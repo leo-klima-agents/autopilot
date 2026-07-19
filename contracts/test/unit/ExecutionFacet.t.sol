@@ -26,7 +26,7 @@ contract ExecutionFacetTest is TestBase {
     }
 
     // ------------------------------------------------------------------
-    // rotate — access + guard branches
+    // rotate, access + guard branches
     // ------------------------------------------------------------------
 
     function test_rotate_keeperOnly() public {
@@ -48,7 +48,7 @@ contract ExecutionFacetTest is TestBase {
 
     function test_rotate_noTargetSet() public {
         uint256 t1 = _createTranche(1_000e18);
-        vm.warp(block.timestamp + 2 days); // cooldown elapsed — target check must fire first
+        vm.warp(block.timestamp + 2 days); // cooldown elapsed, target check must fire first
         vm.prank(KEEPER);
         vm.expectRevert(ExecutionFacet.NoTargetSet.selector);
         ExecutionFacet(d.diamond).rotate(t1);
@@ -145,7 +145,7 @@ contract ExecutionFacetTest is TestBase {
         _setTarget5050();
         uint256 t1 = _createTranche(1_000e18);
         vm.prank(KEEPER);
-        ExecutionFacet(d.diamond).rotate(t1); // allocate 50/50 A/B — sole allocator
+        ExecutionFacet(d.diamond).rotate(t1); // allocate 50/50 A/B, sole allocator
 
         vm.warp(block.timestamp + 1 days);
         MockAeroFacet(d.diamond).mockSettle();

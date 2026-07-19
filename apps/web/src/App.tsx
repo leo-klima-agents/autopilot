@@ -21,7 +21,7 @@ import type { DisplayResult, WorkerResponse } from "./lib/serialize.js";
 const STALE_AFTER_DAYS = 14;
 const DEBOUNCE_MS = 300;
 
-/** The doc pages, in reading order — one hash each, linked in the masthead. */
+/** The doc pages, in reading order, one hash each, linked in the masthead. */
 type DocView = "theory" | "strategies" | "guide" | "vocabulary" | "logbook";
 const DOC_PAGES: { view: DocView; hash: string; label: string }[] = [
   { view: "theory", hash: "#theory", label: "theory" },
@@ -55,13 +55,13 @@ function ViewToggle({
 
 /** Placard suffix for the non-strategy heat-map views. */
 function viewSuffix(view: HeatmapView): string {
-  if (view === "market") return " — market benchmark";
-  if (view === "revenue") return " — revenue benchmark (foresight)";
+  if (view === "market") return ": market benchmark";
+  if (view === "revenue") return ": revenue benchmark (foresight)";
   return "";
 }
 
 /** Live replay state: the last good result stays on the instruments while a
- *  newer run computes (or a half-typed config errors) — no flicker, no button. */
+ *  newer run computes (or a half-typed config errors), no flicker, no button. */
 interface LiveState {
   result: DisplayResult | null;
   elapsedMs: number;
@@ -98,7 +98,7 @@ export function App() {
     const worker = new Worker(new URL("./worker/backtest.worker.ts", import.meta.url), { type: "module" });
     worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
       const msg = event.data;
-      if (msg.seq !== seqRef.current) return; // stale run — a newer config superseded it
+      if (msg.seq !== seqRef.current) return; // stale run, a newer config superseded it
       busyRef.current = false;
       if (msg.type === "done") {
         setLive({ result: msg.result, elapsedMs: msg.elapsedMs, running: false, error: null });
@@ -127,13 +127,13 @@ export function App() {
           if (config.data.kind === "historical") {
             if (datasetRef.current === null) {
               const res = await fetch(`${import.meta.env.BASE_URL}data/aerodrome-epochs.v1.json`);
-              if (!res.ok) throw new Error("historical dataset not published yet — run `pnpm data` and redeploy");
+              if (!res.ok) throw new Error("historical dataset not published yet, run `pnpm data` and redeploy");
               datasetRef.current = await res.json();
             }
             historical = datasetRef.current;
           }
           if (seq !== seqRef.current) return; // superseded while fetching
-          history.replaceState(null, "", configToHash(config)); // replace, never push — no history spam
+          history.replaceState(null, "", configToHash(config)); // replace, never push, no history spam
           // true cancellation: a worker mid-computation can't be interrupted, so a
           // superseding run kills it and posts to a fresh one instead of queueing
           if (busyRef.current) {
@@ -252,7 +252,7 @@ export function App() {
             <p className="preset-blurb">
               {preset
                 ? preset.blurb
-                : "Pick a story scenario, or file your own flight plan — the instruments replay live as you adjust it."}
+                : "Pick a story scenario, or file your own flight plan, the instruments replay live as you adjust it."}
             </p>
           </div>
 
@@ -268,14 +268,14 @@ export function App() {
         <section aria-label="instruments">
           {staleness !== null && (
             <div className="banner">
-              Historical dataset is {staleness} days old — replaying the last published data (the data pipeline
+              Historical dataset is {staleness} days old, replaying the last published data (the data pipeline
               refreshes weekly).
             </div>
           )}
           {live.error && (
             <div className="banner alert" role="status">
               Replay failed: {live.error}
-              {live.result ? " — showing the last good run." : ""}
+              {live.result ? ", showing the last good run." : ""}
             </div>
           )}
 
@@ -299,15 +299,15 @@ export function App() {
                 <div className="legend">
                   <span>
                     <span className="chip" style={{ background: "#6FD3A6" }} />
-                    strategy — cumulative {live.result.revenueUnit === "usd" ? "USD " : ""}revenue per unit weight
+                    strategy: cumulative {live.result.revenueUnit === "usd" ? "USD " : ""}revenue per unit weight
                   </span>
                   <span>
                     <span className="chip" style={{ background: "#E8B44F" }} />
-                    market bench — global revenue ÷ global weight
+                    market bench: global revenue ÷ global weight
                   </span>
                   <span>
                     <span className="chip" style={{ background: "#6FB8D3" }} />
-                    revenue bench — epoch's revenue shares, held with foresight
+                    revenue bench: each week's revenue shares, held with foresight
                   </span>
                 </div>
               </div>
@@ -330,7 +330,7 @@ export function App() {
             !live.error && (
               <div className="panel">
                 <div className="empty">
-                  {live.running ? "Replaying the market in a worker — the panel stays live." : "Warming up…"}
+                  {live.running ? "Replaying the market in a worker; the panel stays live." : "Warming up…"}
                 </div>
               </div>
             )

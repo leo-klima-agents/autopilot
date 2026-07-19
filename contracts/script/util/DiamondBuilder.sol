@@ -19,7 +19,7 @@ import {ManifestLib} from "./ManifestLib.sol";
 /// @title DiamondBuilder
 /// @notice Shared assembly logic for Deploy.s.sol and the test harness: deploys the
 ///         standard facet set and produces the genesis cut from facets.json, so what CI
-///         checked is exactly what gets cut (rule: Cut.s.sol / this builder only — no
+///         checked is exactly what gets cut (rule: Cut.s.sol / this builder only, no
 ///         hand-rolled cuts).
 contract DiamondBuilder {
     struct Deployed {

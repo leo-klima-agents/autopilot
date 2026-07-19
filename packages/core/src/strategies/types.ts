@@ -10,7 +10,7 @@ import { mulDiv, WAD } from "../math/fixed.js";
 import type { MarketState, PoolId, TargetAllocation, Wad } from "../model/types.js";
 import type { TrancheState } from "../scheduler/scheduler.js";
 
-/** Hand-rolled JSON-schema property (no zod — consumed by the web UI). */
+/** Hand-rolled JSON-schema property (no zod, consumed by the web UI). */
 export interface ConfigSchemaProperty {
   type: "number" | "integer" | "string" | "boolean" | "array";
   description: string;

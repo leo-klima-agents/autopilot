@@ -10,7 +10,7 @@ import {LibDiamond} from "../libraries/LibDiamond.sol";
 
 /// @title CustodyFacet
 /// @notice ERC-721 receipt gated to the configured escrow, plus owner rescue of any
-///         NFT/token — a feature under single-owner custody (P6), not a bug. Custody
+///         NFT/token, a feature under single-owner custody (P6), not a bug. Custody
 ///         state never moves: every upgrade is a facet swap around the NFTs.
 contract CustodyFacet {
     using SafeERC20 for IERC20;
@@ -34,7 +34,7 @@ contract CustodyFacet {
         return LibVaultStorage.custody().acceptedCollection;
     }
 
-    /// @notice Owner-only escape hatch for any NFT — including position NFTs during the
+    /// @notice Owner-only escape hatch for any NFT, including position NFTs during the
     ///         September migration (exit → migrate → re-stake, OPERATIONS.md §4).
     function rescueERC721(address collection, uint256 tokenId, address to) external {
         LibDiamond.enforceIsContractOwner();

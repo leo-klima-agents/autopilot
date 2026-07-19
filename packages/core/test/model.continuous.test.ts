@@ -78,7 +78,7 @@ describe("ContinuousModel revenue streaming", () => {
       for (const amount of byPool.values()) sum += amount;
       expect(sum).toBe(model.earned(id));
     }
-    // p2 is 100% on pool a throughout — its breakdown has exactly one entry
+    // p2 is 100% on pool a throughout; its breakdown has exactly one entry
     expect([...model.earnedByPool("p2").keys()]).toEqual(["a"]);
     // p1 earned from b in both segments, from a only in the first
     expect(model.earnedByPool("p1").get("b")! > 0n).toBe(true);

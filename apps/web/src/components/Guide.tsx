@@ -2,7 +2,7 @@
  * The operator's guide: every term, input, strategy, and instrument on the
  * console, explained for someone who has never seen a ve(3,3) exchange from
  * the inside. Content mirrors the actual implementation in
- * @aero-autopilot/core — when the code and this page disagree, that is a bug.
+ * @aero-autopilot/core, when the code and this page disagree, that is a bug.
  */
 
 export function Guide({ onClose }: { onClose: () => void }) {
@@ -15,7 +15,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
         <h2>Operator's guide</h2>
         <p>
           The operator's manual for the replay console: every control and instrument, in the order you meet them on
-          screen. It assumes the concepts — the Theory page develops them, the Strategies page covers the decision
+          screen. It assumes the concepts, the Theory page develops them, the Strategies page covers the decision
           rules in the <code>engine</code> dropdown, and the Vocabulary page defines every term. If this is your
           first visit, read those first.
         </p>
@@ -30,7 +30,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
 
         <h3>Strategy</h3>
         <p>
-          <strong>engine</strong> picks the decision rule — the four are explained on the Strategies page. The
+          <strong>engine</strong> picks the decision rule, the four are explained on the Strategies page. The
           fields below it are the selected strategy's own knobs:
         </p>
         <dl>
@@ -41,9 +41,9 @@ export function Guide({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>cadenceSec</dt>
           <dd>How often the strategy re-evaluates and (possibly) proposes a new allocation.</dd>
-          <dt>submitOffsetSec (Revenue mirror — weekly only)</dt>
+          <dt>submitOffsetSec (Revenue mirror, weekly variant only)</dt>
           <dd>
-            How many seconds before the Thursday flip to submit. Voting late uses the freshest information — voting
+            How many seconds before the Thursday flip to submit. Voting late uses the freshest information; voting
             early locks you in while better information keeps arriving.
           </dd>
           <dt>buckets (Persistence carry)</dt>
@@ -57,7 +57,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dd>
             The (s,S) trigger: a new target is only proposed when it differs from the last one by more than this L1
             distance (sum of absolute per-pool weight changes). Below the threshold, the strategy deliberately sits
-            still — churn costs turnover and burns cooldowns.
+            still; churn costs turnover and burns cooldowns.
           </dd>
           <dt>thresholdWad / costWad (Continuous greedy)</dt>
           <dd>
@@ -70,10 +70,10 @@ export function Guide({ onClose }: { onClose: () => void }) {
         <dl>
           <dt>economy</dt>
           <dd>
-            The rule set, not the data. <em>Aero v3 — continuous</em>: revenue streams every second, allocations move
-            any time subject to the cooldown. <em>Aerodrome v2 — weekly epochs</em>: one allocation change per epoch,
+            The rule set, not the data. <em>Aero v3 (continuous)</em>: revenue streams every second, allocations move
+            any time subject to the cooldown. <em>Aerodrome v2 (weekly epochs)</em>: one allocation change per epoch,
             revenue settles at each flip, voting blocked in the first hour after a flip (the distribute window; the
-            last-hour whitelist gate is a separate, optional restriction — Theory §2). The timeline (real dates vs
+            last-hour whitelist gate is a separate, optional restriction; see Theory §2). The timeline (real dates vs
             relative days) comes from the market data panel, not from this choice.
           </dd>
           <dt>allocation cooldown</dt>
@@ -89,7 +89,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dt>emissions / day</dt>
           <dd>
             Whole tokens per day the protocol emits across all pools. Only affects the emission-steering instruments
-            (on/off-target) and cap/burn accounting — allocator revenue comes from fees.
+            (on/off-target) and cap/burn accounting; allocator revenue comes from fees.
           </dd>
         </dl>
 
@@ -99,14 +99,14 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dd>
             <em>Aerodrome historical</em>: real per-epoch fees and bribes for the top ~30 pools by trailing
             revenue (Slipstream CL and v2 AMM pools alike), indexed on-chain and priced in USD from daily
-            Alchemy price history — the x axis shows real dates and the instruments show dollars. <em>Synthetic scenario</em>: a generated market, exactly reproducible from
-            the seed — the x axis shows relative days (d0, d7, …) because its calendar anchor is arbitrary.
+            Alchemy price history; the x axis shows real dates and the instruments show dollars. <em>Synthetic scenario</em>: a generated market, exactly reproducible from
+            the seed; the x axis shows relative days (d0, d7, …) because its calendar anchor is arbitrary.
           </dd>
           <dt>seed</dt>
-          <dd>The random seed. Same seed, same market, always — this is what makes shared links exact.</dd>
+          <dd>The random seed. Same seed, same market, always; this is what makes shared links exact.</dd>
           <dt>fee process</dt>
           <dd>
-            The personality of synthetic fees. <em>persistent</em>: levels drift slowly — yesterday predicts today.
+            The personality of synthetic fees. <em>persistent</em>: levels drift slowly; yesterday predicts today.
             <em> bursty</em>: occasional 5× fee weeks land at random. <em>regime-switching</em>: pools flip between a
             quiet state and a 4× hot state and stay there for a while.
           </dd>
@@ -123,7 +123,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dt>duration, weeks</dt>
           <dd>
             Simulated length (clamped to the dataset's coverage). Historical runs anchor at the most recent complete
-            epoch and replay backwards from there — a 12-week run covers the latest 12 weeks, and the still-in-progress
+            epoch and replay backwards from there; a 12-week run covers the latest 12 weeks, and the still-in-progress
             week at indexing time is excluded. Synthetic runs always start at the beginning of the generated series.
           </dd>
           <dt>tranches / tokens per tranche</dt>
@@ -154,7 +154,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
             Aero's published emissions-accuracy methodology: at every sample, compare each pool's share of emissions
             with its revenue-optimal share. Within 2 percentage points counts as on-target; more than 5pp off counts
             as off-target. Aero's own backtests report ~48% on-target for weekly voting, ~64% with a 48h revote, ~70%
-            with gauge caps added — this console reproduces the measurement so you can see where a strategy lands.
+            with gauge caps added; this console reproduces the measurement so you can see where a strategy lands.
           </dd>
           <dt>Turnover</dt>
           <dd>
@@ -169,7 +169,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dt>Equity chart</dt>
           <dd>
             Solid phosphor line: your cumulative return. Dashed amber: the market benchmark. Dashed cyan: the
-            revenue benchmark. Your line should live between the two dashed ones — how far up that band it sits is
+            revenue benchmark. Your line should live between the two dashed ones; how far up that band it sits is
             the strategy's skill (Theory §6). Time ticks land on epoch flips (Thursdays, UTC).
           </dd>
           <dt>Allocation heat-map</dt>
@@ -201,7 +201,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dt>Early allocator</dt>
           <dd>
             A regime-switching market with a slow crowd (3-day lag). Persistence carry takes weight in a pool as it
-            turns hot, earns an outsized revenue share while alone, and cedes it as the herd arrives — the cbBTC
+            turns hot, earns an outsized revenue share while alone, and cedes it as the herd arrives: the cbBTC
             story from Aero's economic case, in miniature.
           </dd>
           <dt>Latency race</dt>
@@ -216,7 +216,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
           </dd>
         </dl>
         <p>
-          Every run — presets included — lives entirely in the URL. "Copy link to this run" hands someone your exact
+          Every run (presets included) lives entirely in the URL. "Copy link to this run" hands someone your exact
           flight plan, and the deterministic core guarantees their replay reproduces yours exactly.
         </p>
       </div>

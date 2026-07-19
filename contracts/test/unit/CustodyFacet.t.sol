@@ -26,7 +26,7 @@ contract CustodyFacetTest is TestBase {
     }
 
     // ------------------------------------------------------------------
-    // onERC721Received — msg.sender must be the accepted collection
+    // onERC721Received, msg.sender must be the accepted collection
     // ------------------------------------------------------------------
 
     function test_acceptedCollection_isEscrow() public view {

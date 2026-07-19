@@ -15,7 +15,7 @@ import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Recei
 ///         idempotent-guarded: re-executing a consumed init reverts, so a replayed cut
 ///         calldata cannot clobber state.
 contract DiamondInit {
-    /// @dev erc7201:aero.autopilot.init — guard namespace, registered here because it is
+    /// @dev erc7201:aero.autopilot.init, guard namespace, registered here because it is
     ///      only ever touched by inits (LibVaultStorage carries domain state).
     bytes32 internal constant INIT_SLOT = 0x01acbf6192e6faddc83344d5636fda956f6cc7ae94d2374a3d07e5f345e68800;
 
@@ -47,7 +47,7 @@ contract DiamondInit {
         }
     }
 
-    /// @notice genesis init — called once via the deploying diamondCut
+    /// @notice genesis init, called once via the deploying diamondCut
     function init(InitConfig calldata cfg) external {
         bytes32 initId = keccak256("aero.autopilot.init.genesis");
         InitGuard storage g = _guard();
@@ -66,7 +66,7 @@ contract DiamondInit {
         LibAccess.grantRole(LibAccess.STRATEGIST_ROLE, cfg.strategistSafe);
         LibAccess.grantRole(LibAccess.KEEPER_ROLE, cfg.keeper);
 
-        // protocol config — addresses are supplied by the deploy script, which verifies
+        // protocol config, addresses are supplied by the deploy script, which verifies
         // them on-chain first (Non-negotiable #2); custody accepts only the escrow
         LibVaultStorage.ProtocolConfigStorage storage pc = LibVaultStorage.protocolConfig();
         pc.voter = cfg.voter;
@@ -83,7 +83,7 @@ contract DiamondInit {
         ts.rotationCooldown = cfg.rotationCooldown;
     }
 
-    /// @notice protocol-swap init — used by the August/September facet cuts to repoint
+    /// @notice protocol-swap init, used by the August/September facet cuts to repoint
     ///         protocol config and custody at the new protocol's contracts
     function initProtocolSwap(
         bytes32 swapId,

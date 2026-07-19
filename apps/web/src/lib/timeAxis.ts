@@ -1,7 +1,7 @@
 /**
  * Time-axis labeling: historical runs carry real unix timestamps, so ticks
  * and tooltips show real UTC dates; synthetic runs are anchored to an
- * arbitrary constant date, where real dates would mislead — they keep
+ * arbitrary constant date, where real dates would mislead; they keep
  * relative day labels (d0, d7, …). All formatting is UTC: the underlying
  * epochs flip at Thursday 00:00 UTC, and a viewer's local zone must not
  * shift which week a point appears in.

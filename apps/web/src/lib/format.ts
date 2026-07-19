@@ -1,9 +1,9 @@
 /** Shared number formatting for the instruments. `moneyFor` applies the
  *  revenueUnit convention: "$" prefix for Alchemy-priced historical runs,
- *  plain index units otherwise — every panel must agree on this. */
+ *  plain index units otherwise, every panel must agree on this. */
 
 export function fmt(n: number, digits = 4): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "n/a";
   if (Math.abs(n) >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
   return n.toLocaleString("en-US", { maximumFractionDigits: digits });
 }

@@ -1,6 +1,6 @@
 /**
- * Exact USD valuation of an epoch's reward amounts. Pure — prices and
- * decimals are injected — so the arithmetic is unit-testable offline.
+ * Exact USD valuation of an epoch's reward amounts. Pure, prices and
+ * decimals are injected, so the arithmetic is unit-testable offline.
  *
  * Per amount: usdWad = amountRaw × priceWad / 10^decimals (bigint floor).
  * The bucket totals are sums of independently-floored terms, so they are

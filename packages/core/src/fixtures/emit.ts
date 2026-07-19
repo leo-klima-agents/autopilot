@@ -1,7 +1,7 @@
 /**
  * `pnpm fixtures` entry point: writes the differential fixture vectors into
  * contracts/test/differential/fixtures/ (created if missing). Fully
- * deterministic — fixed seeds, sorted keys — so re-running produces
+ * deterministic (fixed seeds, sorted keys) so re-running produces
  * byte-identical files.
  */
 
@@ -20,7 +20,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 /** contracts/test/differential/fixtures at the repo root. */
 export const FIXTURES_DIR = resolve(HERE, "../../../../contracts/test/differential/fixtures");
 
-/** Family seeds — fixed forever; changing them invalidates the Solidity twin. */
+/** Family seeds, fixed forever; changing them invalidates the Solidity twin. */
 export const FIXTURE_SEEDS = {
   proRata: 0x5eed_0001n,
   capBurn: 0x5eed_0002n,

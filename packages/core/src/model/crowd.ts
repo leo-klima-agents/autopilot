@@ -39,7 +39,7 @@ export interface ReactiveHerdConfig {
 }
 
 /**
- * reactiveHerd — reallocates the whole crowd weight proportionally to
+ * reactiveHerd, reallocates the whole crowd weight proportionally to
  * trailing revenue observed with a lag: score_i = revenue over
  * [now - lag - window, now - lag). Exact proportional split with
  * deterministic remainder (see splitProportionally); uniform when the
@@ -72,7 +72,7 @@ export interface WashWindow {
 }
 
 /**
- * adversarialWashBait — wraps a revenue process, pumping fake volume/fees
+ * adversarialWashBait, wraps a revenue process, pumping fake volume/fees
  * into `pool` during the scheduled windows and pulling it outside them.
  * Lag-following crowds (and naive trailing-revenue strategies) chase the
  * bait; the underlying real revenue is unchanged. Exact: fake revenue is

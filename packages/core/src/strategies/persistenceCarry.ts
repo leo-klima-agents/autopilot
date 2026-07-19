@@ -1,5 +1,5 @@
 /**
- * PersistenceCarry — persistence-weighted trailing revenue with
+ * PersistenceCarry, persistence-weighted trailing revenue with
  * (s,S)-threshold reallocation.
  *
  * Signal (all bigint-exact, per pool i over `lookbackSec` split into K

@@ -1,5 +1,5 @@
-/** Headline instruments: square gauges with EFIS color semantics —
- *  phosphor = good, amber = caution, red = negative. */
+/** Headline instruments: square gauges with EFIS color semantics
+ *  (phosphor = good, amber = caution, red = negative). */
 import type { DisplayResult } from "../lib/serialize.js";
 import { fmt, moneyFor, pct } from "../lib/format.js";
 

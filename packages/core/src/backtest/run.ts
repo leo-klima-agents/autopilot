@@ -69,17 +69,17 @@ export interface AllocationHistory {
    *  exactly to Σ model.earned(tranche) at that sample. */
   earned: Wad[][];
   /** marketBenchmarkWeights[sampleIndex][poolIndex]: the pool's Wad share of the
-   *  GLOBAL weight — the portfolio the market benchmark holds. */
+   *  GLOBAL weight, the portfolio the market benchmark holds. */
   marketBenchmarkWeights: Wad[][];
   /** marketBenchmarkEarned[sampleIndex][poolIndex]: cumulative revenue a passive
    *  market-cap-weighted portfolio of our size (portfolioWeight) would have
    *  earned from the pool, accrued per step as
-   *  mulDiv(poolRevenueDelta, portfolioWeight, globalWeight) — the per-pool
+   *  mulDiv(poolRevenueDelta, portfolioWeight, globalWeight), the per-pool
    *  twin of the equity chart's market benchmark (same timing, floor per
    *  pool instead of on the aggregate). */
   marketBenchmarkEarned: Wad[][];
   /** revenueBenchmarkWeights[sampleIndex][poolIndex]: the FORESIGHT (oracle)
-   *  benchmark's portfolio fractions — each weekly epoch it holds pools in
+   *  benchmark's portfolio fractions, each weekly epoch it holds pools in
    *  proportion to that epoch's TOTAL per-pool revenue. Not investable
    *  (weights need the epoch's realized revenue); an upper reference. */
   revenueBenchmarkWeights: Wad[][];
@@ -136,7 +136,7 @@ export interface BacktestResult {
 
 /**
  * Runs `strategy` against `model`. The model must be freshly constructed at
- * `config.startTime` with no positions registered — the backtester creates
+ * `config.startTime` with no positions registered, the backtester creates
  * one position per tranche. Strategy invocation times follow the strategy's
  * (cadenceSec, phaseSec) grid on absolute unix time, plus one bootstrap
  * invocation at startTime.
@@ -202,7 +202,7 @@ export function runBacktest(
 
   // -- revenue-proportional (oracle) benchmark --------------------------------
   // Weights fix per weekly epoch, proportional to that epoch's TOTAL per-pool
-  // revenue — knowable only at the flip. Steps buffer their (revenue delta,
+  // revenue, knowable only at the flip. Steps buffer their (revenue delta,
   // pool weight excluding our tranches) pairs; samples taken inside an open
   // epoch are back-filled when it closes. Run end closes the partial epoch
   // with revenue-to-date shares.
@@ -362,7 +362,7 @@ export function runBacktest(
     }
     const marketBefore = model.marketState();
     const globalWeight = marketBefore.totalWeight();
-    // pool weight minus our tranches at step start — the oracle benchmark's
+    // pool weight minus our tranches at step start, the oracle benchmark's
     // weight displaces ours in the denominator
     const weightsExUs = allocPools.map((pool) => {
       let ours = 0n;

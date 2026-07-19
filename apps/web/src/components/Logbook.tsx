@@ -1,7 +1,7 @@
 /**
  * The logbook: curated, reproducible runs that each demonstrate one load-
  * bearing fact about the Aero economy or the instruments. Every entry is a
- * complete RunConfig — "open run" replays it live, and the link is the same
+ * complete RunConfig, "open run" replays it live, and the link is the same
  * URL-hash any shared run uses, so entries stay bit-reproducible. Synthetic
  * entries are seeded and reproduce forever; historical figures cited in the
  * notes were read from the July 2026 dataset and drift as the weekly data
@@ -44,7 +44,7 @@ export const LOGBOOK: LogEntry[] = [
     why: "The baseline: Persistence carry against the latest twelve weeks of real Aerodrome data with a week-lagged herd. This is the run every other entry should be compared to.",
     read:
       "Start at the Vs-market gauge: the strategy beats the market benchmark and captures roughly half of the " +
-      "foresight edge. Then flip the heat-map toggle through all three portfolios — the strategy's allocation is " +
+      "foresight edge. Then flip the heat-map toggle through all three portfolios, the strategy's allocation is " +
       "visibly more concentrated than the market's, and the earned map shows CL pools carrying most of the venue's " +
       "revenue. USD figures are Alchemy-priced fees plus bribes.",
   },
@@ -59,11 +59,11 @@ export const LOGBOOK: LogEntry[] = [
       run: RUN_12W,
     },
     why:
-      "The weekly Revenue mirror votes an hour before each flip using the trailing week's revenue — the classic " +
+      "The weekly Revenue mirror votes an hour before each flip using the trailing week's revenue, the classic " +
       "$/vote late-voter play. Because Aerodrome v2 pays the WHOLE epoch's rewards to end-of-epoch vote weights, " +
       "this near-zero-effort strategy captures almost the entire foresight edge (~97% on the July 2026 dataset).",
     read:
-      "The phosphor equity line runs almost on top of the cyan revenue benchmark — mirroring realized revenue is " +
+      "The phosphor equity line runs almost on top of the cyan revenue benchmark, mirroring realized revenue is " +
       "nearly optimal when payouts are retroactive. Note how few rotations the turnover gauge shows: one vote per " +
       "epoch is all it takes. This is the run that explains why v2 needed no autopilot.",
   },
@@ -78,11 +78,11 @@ export const LOGBOOK: LogEntry[] = [
       run: RUN_12W,
     },
     why:
-      "The identical weekly mirror, same data, same crowd — only the economy is switched from v2 epochs to v3 " +
+      "The identical weekly mirror, same data, same crowd, only the economy is switched from v2 epochs to v3 " +
       "continuous streaming. Capture collapses (~97% → ~25% on the July 2026 dataset) because revenue now pays " +
       "current weights: allocating after you observe revenue earns only what comes afterward.",
     read:
-      "Open this back-to-back with the late-voter entry and compare the captured figure — the difference is " +
+      "Open this back-to-back with the late-voter entry and compare the captured figure, the difference is " +
       "retroactivity, nothing else. This pair is the project's thesis in two links: v3's design converts " +
       "\"vote where revenue was\" from a winning strategy into a losing one, leaving prediction as the only edge.",
   },
@@ -97,7 +97,7 @@ export const LOGBOOK: LogEntry[] = [
       run: { ...RUN_12W, durationWeeks: 16 },
     },
     why:
-      "Water-filling against a static equal-weight crowd on persistent synthetic revenue: captured exceeds 100% — " +
+      "Water-filling against a static equal-weight crowd on persistent synthetic revenue: captured exceeds 100%, " +
       "the strategy finishes ABOVE the revenue benchmark, with no foresight. Proof that revenue-proportional is " +
       "not the ceiling (Theory §7): the optimal response concentrates where revenue is high relative to the " +
       "crowd's weight, and a static crowd is maximally exploitable.",
@@ -116,11 +116,11 @@ export const LOGBOOK: LogEntry[] = [
     },
     why:
       "The baseline run with one change: the herd's information lag drops from seven days to one. The foresight " +
-      "edge (revenue bench − market bench) shrinks by roughly two thirds and capture collapses to near zero — the " +
+      "edge (revenue bench − market bench) shrinks by roughly two thirds and capture collapses to near zero, the " +
       "market got efficient, and there was almost nothing left to win.",
     read:
       "Compare the gap between the two dashed lines here and in the baseline entry: that gap IS the edge, and it " +
-      "belongs to the market, not the strategy. A flat vs-market with a collapsed edge is not strategy failure — " +
+      "belongs to the market, not the strategy. A flat vs-market with a collapsed edge is not strategy failure, " +
       "it is the signal to cut turnover. This is the structural trend to expect as the venue's tooling matures.",
   },
   {
@@ -129,11 +129,11 @@ export const LOGBOOK: LogEntry[] = [
     config: presetConfig("latency-race"),
     why:
       "Continuous greedy at a one-block cooldown against a one-hour-lagged crowd on bursty revenue. It captures a " +
-      "high fraction of the edge — but look at how small the edge is: with a crowd this fast, the benchmarks " +
+      "high fraction of the edge, but look at how small the edge is: with a crowd this fast, the benchmarks " +
       "nearly touch, and reactive returns converge to the system average. Speed alone demonstrates its own " +
       "futility (design principle P3: sub-weekly value is simulation-only).",
     read:
-      "The three equity lines almost coincide — read the absolute vs-market number, not the captured percentage. " +
+      "The three equity lines almost coincide, read the absolute vs-market number, not the captured percentage. " +
       "A high capture of a vanishing edge pays for no infrastructure. Compare with the edge-decays entry: same " +
       "lesson from the crowd side instead of the strategy side.",
   },
@@ -143,11 +143,11 @@ export const LOGBOOK: LogEntry[] = [
     config: presetConfig("early-allocator"),
     why:
       "A regime-switching market with a three-day-lagged crowd: persistence scoring takes weight in a pool as its " +
-      "revenue regime turns on, earns an outsized share while alone, and cedes it as the herd arrives — the " +
+      "revenue regime turns on, earns an outsized share while alone, and cedes it as the herd arrives, the " +
       "published cbBTC early-allocator story, reproduced synthetically.",
     read:
       "Watch the allocation heat-map for a row that lights up before the same row brightens in the market-bench " +
-      "view — that lead time is the whole trade. The equity gap over the market benchmark opens exactly during " +
+      "view; that lead time is the whole trade. The equity gap over the market benchmark opens exactly during " +
       "the solo window and plateaus once the crowd catches up.",
   },
   {
@@ -156,12 +156,12 @@ export const LOGBOOK: LogEntry[] = [
     config: presetConfig("wash-bait"),
     why:
       "One pool pumps fake fees in two-day bursts at 8× its organic rate. Persistence-aware scoring with a heavy " +
-      "haircut mostly refuses the bait — but notice the captured figure goes NEGATIVE. The revenue benchmark " +
+      "haircut mostly refuses the bait, but notice the captured figure goes NEGATIVE. The revenue benchmark " +
       "counts the pumped revenue as real, so the ruler itself is corrupted by adversarial data.",
     read:
       "In the earned heat-map, the baited pool's row flashes in the revenue-bench view (the benchmark chases every " +
       "burst) while staying dim in the strategy view. The lesson is a caveat, not a victory: when revenue can be " +
-      "manufactured, capture is only as trustworthy as the revenue signal — which is why persistence filtering " +
+      "manufactured, capture is only as trustworthy as the revenue signal, which is why persistence filtering " +
       "exists at all.",
   },
 ];
@@ -179,10 +179,10 @@ export function Logbook({
         <button className="copy-link" onClick={onClose}>
           Back to the console
         </button>
-        <h2>Logbook — notable flights</h2>
+        <h2>Logbook, notable flights</h2>
         <p>
           Curated runs that each demonstrate one load-bearing fact about the economy or the instruments. Every
-          entry replays live from its config — the "open run" button loads it into the console, and the link is an
+          entry replays live from its config, the "open run" button loads it into the console, and the link is an
           ordinary shareable run URL. Synthetic entries are seeded and reproduce bit-for-bit forever; figures
           quoted for historical entries were read from the July 2026 dataset and drift as the weekly data refresh
           moves the replay window. Background for all of them is on the Theory page.

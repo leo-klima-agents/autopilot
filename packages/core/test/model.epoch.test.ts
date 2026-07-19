@@ -174,7 +174,7 @@ describe("EpochModel rewards", () => {
     // p1 earned from both pools (split epoch 1, a-only epoch 2)
     expect(model.earnedByPool("p1").get("a")! > 0n).toBe(true);
     expect(model.earnedByPool("p1").get("b")! > 0n).toBe(true);
-    // p2 voted b throughout — exactly one entry
+    // p2 voted b throughout, exactly one entry
     expect([...model.earnedByPool("p2").keys()]).toEqual(["b"]);
     // per-pool revenue sums exactly to the aggregate conservation counter
     const byPool = model.revenueByPool();

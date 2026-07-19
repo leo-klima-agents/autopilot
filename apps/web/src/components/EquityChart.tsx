@@ -1,5 +1,5 @@
 /** Equity vs the two benchmarks. Our line is phosphor, the market benchmark
- *  amber and dashed, the revenue (foresight) benchmark cyan and dashed —
+ *  amber and dashed, the revenue (foresight) benchmark cyan and dashed;
  *  none confusable at a glance. Historical runs get real UTC dates on the
  *  axis; synthetic runs keep relative day labels. */
 import {
@@ -29,7 +29,7 @@ export function EquityChart({ result }: { result: DisplayResult }) {
   return (
     <div className="chart-wrap">
       <ResponsiveContainer>
-        {/* plot area spans [TIME_AXIS_LEFT, width - TIME_AXIS_RIGHT_PAD] — the
+        {/* plot area spans [TIME_AXIS_LEFT, width - TIME_AXIS_RIGHT_PAD], the
             heat-map uses the same span, so dates align vertically across panels */}
         <LineChart
           data={data}

@@ -193,7 +193,7 @@ contract MockAeroFacet is IProtocolFacet {
             // revenue to allocators, pro-rata by position weight in the pool
             if (pool.totalWeight > 0 && pool.revenueRate > 0) {
                 uint256 revenue = pool.revenueRate * dt;
-                // iterate positions holding this pool — mock-scale bookkeeping
+                // iterate positions holding this pool, mock-scale bookkeeping
                 for (uint256 tid = 1; tid <= s.nextTokenId; ++tid) {
                     uint256 w = s.positions[tid].allocation[s.poolList[i]];
                     if (w > 0) {

@@ -28,7 +28,7 @@ import type { EpochRecord, TokenAmount } from "./schema.js";
  * 0x69dD9db6d8f8E7d83887A704f447b1a584b599A1 does NOT index Slipstream CL
  * pools at all (verified on chain: its list has no `type > 0` rows and CL
  * addresses revert). This one was verified on chain 2026-07-18: `all()`
- * decodes with the 32-field Lp ABI below and enumerates 34,330 pools —
+ * decodes with the 32-field Lp ABI below and enumerates 34,330 pools:
  * v2 first, CL pools from roughly offset 28,000 (6,101 CL, 449 alive gauges).
  */
 export const BASE_LP_SUGAR_ADDRESS: Address = "0x3058f92ebf83e2536f2084f20f7c0357d7d3ccfe";
@@ -110,7 +110,7 @@ const lpComponents = [
   { name: "root", type: "address" },
 ] as const;
 
-/** Minimal LpSugar ABI (`all` only — the one entry point we call). */
+/** Minimal LpSugar ABI (`all` only, the one entry point we call). */
 export const lpSugarAbi = [
   {
     type: "function",
@@ -183,8 +183,8 @@ export async function fetchLpPage(
 
 /**
  * Pages LpSugar.all until the pool list truly ends (first short page).
- * The full list is LONG — 34,330 pools as of 2026-07, with all Slipstream CL
- * pools sitting past offset ~28,000 — so `maxPages` is only a runaway
+ * The full list is LONG, 34,330 pools as of 2026-07, with all Slipstream CL
+ * pools sitting past offset ~28,000, so `maxPages` is only a runaway
  * backstop, never an expected stop: stopping early silently drops every CL
  * pool from the universe.
  */
@@ -207,7 +207,7 @@ export async function fetchAllLps(
 /**
  * FALLBACK ranking: top pools by current gauge emission rate (descending;
  * ties by address), dead gauges excluded. Empirically this surfaces only
- * vAMM/sAMM pools and misses the Slipstream CL pools that dominate fees —
+ * vAMM/sAMM pools and misses the Slipstream CL pools that dominate fees;
  * prefer the two-stage vote/USD selection in cli.ts (selectVoteCandidates +
  * rankPoolsByUsdRevenue). Kept for offline use and comparison.
  */
@@ -229,7 +229,7 @@ export async function fetchTopPools(
 }
 
 /**
- * Pages RewardsSugar.epochsLatest — the CURRENT epoch of every gauged pool.
+ * Pages RewardsSugar.epochsLatest, the CURRENT epoch of every gauged pool.
  * The offset walks the POOL list and pools without a live gauge yield no row,
  * so the contract returns SHORT PAGES MID-STREAM: pagination must run
  * ceil(totalPools / pageSize) pages and never stop early on a short page
@@ -266,7 +266,7 @@ export async function fetchLatestEpochs(
  * Stage-1 candidate selection: top `count` alive-gauge pools by CURRENT-epoch
  * votes (descending; ties by address). Votes are the crowd's own live estimate
  * of where the revenue is, and they naturally include Slipstream CL pools.
- * Pure — unit-tested against faked inputs. (Stage 2, in cli.ts, re-ranks the
+ * Pure, unit-tested against faked inputs. (Stage 2, in cli.ts, re-ranks the
  * candidates by trailing USD revenue once epochs are priced.)
  */
 export function selectVoteCandidates(

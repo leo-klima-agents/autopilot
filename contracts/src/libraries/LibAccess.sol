@@ -12,11 +12,11 @@ import {LibDiamond} from "./LibDiamond.sol";
 ///      OWNER_ROLE mirrors it for uniform role queries; grant/revoke of any role is
 ///      restricted to the diamond owner.
 library LibAccess {
-    /// @dev the Owner Safe — diamondCut, parameters, rescues, migration
+    /// @dev the Owner Safe, diamondCut, parameters, rescues, migration
     bytes32 internal constant OWNER_ROLE = keccak256("aero.autopilot.role.owner");
-    /// @dev the Strategist Safe — submits target allocations
+    /// @dev the Strategist Safe, submits target allocations
     bytes32 internal constant STRATEGIST_ROLE = keccak256("aero.autopilot.role.strategist");
-    /// @dev hot key — mechanical, guardrail-bounded execution, no discretion
+    /// @dev hot key, mechanical, guardrail-bounded execution, no discretion
     bytes32 internal constant KEEPER_ROLE = keccak256("aero.autopilot.role.keeper");
 
     event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);

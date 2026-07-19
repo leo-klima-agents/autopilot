@@ -6,14 +6,14 @@ pragma solidity ^0.8.30;
 ///         registry of namespace strings (storage rule 3): CI fails on duplicates or on a
 ///         struct whose layout hash changes without an append.
 /// @dev Storage rules (ARCHITECTURE brief §4.2), enforced in CI where possible:
-///      1. Structs are append-only: never reorder, retype, or delete fields — deprecate by
+///      1. Structs are append-only: never reorder, retype, or delete fields, deprecate by
 ///         renaming to `__deprecated_*`.
 ///      2. No facet declares contract-level state variables.
 ///      3. Every namespace string is registered here, and only here.
 ///      4. DiamondInit is the only writer during cuts.
 library LibVaultStorage {
     // ---------------------------------------------------------------------
-    // Namespace registry — one constant per domain, ERC-7201 formula:
+    // Namespace registry, one constant per domain, ERC-7201 formula:
     // keccak256(abi.encode(uint256(keccak256(id)) - 1)) & ~bytes32(uint256(0xff))
     // ---------------------------------------------------------------------
 
@@ -27,7 +27,7 @@ library LibVaultStorage {
     bytes32 internal constant TARGETS_SLOT = 0x18280182a73564c90b216cfd0b5cd975aebdadc2230c92b0a3426cdd39270900;
     /// @dev erc7201:aero.autopilot.protocol.config
     bytes32 internal constant PROTOCOL_CONFIG_SLOT = 0x3521dceec571d1a0be9d6b77a96d662f768dc7a73c50a5c5e937b1d301074300;
-    /// @dev erc7201:aero.autopilot.protocol.mockaero — MockAeroFacet simulation state (test-only facet)
+    /// @dev erc7201:aero.autopilot.protocol.mockaero, MockAeroFacet simulation state (test-only facet)
     bytes32 internal constant MOCK_AERO_SLOT = 0x934c398e14ff90ae8a85361b18f9c11713cfa169ba591f5195cda98202054d00;
 
     // ---------------------------------------------------------------------
@@ -53,7 +53,7 @@ library LibVaultStorage {
     // ---------------------------------------------------------------------
 
     struct Tranche {
-        /// @dev position NFT id held by the diamond (0 is invalid — v2/v3 ids start at 1)
+        /// @dev position NFT id held by the diamond (0 is invalid, v2/v3 ids start at 1)
         uint256 positionTokenId;
         /// @dev last rotate/creation timestamp, drives vault-level cooldown accounting
         uint64 lastActionAt;
@@ -106,7 +106,7 @@ library LibVaultStorage {
     }
 
     // ---------------------------------------------------------------------
-    // aero.autopilot.protocol.mockaero — self-contained v3 simulation (test-only)
+    // aero.autopilot.protocol.mockaero, self-contained v3 simulation (test-only)
     // ---------------------------------------------------------------------
 
     struct MockPosition {
@@ -142,7 +142,7 @@ library LibVaultStorage {
         address[] poolList;
         mapping(address => MockPool) pools;
         mapping(uint256 => MockPosition) positions;
-        /// @dev earned[tokenId] — claimable streamed revenue
+        /// @dev earned[tokenId], claimable streamed revenue
         mapping(uint256 => uint256) earned;
     }
 

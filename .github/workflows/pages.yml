@@ -32,7 +32,7 @@ jobs:
         run: pnpm --filter @aero-autopilot/web build
         env:
           VITE_BASE_PATH: /${{ github.event.repository.name }}/
-      - name: secret scan of the built bundle (P7 — fails the deploy on any hit)
+      - name: secret scan of the built bundle (P7: fails the deploy on any hit)
         run: |
           set -e
           PATTERNS='ALCHEMY_API_KEY=|BASE_RPC_URL=|alchemy\.com/v2/[A-Za-z0-9_-]{16,}|[0-9a-fA-F]{64}PRIVKEY'
