@@ -35,12 +35,6 @@ importers:
       '@aero-autopilot/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@fontsource/b612':
-        specifier: ^5.2.5
-        version: 5.2.7
-      '@fontsource/b612-mono':
-        specifier: ^5.2.5
-        version: 5.2.7
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -342,12 +336,6 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
-
-  '@fontsource/b612-mono@5.2.7':
-    resolution: {integrity: sha512-nIHFyzEhYQxkLW18njXzIbOD94g1fy0yboCLd3jLGd78kXwKP1uErTfdMDFljbt1FNzGyTxWphXeRqpWMjsI7g==}
-
-  '@fontsource/b612@5.2.7':
-    resolution: {integrity: sha512-ALWds7TznSpGM2QUJVqMXLd6GT2LA7XviIbek8YR3+/xoAAjYl6ed0Mh71vFoM8eZv0BSu25D7WMEJw/iwVWlQ==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -1298,10 +1286,6 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.1':
     optional: true
-
-  '@fontsource/b612-mono@5.2.7': {}
-
-  '@fontsource/b612@5.2.7': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
