@@ -20,9 +20,10 @@ export function Theory({ onClose }: { onClose: () => void }) {
           Start here. This page owns the concepts everything else references: how these exchanges work, where
           returns come from, what the two benchmarks and the "captured" figure mean, and why the same strategy can
           look brilliant on Aerodrome v2 and merely competent on Aero v3. Everything is implemented literally in
-          the deterministic core. When you're oriented, the Guide is the operator's manual for the controls and
-          instruments, and the Logbook is a shelf of runs that demonstrate each claim made here. Sections 1–3 are
-          the background — how these exchanges actually work; if you already live in ve(3,3) land, start at §4.
+          the deterministic core. Read next in order: the Strategies page turns this into the four decision rules
+          the console can run, the Guide is the operator's manual for the controls and instruments, and the Logbook
+          is a shelf of runs that demonstrate each claim made here. Sections 1–3 are the background — how these
+          exchanges actually work; if you already live in ve(3,3) land, start at §4.
         </p>
       </div>
 
@@ -55,12 +56,14 @@ export function Theory({ onClose }: { onClose: () => void }) {
         <p>
           v2 runs on a hard weekly clock. An <em>epoch</em> flips every Thursday 00:00 UTC. During the epoch,
           fees and bribes accumulate publicly in each pool's reward contracts — anyone can watch them grow. Each
-          veAERO position may vote <strong>once per epoch</strong> (re-voting reverts), voting is restricted in the
-          final hour before the flip (whitelisted positions excepted), and votes <em>persist</em>: an untouched
-          allocation keeps counting in later epochs at full weight. At the flip, the entire week's accumulated
-          rewards are distributed to the vote weights standing <strong>at the end of the epoch</strong> — a vote
-          cast Wednesday night earns the same share of the whole week's rewards as one cast the previous Thursday.
-          Payouts are retroactive within the epoch, and that single property shapes every v2 strategy (§8).
+          veAERO position may vote <strong>once per epoch</strong> (re-voting reverts); voting is blocked in the
+          <strong> first hour after</strong> a flip (the distribute window), and — where the optional last-hour
+          whitelist gate is enforced — in the <strong>last hour before</strong> the next flip for non-whitelisted
+          positions. Votes <em>persist</em>: an untouched allocation keeps counting in later epochs at full weight.
+          At the flip, the entire week's accumulated rewards are distributed to the vote weights standing{" "}
+          <strong>at the end of the epoch</strong> — a vote cast Wednesday night earns the same share of the whole
+          week's rewards as one cast the previous Thursday. Payouts are retroactive within the epoch, and that
+          single property shapes every v2 strategy (§8).
         </p>
       </div>
 
@@ -115,10 +118,11 @@ export function Theory({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>Revenue benchmark (cyan, dashed)</dt>
           <dd>
-            A portfolio of your size holding every pool in proportion to <em>that epoch's total realized
-            revenue</em>, refreshed weekly. Its weight displaces yours pool-by-pool when computing earnings, so it
-            answers: "what if this exact capital had been allocated revenue-proportionally instead?" Its weights
-            require the epoch's revenue — on Aero v3 that means foresight (see §8), so it is a reference, not an
+            A portfolio of your size holding every pool in proportion to <em>that week's total realized
+            revenue</em> — a fixed weekly window in both economies. Its weight displaces yours pool-by-pool when
+            computing earnings, so it answers: "what if this exact capital had been allocated revenue-proportionally
+            instead?" Its weights require the window's revenue — on Aero v3 that means foresight (see §8), so it is a
+            reference, not an
             investable alternative. It is also the allocation Aero's own on-target methodology scores against: in an
             efficient vote market, crowd weights converge to revenue shares, so this benchmark is simultaneously
             "the efficient market's portfolio".
@@ -156,10 +160,10 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>7. The ceiling that isn't: revenue-proportional vs water-filling</h2>
+        <h2>7. Revenue-proportional is not the ceiling: water-filling is</h2>
         <p>
           The revenue benchmark is <em>not</em> the maximum a foresighted allocator could earn. Total earnings
-          Σ R·w/(W+w) are concave in each pool's w, so the maximum is where no reallocation helps: the marginal
+          Σ wᵢRᵢ/(Wᵢ+wᵢ) are concave in each pool's w, so the maximum is where no reallocation helps: the marginal
           yield of §4, R·W/(W+w)², <em>equal across every funded pool</em> — like water poured into connected
           basins finding one level. That solution is a <strong>water-filling allocation</strong>: concentrate where
           revenue is high <em>relative to the crowd's weight</em>, skip pools where the crowd already sits, and
@@ -178,12 +182,12 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>8. The consequence: the late voter dies in v3</h2>
+        <h2>8. Why the late voter works on v2 but not v3</h2>
         <p>
           <strong>On v2, retroactivity makes revenue-mirroring nearly optimal.</strong> Recall from §2 that the whole
           week's rewards go to end-of-epoch vote weights while the accruing revenue is observable on-chain in real
           time. So a voter who waits until just before the last-hour gate and votes proportional to
-          revenue-so-far holds ~95–99% of the revenue benchmark's portfolio with zero foresight. This "late voter"
+          revenue-so-far holds nearly all of the revenue benchmark's portfolio with zero foresight. This "late voter"
           play (the $/vote meta) makes the revenue benchmark <em>nearly investable on v2</em> — approximated here by
           the weekly Revenue mirror strategy phased late in the epoch. What still separates a real late voter from
           the benchmark: the final crowd weights (other late voters move the denominator simultaneously), revenue
@@ -200,39 +204,13 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>9. Where each strategy sits in this theory</h2>
+        <h2>9. What the strategies do about it</h2>
         <p>
-          The mechanics — each strategy's signal, target, and the rule for when it actually moves — live in the
-          Guide's strategy section. This section only places them on the map the previous sections drew.
-        </p>
-        <dl>
-          <dt>Revenue mirror — weekly / 48h / 24h / 1h</dt>
-          <dd>
-            Allocates proportional to trailing revenue at a fixed cadence — a realizable approximation of the
-            revenue benchmark, lagged by one window. On v2, the weekly mirror phased late in the epoch is the late
-            voter. On v3 its lag is a pure cost, which is exactly what the cadence ladder demonstrates.
-          </dd>
-          <dt>Water-filling</dt>
-          <dd>
-            The optimal-response allocator of §7, fed trailing signals: maximizes expected share against the
-            observed crowd instead of mirroring revenue. The only strategy here that can legitimately exceed the
-            revenue benchmark when the crowd misprices.
-          </dd>
-          <dt>Persistence carry</dt>
-          <dd>
-            A prediction play for the streaming regime: scores pools by how persistent their revenue is, takes
-            weight before the lagged crowd arrives, and discounts wash-bait pumps that pure mirrors chase.
-          </dd>
-          <dt>Continuous greedy</dt>
-          <dd>
-            Event-driven rebalancing at minimal cooldown, using the water-filling allocator for sizing — probes how
-            much of the theoretical edge survives execution constraints (cooldowns, caps, turnover).
-          </dd>
-        </dl>
-        <p>
-          The operating doctrine, condensed: the business case is <em>captured × edge &gt; operating cost</em>.
-          Edge is exogenous and structurally decaying — faster crowds, and a v3 design built to compress
-          inefficiency — so capture is the only term the autopilot controls.
+          That is the whole argument: on v3 the edge is prediction, it is exogenous and structurally decaying, and
+          the business case reduces to <em>captured × edge &gt; operating cost</em>. The four decision rules that
+          try to capture it — the mirror baseline, the persistence-aware predictor, the size-aware optimal response,
+          and the block-speed reactor that argues against itself — each turn this theory into a concrete allocation
+          policy. They get their own page: continue to <strong>Strategies</strong>.
         </p>
       </div>
     </main>

@@ -69,7 +69,7 @@ export const LOGBOOK: LogEntry[] = [
   },
   {
     id: "same-plan-v3",
-    title: "Same plan, new physics (v3 streams)",
+    title: "The same plan on v3 (streaming)",
     config: {
       strategy: { kind: "fixedGridWeekly", config: {} },
       model: MODEL_V3,
