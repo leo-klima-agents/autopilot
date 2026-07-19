@@ -2,7 +2,7 @@
 /**
  * Backtests run off the main thread; the UI stays responsive. Input is the
  * full RunConfig (+ historical dataset JSON when selected); output is the
- * display-ready result (bigints already converted — see serialize.ts).
+ * display-ready result (bigints already converted, see serialize.ts).
  */
 import { buildAndRun } from "../lib/buildRun.js";
 import { toDisplayResult, type WorkerRequest, type WorkerResponse } from "../lib/serialize.js";

@@ -9,7 +9,7 @@ import { DEFAULT_RUN, type RunConfig } from "../src/lib/runConfig.js";
 
 const WEEK = 604_800;
 const HOUR = 3_600;
-// Thu 2025-07-17 00:00:00 UTC — a real epoch flip boundary
+// Thu 2025-07-17 00:00:00 UTC, a real epoch flip boundary
 const THURSDAY = 1_752_710_400;
 const EPOCH_COUNT = 10;
 const LAST_TS = THURSDAY + (EPOCH_COUNT - 1) * WEEK;

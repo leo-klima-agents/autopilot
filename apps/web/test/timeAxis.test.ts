@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { timeAxisFor } from "../src/lib/timeAxis.js";
 
-// Thu 2025-07-17 00:00:00 UTC — a real epoch flip boundary
+// Thu 2025-07-17 00:00:00 UTC, a real epoch flip boundary
 const THURSDAY = 1_752_710_400;
 
 describe("time axis labeling", () => {

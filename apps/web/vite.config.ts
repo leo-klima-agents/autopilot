@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 
 const repoData = resolve(__dirname, "../../data");
 
-/** Serves the repo's /data JSON in dev and copies it into dist/data at build —
+/** Serves the repo's /data JSON in dev and copies it into dist/data at build:
  *  the site only ever fetches committed, versioned files (P7). */
 function repoDataPlugin(): Plugin {
   return {
@@ -26,7 +26,7 @@ function repoDataPlugin(): Plugin {
       if (!existsSync(repoData)) return;
       mkdirSync(out, { recursive: true });
       for (const f of readdirSync(repoData)) {
-        // Datasets only — build caches (prices.json, tokens.json) are never
+        // Datasets only, build caches (prices.json, tokens.json) are never
         // fetched by the site and would add megabytes of dead weight.
         if (f.endsWith(".v1.json")) copyFileSync(join(repoData, f), join(out, f));
       }

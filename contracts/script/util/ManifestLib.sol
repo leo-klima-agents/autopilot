@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import {Vm} from "forge-std/Vm.sol";
 
 /// @title ManifestLib
-/// @notice Reads contracts/facets.json — the off-chain mirror of the loupe — so deploy
+/// @notice Reads contracts/facets.json (the off-chain mirror of the loupe) so deploy
 ///         scripts, cut scripts, and the diamond test suite all cut the exact selector
 ///         sets that CI checked (no hand-maintained selector arrays to drift).
 library ManifestLib {

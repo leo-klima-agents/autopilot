@@ -140,8 +140,8 @@ describe("runBacktest", () => {
     const diff = perPool > result.marketBenchmarkReturn ? perPool - result.marketBenchmarkReturn : result.marketBenchmarkReturn - perPool;
     expect(diff <= result.marketBenchmarkReturn / 1_000_000n + 12n).toBe(true);
 
-    // Revenue (oracle) benchmark: same grid, cumulative, and — because the
-    // crowd's 2:1 weights misprice the 3:1 revenue split — above the market.
+    // Revenue (oracle) benchmark: same grid, cumulative, and, because the
+    // crowd's 2:1 weights misprice the 3:1 revenue split, above the market.
     const { revenueBenchmarkWeights, revenueBenchmarkEarned } = result.allocationHistory;
     expect(revenueBenchmarkWeights).toHaveLength(times.length);
     expect(revenueBenchmarkEarned).toHaveLength(times.length);
@@ -164,7 +164,7 @@ describe("runBacktest", () => {
 
   it("oracle benchmark takes the entire revenue in a single-pool universe", () => {
     // With one pool the oracle holds 100% of it and its weight displaces
-    // ours, so it earns every unit of revenue — exact, no crowd needed.
+    // ours, so it earns every unit of revenue, exact, no crowd needed.
     const rate = 10n * WAD;
     const revenue = constantRevenue({ a: rate });
     const model = createContinuousModel({ revenue, startTime: T0, cooldownSec: HOUR });

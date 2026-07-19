@@ -1,4 +1,4 @@
-/** Required smoke test (spec §Engineering): the URL round-trip must be exact —
+/** Required smoke test (spec §Engineering): the URL round-trip must be exact;
  *  a shared link reproduces the identical run on a deterministic core. */
 import { describe, expect, it } from "vitest";
 import {

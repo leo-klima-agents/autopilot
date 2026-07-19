@@ -3,8 +3,8 @@
  * revenue becomes a piecewise-constant per-second rate over [ts, ts + WEEK),
  * so integration is exact and additive on integer-second boundaries.
  *
- * Epoch revenue is `feesUsd` (Wad USD) when present — the comparable,
- * bigint-exact choice — otherwise the unpriced sum of fee + bribe raw
+ * Epoch revenue is `feesUsd` (Wad USD) when present, the comparable,
+ * bigint-exact choice, otherwise the unpriced sum of fee + bribe raw
  * amounts (only meaningful when the dataset uses a single quote token, as
  * synthetic datasets do; documented dataset-quality caveat for sugar data
  * without feesUsd).
@@ -16,7 +16,7 @@ import { parseAmount, type DatasetV1, type EpochRecord } from "./schema.js";
 
 /**
  * Exact Wad revenue attributed to one epoch record: total voter income.
- * Priced datasets carry `feesUsd`/`bribesUsd` (Wad USD) — their sum is the
+ * Priced datasets carry `feesUsd`/`bribesUsd` (Wad USD); their sum is the
  * revenue. Unpriced records fall back to the raw fee+bribe amount sum (the
  * single-quote-token caveat above).
  */
@@ -44,7 +44,7 @@ interface PoolSegments {
 /**
  * Exact cumulative revenue up to `t`: full segments before `t` via the
  * prefix sum, plus the partial overlap of the segment containing `t`.
- * O(log segments) by binary search — revenueBetween(t0, t1) = C(t1) − C(t0)
+ * O(log segments) by binary search, revenueBetween(t0, t1) = C(t1) − C(t0)
  * is arithmetically identical to the per-segment overlap sum because
  * segments are sorted and non-overlapping, so this is a pure speedup with
  * bit-identical results (the golden and differential suites pin that down).
@@ -74,7 +74,7 @@ function cumulativeAt(p: PoolSegments, t: number): Wad {
  * WEEK) per second (the sub-1-wei-per-second remainder is dropped, i.e. at
  * most WEEK-1 wei per pool-epoch); outside recorded epochs revenue is zero.
  * Precondition (holds for sugar and synthetic datasets): one epoch per week
- * boundary per pool — segments never overlap.
+ * boundary per pool, segments never overlap.
  */
 export function revenueProcessFromDataset(dataset: DatasetV1): RevenueProcess {
   const segments = new Map<PoolId, PoolSegments>();

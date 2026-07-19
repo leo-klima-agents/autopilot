@@ -17,7 +17,7 @@ interface IEscrowProbe {
 /// @title Deploy
 /// @notice Deploys the diamond + full facet set, runs the genesis init, then hands
 ///         ownership to the Owner Safe. Addresses come from the environment and are
-///         probed on-chain before use (Non-negotiable #2) — never from docs.
+///         probed on-chain before use (Non-negotiable #2), never from docs.
 ///
 /// Required env:
 ///   OWNER_SAFE, STRATEGIST_SAFE, KEEPER_ADDRESS

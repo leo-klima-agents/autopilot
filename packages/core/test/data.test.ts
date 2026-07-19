@@ -484,9 +484,9 @@ describe("pool selection", () => {
     const latest = [
       mkLatest("0xa", 5n),
       mkLatest("0xb", 9n), // CL pool, most votes
-      mkLatest("0xc", 100n), // dead gauge — excluded despite votes
-      mkLatest("0xd", 5n), // ties 0xa — address order
-      mkLatest("0xe", 3n), // not in the Lp map — ignored
+      mkLatest("0xc", 100n), // dead gauge, excluded despite votes
+      mkLatest("0xd", 5n), // ties 0xa, address order
+      mkLatest("0xe", 3n), // not in the Lp map, ignored
     ];
     const picked = selectVoteCandidates(lps, latest, 3);
     expect(picked.map((p) => p.lp)).toEqual(["0xb", "0xa", "0xd"]);
@@ -525,7 +525,7 @@ describe("pool selection", () => {
 describe("fetchLatestEpochs pagination", () => {
   it("never stops on short mid-stream pages (gaugeless pools yield no row)", async () => {
     // 250 pools, pageSize 100: page offsets 0/100/200; the FIRST page is short
-    // (only 10 rows — most pools in it have no gauge), later pages still have data.
+    // (only 10 rows, most pools in it have no gauge), later pages still have data.
     const pages: Record<string, number> = { "0": 10, "100": 90, "200": 50 };
     const calls: bigint[] = [];
     const fake = {

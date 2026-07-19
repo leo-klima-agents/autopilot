@@ -3,7 +3,7 @@
  * synthetic scenario and its exact metrics (bigints as decimal strings) are
  * compared against committed JSON under test/golden/. Regenerate with
  * UPDATE_GOLDEN=1 pnpm --filter @aero-autopilot/core test
- * — but treat diffs as accounting changes needing review.
+ *, but treat diffs as accounting changes needing review.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -65,7 +65,7 @@ function checkGolden(name: string, result: BacktestResult): void {
     mkdirSync(GOLDEN_DIR, { recursive: true });
     writeFileSync(path, `${JSON.stringify(actual, null, 2)}\n`, "utf8");
   }
-  expect(existsSync(path), `missing golden ${path} — run with UPDATE_GOLDEN=1`).toBe(true);
+  expect(existsSync(path), `missing golden ${path}, run with UPDATE_GOLDEN=1`).toBe(true);
   const expected: unknown = JSON.parse(readFileSync(path, "utf8"));
   expect(actual).toEqual(expected);
 }

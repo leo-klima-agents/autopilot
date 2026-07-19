@@ -82,7 +82,7 @@ contract VaultHandler is CommonBase, StdUtils {
             lastRotateAt[trancheId] = nowTs;
             _recordAllocation(trancheId);
         } catch {
-            // CooldownActive / CooldownNotElapsed — expected under random timing
+            // CooldownActive / CooldownNotElapsed, expected under random timing
         }
     }
 
@@ -202,7 +202,7 @@ contract VaultInvariantsTest is TestBase {
     }
 
     /// @dev (a) mock protocol conservation: everything the minter accounted either
-    ///      reached a pool or was burned — no token appears or vanishes
+    ///      reached a pool or was burned, no token appears or vanishes
     function invariant_mockTotalsConservation() public view {
         (uint256 emitted, uint256 streamed, uint256 burned) = MockAeroFacet(d.diamond).mockTotals();
         assertEq(emitted, streamed + burned, "emitted == streamed + burned");

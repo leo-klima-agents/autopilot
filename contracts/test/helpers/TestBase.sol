@@ -17,7 +17,7 @@ import {IProtocolFacet} from "../../src/interfaces/IProtocolFacet.sol";
 
 /// @notice Shared harness: full diamond deployed via the same builder as production,
 ///         then (optionally) the protocol facet swapped Aerodrome→Mock through the real
-///         cut path — so every test run also exercises the swap machinery.
+///         cut path, so every test run also exercises the swap machinery.
 abstract contract TestBase is Test, DiamondBuilder {
     address internal constant OWNER = address(0xA11CE);
     address internal constant STRATEGIST = address(0x57121);
@@ -58,7 +58,7 @@ abstract contract TestBase is Test, DiamondBuilder {
     function _deployDiamond() internal {
         vm.warp(1_752_000_000); // fixed genesis time for deterministic cooldown math
         // genesis cut executes as the deployer (this test contract), then ownership moves
-        // to the Owner Safe — same sequence as Deploy.s.sol
+        // to the Owner Safe, same sequence as Deploy.s.sol
         d = deployCore(address(this), _defaultConfig());
         IERC173(d.diamond).transferOwnership(OWNER);
     }

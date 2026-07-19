@@ -89,7 +89,7 @@ export function fixedGrid(intervalSec: number, config: FixedGridConfig = {}): St
   };
 }
 
-/** Weekly grid — the only live-runnable strategy on v2. */
+/** Weekly grid, the only live-runnable strategy on v2. */
 export function fixedGridWeekly(config: FixedGridConfig = {}): Strategy {
   return fixedGrid(WEEK, config);
 }

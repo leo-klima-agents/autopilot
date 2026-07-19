@@ -1,17 +1,17 @@
 /** The flight plan: strategy, model, data, crowd, run sizing. Every control
- *  writes into one RunConfig object; nothing here computes — the worker does. */
+ *  writes into one RunConfig object. Nothing here computes; the worker does. */
 import { probeStrategy } from "../lib/buildRun.js";
 import type { RunConfig, StrategyKind } from "../lib/runConfig.js";
 import { SchemaForm } from "./SchemaForm.js";
 
-// Display labels only — the `kind` ids are serialized into share URLs and
+// Display labels only; the `kind` ids are serialized into share URLs and
 // must stay stable. "Revenue mirror" names the POLICY (allocate proportional
 // to trailing revenue, see the Theory page); the suffix is the cadence.
 const STRATEGIES: { kind: StrategyKind; label: string }[] = [
-  { kind: "fixedGridWeekly", label: "Revenue mirror — weekly (live on v2)" },
-  { kind: "fixedGrid48h", label: "Revenue mirror — 48h" },
-  { kind: "fixedGrid24h", label: "Revenue mirror — 24h" },
-  { kind: "fixedGrid1h", label: "Revenue mirror — 1h" },
+  { kind: "fixedGridWeekly", label: "Revenue mirror: weekly (live on v2)" },
+  { kind: "fixedGrid48h", label: "Revenue mirror, 48h" },
+  { kind: "fixedGrid24h", label: "Revenue mirror, 24h" },
+  { kind: "fixedGrid1h", label: "Revenue mirror, 1h" },
   { kind: "persistenceCarry", label: "Persistence carry" },
   { kind: "waterFilling", label: "Water-filling (optimal response)" },
   { kind: "continuousGreedy", label: "Continuous greedy" },
@@ -69,8 +69,8 @@ export function ConfigPanel({ config, onChange }: Props) {
             value={config.model.kind}
             onChange={(e) => patch({ model: { ...config.model, kind: e.target.value as "epoch" | "continuous" } })}
           >
-            <option value="continuous">Aero v3 — continuous</option>
-            <option value="epoch">Aerodrome v2 — weekly epochs</option>
+            <option value="continuous">Aero v3 (continuous)</option>
+            <option value="epoch">Aerodrome v2 (weekly epochs)</option>
           </select>
         </div>
         {config.model.kind === "continuous" && (
@@ -122,7 +122,7 @@ export function ConfigPanel({ config, onChange }: Props) {
               <div className="field">
                 <label htmlFor="kappa">
                   cap multiplier κ ×1000
-                  <span className="hint">1200 = 1.2× — a placeholder, not a published value (F14)</span>
+                  <span className="hint">1200 = 1.2×, a placeholder, not a published value (F14)</span>
                 </label>
                 <input
                   id="kappa"

@@ -1,6 +1,6 @@
 /**
  * Deterministic seeded PRNG: splitmix64 (for seeding / simple streams) and
- * xoshiro256** (main generator). No Math.random anywhere in src/ — every
+ * xoshiro256** (main generator). No Math.random anywhere in src/, every
  * random draw in the package flows through this module so simulations,
  * synthetic datasets and fixture vectors are reproducible from a seed.
  *
@@ -36,11 +36,11 @@ export interface Prng {
   nextUint64(): bigint;
   /**
    * Uniform double in [0, 1) using the top 53 bits.
-   * Analytics only — never use in fixture-relevant math.
+   * Analytics only, never use in fixture-relevant math.
    */
   nextFloat(): number;
   /**
-   * Uniform bigint in [0, n) via rejection sampling — exact, no modulo bias.
+   * Uniform bigint in [0, n) via rejection sampling, exact, no modulo bias.
    * Throws when n <= 0.
    */
   nextBigintBelow(n: bigint): bigint;

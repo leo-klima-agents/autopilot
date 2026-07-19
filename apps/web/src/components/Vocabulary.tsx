@@ -1,6 +1,6 @@
 /**
  * The glossary: every term used across the console, Theory, Strategies, and
- * Guide, defined once. A dip-in reference, not a read-through — ordered
+ * Guide, defined once. A dip-in reference, not a read-through, ordered
  * roughly from the exchange outward to the simulator's own concepts.
  */
 
@@ -26,7 +26,7 @@ export function Vocabulary({ onClose }: { onClose: () => void }) {
           <dt>Staking weight / allocation</dt>
           <dd>
             Your locked tokens give you weight; allocating it to a pool entitles you to a slice of that pool's
-            revenue, pro-rata against everyone else's weight on the same pool. Allocating is free to hold — the cost
+            revenue, pro-rata against everyone else's weight on the same pool. Allocating is free to hold, the cost
             of a bad allocation is the better revenue you didn't earn elsewhere.
           </dd>
           <dt>Epoch</dt>
@@ -38,14 +38,14 @@ export function Vocabulary({ onClose }: { onClose: () => void }) {
           <dt>Allocation cooldown</dt>
           <dd>
             The v3 (Aero) replacement for the epoch clock: allocations can change at any moment, but each change locks
-            that position for a minimum period — planned at launch to be 48 hours, per position. The cooldown is the
+            that position for a minimum period, planned at launch to be 48 hours, per position. The cooldown is the
             central constraint every strategy here works around.
           </dd>
           <dt>Cooldown scope</dt>
           <dd>
             "Per position" means each tranche's cooldown runs independently (the published plan), so staggered
             tranches let you reallocate in a pipeline. "Global" is the pessimistic what-if where one change locks
-            everything — it exists to show how much of the tranche design's value depends on that one protocol detail.
+            everything; it exists to show how much of the tranche design's value depends on that one protocol detail.
           </dd>
           <dt>Tranche</dt>
           <dd>
@@ -63,14 +63,14 @@ export function Vocabulary({ onClose }: { onClose: () => void }) {
           <dt>Emissions</dt>
           <dd>
             New tokens the protocol streams to pools as liquidity rewards, split across pools by total allocated
-            weight. Emissions don't go to allocators here — they matter because the on-target instrument measures how
+            weight. Emissions don't go to allocators here; they matter because the on-target instrument measures how
             well allocation steered emissions toward where the revenue actually was.
           </dd>
           <dt>Gauge caps &amp; κ (kappa)</dt>
           <dd>
             v3's inflation brake: a pool's emission rate is capped at κ × its trailing revenue rate, recalibrated on
             an interval (48h default). Emissions above the cap are burned, never paid. κ = 1.2 is the number Aero has
-            used in examples — treat it as a placeholder, not a commitment.
+            used in examples, treat it as a placeholder, not a commitment.
           </dd>
           <dt>Allocation decay</dt>
           <dd>
@@ -79,7 +79,7 @@ export function Vocabulary({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>Crowd</dt>
           <dd>
-            Everyone else's weight. The <em>reactive herd</em> chases trailing revenue with an information lag — it
+            Everyone else's weight. The <em>reactive herd</em> chases trailing revenue with an information lag; it
             sees the market as it was "lag" seconds ago and re-splits proportionally. A <em>static</em> crowd never
             moves. The crowd is what you are racing: being early only pays if someone arrives after you.
           </dd>
@@ -102,7 +102,7 @@ export function Vocabulary({ onClose }: { onClose: () => void }) {
           </dd>
           <dt>Wad</dt>
           <dd>
-            A fixed-point number scaled by 10¹⁸ — the exchange's native precision. A few strategy fields take Wad
+            A fixed-point number scaled by 10¹⁸, the exchange's native precision. A few strategy fields take Wad
             decimal strings: <code>500000000000000000</code> means 0.5, i.e. 50%.
           </dd>
         </dl>

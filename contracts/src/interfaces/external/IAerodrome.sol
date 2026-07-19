@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-/// @dev Minimal Aerodrome v2 interfaces — only the functions this vault calls.
+/// @dev Minimal Aerodrome v2 interfaces, only the functions this vault calls.
 ///      Signatures verified against aerodrome-finance/contracts (main). Addresses are
 ///      NEVER hardcoded here; they live in ProtocolConfigStorage, set by DiamondInit and
 ///      re-verified on-chain by the deploy script (Non-negotiable #2).

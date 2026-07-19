@@ -25,7 +25,7 @@ contract TargetsFacet {
     error DuplicatePool(address pool);
 
     /// @notice strategist-only: queue a new target allocation
-    /// @param ref opaque strategy attribution tag (keccak of the TS strategy config) —
+    /// @param ref opaque strategy attribution tag (keccak of the TS strategy config):
     ///        emitted, never validated. Attribution, not enforcement.
     function setTargets(address[] calldata pools, uint256[] calldata weightsWad, bytes32 ref) external {
         LibAccess.enforceRole(LibAccess.STRATEGIST_ROLE, msg.sender);

@@ -290,7 +290,7 @@ contract DifferentialTest is Test {
     }
 
     // ------------------------------------------------------------------
-    // json helpers — fixture bigints are decimal strings (JSON has no bigint)
+    // json helpers, fixture bigints are decimal strings (JSON has no bigint)
     // ------------------------------------------------------------------
 
     function _load(string memory name) private returns (string memory json) {

@@ -18,10 +18,10 @@ import {MockAeroFacet} from "../src/facets/protocol/MockAeroFacet.sol";
 /// when the deployer key IS the diamond owner (dev/test chains).
 ///
 /// Required env:
-///   DIAMOND            — the diamond address
-///   OLD_PROTOCOL_FACET — manifest name of the live protocol facet (e.g. AerodromeFacet)
-///   NEW_PROTOCOL_FACET — manifest name to cut in (MockAeroFacet | AeroFacet)
-///   SWAP_ID            — unique id for the idempotent init, e.g. "aero.autopilot.swap.2026-09-launch"
+///   DIAMOND           , the diamond address
+///   OLD_PROTOCOL_FACET, manifest name of the live protocol facet (e.g. AerodromeFacet)
+///   NEW_PROTOCOL_FACET, manifest name to cut in (MockAeroFacet | AeroFacet)
+///   SWAP_ID           , unique id for the idempotent init, e.g. "aero.autopilot.swap.2026-09-launch"
 ///   NEW_VOTER, NEW_VOTING_ESCROW, NEW_REWARDS_DISTRIBUTOR, NEW_TOKEN, NEW_ROUTER
 contract Cut is Script, DiamondBuilder {
     function run() external {

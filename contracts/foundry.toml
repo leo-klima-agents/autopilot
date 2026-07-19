@@ -1,4 +1,4 @@
-# Compiler settings are pinned per release tag — Sourcify verification fails on any
+# Compiler settings are pinned per release tag: Sourcify verification fails on any
 # mismatch (OPERATIONS.md §6), so never float solc or optimizer settings.
 [profile.default]
 src = "src"

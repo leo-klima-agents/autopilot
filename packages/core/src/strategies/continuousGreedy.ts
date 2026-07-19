@@ -1,5 +1,5 @@
 /**
- * ContinuousGreedy — the latency-race demonstrator for the v3 continuous
+ * ContinuousGreedy, the latency-race demonstrator for the v3 continuous
  * model. Event-driven: on every tick (cadence configurable down to one Base
  * block, 2s), it computes the exact water-filled ideal and the marginal
  * yields my_i = R_i·W_i·WAD/(W_i + w_i)^2 (Wad, floor). If any tranche is

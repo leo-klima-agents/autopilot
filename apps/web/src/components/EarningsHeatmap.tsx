@@ -1,6 +1,6 @@
 /** Earned revenue over time: pools × samples, amber intensity = revenue our
  *  portfolio earned from the pool during the sample interval (the earning
- *  rate — cumulative history differenced in-component). The figure at the
+ *  rate, cumulative history differenced in-component). The figure at the
  *  right edge of each row is the pool's cumulative total over the whole run.
  *  Same rows, geometry, and time axis as AllocationHeatmap one panel up, so
  *  allocation and payoff line up cell for cell; amber, not phosphor, so the

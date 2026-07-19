@@ -1,6 +1,6 @@
 import type { PoolId, RevenueProcess, Wad } from "../src/model/types.js";
 
-/** Constant per-second revenue rates — the simplest additive RevenueProcess. */
+/** Constant per-second revenue rates, the simplest additive RevenueProcess. */
 export function constantRevenue(rates: Record<PoolId, Wad>): RevenueProcess {
   return {
     pools: Object.keys(rates),

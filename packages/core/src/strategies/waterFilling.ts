@@ -1,5 +1,5 @@
 /**
- * Water-filling allocator — size-aware marginal-yield equalizer.
+ * Water-filling allocator, size-aware marginal-yield equalizer.
  *
  * Maximizes Σ_i w_i·R_i/(W_i + w_i) subject to Σ w_i = budget, w_i >= 0,
  * where R_i is the pool revenue rate, W_i the external (crowd) weight and
@@ -16,7 +16,7 @@
  * throughout, deterministic, replayable in Solidity.
  *
  * Edge cases: pools with R_i·W_i === 0 get w_i = 0 from the formula (a pool
- * with no external weight yields R_i for any ε > 0 of weight — the marginal
+ * with no external weight yields R_i for any ε > 0 of weight, the marginal
  * limit is degenerate, so the closed form assigns nothing). The leftover
  * budget (bisection slack plus degenerate pools) is assigned to the pool
  * with the largest R_i (ties by lowest index), keeping Σ w_i === budget.
@@ -75,7 +75,7 @@ export function waterFill(
     return { weights: new Array<bigint>(n).fill(0n), lambda: 0n, iterations: 0 };
   }
 
-  // λ_hi: smallest λ making every w_i(λ) zero — w_i(λ)=0 iff R_i·W_i·SCALE/λ <= W_i².
+  // λ_hi: smallest λ making every w_i(λ) zero, w_i(λ)=0 iff R_i·W_i·SCALE/λ <= W_i².
   let hi = 1n;
   for (let i = 0; i < n; i += 1) {
     if (R[i]! > 0n && W[i]! > 0n) {

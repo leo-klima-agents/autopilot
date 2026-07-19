@@ -1,5 +1,5 @@
 /**
- * @aero-autopilot/core — root barrel. Subpath imports
+ * @aero-autopilot/core, root barrel. Subpath imports
  * (`@aero-autopilot/core/math`, `/model`, `/strategies`, `/scheduler`,
  * `/backtest`, `/data`, `/fixtures`) are preferred; the root re-exports
  * everything for convenience.

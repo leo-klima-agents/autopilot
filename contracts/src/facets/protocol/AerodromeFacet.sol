@@ -23,7 +23,7 @@ contract AerodromeFacet is IProtocolFacet {
     using SafeERC20 for IERC20;
 
     uint256 private constant WEEK = 7 days;
-    /// @dev v2 maximum lock — permanent stakes are created at max then locked permanent
+    /// @dev v2 maximum lock, permanent stakes are created at max then locked permanent
     uint256 private constant MAXTIME = 4 * 365 days;
 
     /// @dev claim payload composed off-chain by the keeper (P1)

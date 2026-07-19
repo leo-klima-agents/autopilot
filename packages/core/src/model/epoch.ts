@@ -1,17 +1,17 @@
 /**
- * EpochModel — Aerodrome v2 weekly-epoch protocol model.
+ * EpochModel, Aerodrome v2 weekly-epoch protocol model.
  *
  * - Epochs are 604800s, flipping at Thursday 00:00 UTC (unix % WEEK === 0;
  *   the unix epoch began on a Thursday). Fact A1.
  * - One allocation change per position per epoch, mirroring Voter.sol's
  *   onlyNewEpoch: blocked while epochStart(now) <= lastVoted[position]. A4.
  * - Voting blocked in the first hour of an epoch (distribute window, A2) and
- *   — when `enforceLastHourWhitelist` is set — in the last hour for
+ *   (when `enforceLastHourWhitelist` is set) in the last hour for
  *   non-whitelisted positions (A3).
  * - Votes persist across epochs. Rewards for an epoch (fees + bribes accrued
  *   during it) are distributed as a lump sum at the flip, pro-rata to
  *   end-of-epoch weights: reward_i = mulDiv(poolReward, weight_i,
- *   totalPoolWeight) — floor; undistributed dust is tracked.
+ *   totalPoolWeight), floor; undistributed dust is tracked.
  */
 
 import { mulDiv, sumBig, WAD } from "../math/fixed.js";
@@ -46,7 +46,7 @@ interface PositionState {
   allocation: Map<PoolId, Wad>; // Wad fractions summing to WAD (or empty)
   lastVoted: number; // unix ts of last vote; -1 = never
   accrued: Wad;
-  accruedByPool: Map<PoolId, Wad>; // same payouts as accrued — sums exactly
+  accruedByPool: Map<PoolId, Wad>; // same payouts as accrued, sums exactly
   whitelisted: boolean;
 }
 

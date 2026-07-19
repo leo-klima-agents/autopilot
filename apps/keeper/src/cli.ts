@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * aero-keeper — mechanical, guardrail-bounded execution (P6): the keeper converges
+ * aero-keeper, mechanical, guardrail-bounded execution (P6): the keeper converges
  * tranches toward the strategist's stored target as cooldowns unlock. It has no
  * discretion; a compromised keeper costs liveness only.
  *
@@ -122,7 +122,7 @@ async function rotateReady(ctx: KeeperContext): Promise<void> {
   }
 }
 
-/** v2 claim payload — the keeper composes it off-chain (P1). Reward contract discovery
+/** v2 claim payload, the keeper composes it off-chain (P1). Reward contract discovery
  *  (gaugeToBribe/gaugeToFees per voted pool) is read from the Voter by the operator and
  *  passed via HARVEST_BRIBES/HARVEST_FEES env (comma-separated), or left empty for the
  *  rebase-only claim. */
@@ -177,7 +177,7 @@ async function harvestAll(ctx: KeeperContext): Promise<void> {
   }
 }
 
-/** page on ANY DiamondCut event — no legitimate unscheduled cut exists (OPERATIONS.md §3) */
+/** page on ANY DiamondCut event, no legitimate unscheduled cut exists (OPERATIONS.md §3) */
 function watchDiamondCut(ctx: KeeperContext): void {
   ctx.publicClient.watchContractEvent({
     address: ctx.diamond,

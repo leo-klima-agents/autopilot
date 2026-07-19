@@ -7,7 +7,7 @@ import {IProtocolFacet} from "../interfaces/IProtocolFacet.sol";
 
 /// @title ExecutionFacet
 /// @notice Keeper-gated, mechanical execution: converge tranches toward the stored target
-///         as cooldowns unlock. The keeper has no discretion — it can only push tranches
+///         as cooldowns unlock. The keeper has no discretion; it can only push tranches
 ///         toward the strategist's queued intent (P1/P6). Keeper compromise costs
 ///         liveness only.
 contract ExecutionFacet {
@@ -68,7 +68,7 @@ contract ExecutionFacet {
     }
 
     /// @notice seconds until a tranche may rotate under the VAULT guardrail cooldown
-    ///         (the protocol may impose its own on top — see IProtocolFacet.cooldownRemaining)
+    ///         (the protocol may impose its own on top, see IProtocolFacet.cooldownRemaining)
     function vaultCooldownRemaining(uint256 trancheId) external view returns (uint256) {
         LibVaultStorage.Tranche storage t = _tranche(trancheId);
         if (t.lastActionAt == 0) return 0;

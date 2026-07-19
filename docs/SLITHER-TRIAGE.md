@@ -20,4 +20,4 @@ NEW on our own facets must be triaged here before merge.
 | `calls-loop` | `MockAeroFacet._settle` position loop | **Test-only facet**, never in the production manifest (`deployed: false`) |
 | reentrancy-events on external protocol calls | AerodromeFacet | External calls go only to the probed protocol contracts configured by DiamondInit; keeper-gated entrypoints; revisit if a public-caller bounty path is ever added (v1) |
 
-Anything not listed here that slither reports on `src/facets/*.sol`, `src/libraries/Lib{Access,VaultStorage,Deterministic}.sol` or `src/init/DiamondInit.sol` is unreviewed — do not merge without adding a row.
+Anything not listed here that slither reports on `src/facets/*.sol`, `src/libraries/Lib{Access,VaultStorage,Deterministic}.sol` or `src/init/DiamondInit.sol` is unreviewed, do not merge without adding a row.

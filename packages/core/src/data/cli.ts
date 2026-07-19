@@ -1,13 +1,13 @@
 /**
  * `pnpm data` entry point: builds data/aerodrome-epochs.v1.json (12+ months of
  * weekly epochs for the top ~30 pools) plus the data/tokens.json and
- * data/prices.json caches. Batched, retried, rate limited, idempotent — safe
+ * data/prices.json caches. Batched, retried, rate limited, idempotent, safe
  * to re-run. Requires BASE_RPC_URL; ALCHEMY_API_KEY enables USD pricing.
  *
  * Pool selection is two-stage (methodology inspired by ldeso/aerodrome):
- *   stage 1 — top `candidateN` alive-gauge pools by CURRENT-epoch votes
+ *   stage 1, top `candidateN` alive-gauge pools by CURRENT-epoch votes
  *             (RewardsSugar.epochsLatest; includes Slipstream CL pools);
- *   stage 2 — top `topN` of those by trailing USD revenue (fees + bribes,
+ *   stage 2, top `topN` of those by trailing USD revenue (fees + bribes,
  *             Alchemy-priced at each epoch's Thursday start date).
  * Without ALCHEMY_API_KEY, stage 2 falls back to the vote ranking (unpriced).
  *
@@ -53,7 +53,7 @@ function poolRecordFromSugar(
   const displayName = composeDisplayName(shape, symbol0, symbol1);
   const record: PoolRecord = {
     address: lp.lp,
-    // LpSugar returns an empty `symbol` for Slipstream CL pools — fall back
+    // LpSugar returns an empty `symbol` for Slipstream CL pools, fall back
     // to the composed display name so the schema's non-empty invariant holds.
     symbol: lp.symbol === "" ? displayName : lp.symbol,
     displayName,
@@ -77,7 +77,7 @@ function poolUsdRevenue(pool: PoolRecord): bigint {
 }
 
 /** Stage-2 ranking: top pools by trailing USD revenue (desc; ties by address).
- *  Pure — exported for tests. Unpriced pools sum to 0 and rank last. */
+ *  Pure, exported for tests. Unpriced pools sum to 0 and rank last. */
 export function rankPoolsByUsdRevenue(records: readonly PoolRecord[], topN: number): PoolRecord[] {
   return [...records]
     .sort((a, b) => {
@@ -112,7 +112,7 @@ export async function buildDataset({
     `data: ${candidates.length} candidates by current votes (${clCount} CL, ${candidates.length - clCount} v2)`,
   );
   if (!apiKey) {
-    console.log("data: ALCHEMY_API_KEY not set — vote ranking only, no USD pricing");
+    console.log("data: ALCHEMY_API_KEY not set, vote ranking only, no USD pricing");
   }
 
   // -- epochs per candidate ---------------------------------------------------
@@ -124,7 +124,7 @@ export async function buildDataset({
     );
     if (epochs.length === 0) {
       // A12: killed gauges / pre-gauge history return no epoch data.
-      console.warn(`  no epoch data for ${lp.symbol} — recorded with empty history`);
+      console.warn(`  no epoch data for ${lp.symbol}, recorded with empty history`);
     }
     perPool.push({ lp, epochs: epochs.map(sugarEpochToRecord) });
     await sleep(RATE_LIMIT_MS);

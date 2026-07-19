@@ -156,7 +156,7 @@ contract MockAeroFacetTest is TestBase {
         uint256 tok1 = _stake(100e18);
         uint256 tok2 = _stake(200e18);
         _alloc(tok1, POOL_A);
-        _alloc(tok2, POOL_A); // same timestamp — per-position cooldowns independent
+        _alloc(tok2, POOL_A); // same timestamp, per-position cooldowns independent
 
         vm.warp(block.timestamp + 1000);
         MockAeroFacet(d.diamond).mockSettle();

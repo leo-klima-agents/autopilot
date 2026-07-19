@@ -1,6 +1,6 @@
 /**
  * Alert sinks (OPERATIONS.md §3). The PoC ships a console sink plus a generic webhook
- * stub; a real pager integration is a deployment concern, not a code change — every
+ * stub; a real pager integration is a deployment concern, not a code change, every
  * alert flows through `raise()`.
  */
 export type AlertKind =
@@ -19,9 +19,9 @@ export interface Alert {
 
 export async function raise(kind: AlertKind, message: string): Promise<void> {
   const alert: Alert = { kind, message, at: new Date().toISOString() };
-  // console sink — always on
+  // console sink, always on
   console.error(`[ALERT:${alert.kind}] ${alert.message}`);
-  // webhook sink — optional (e.g. Slack-compatible); failures must never crash the keeper
+  // webhook sink, optional (e.g. Slack-compatible); failures must never crash the keeper
   const url = process.env.ALERT_WEBHOOK_URL;
   if (url) {
     try {

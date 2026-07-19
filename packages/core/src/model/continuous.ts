@@ -1,14 +1,14 @@
 /**
- * ContinuousModel — Aero v3 continuous protocol model.
+ * ContinuousModel, Aero v3 continuous protocol model.
  *
  * - Revenue streams per second, pro-rata by allocated weight (F10). Weights
  *   are piecewise constant (they change only at allocation / crowd events,
  *   which happen between `advance` calls), so integration over [t, t+dt) is
- *   an exact sum over segments — no numeric integration, all bigint.
+ *   an exact sum over segments, no numeric integration, all bigint.
  * - Per-position rolling cooldown (default 48h = 172800s, F1/F2). Granularity
  *   is configurable ('position' | 'global') per ARCHITECTURE.md §3 item 1.
  * - Gauge caps (F13/F14): effectiveRate = min(allocatedRate, cap) where
- *   cap = κ × trailingRevenueRate(pool, window); κ default 1.2 — an example
+ *   cap = κ × trailingRevenueRate(pool, window); κ default 1.2, an example
  *   value from the AER FAQ ("e.g., 1.2×"), NOT published-final: PLACEHOLDER.
  *   Caps recalibrate every `capIntervalSec` (default 48h); overage accrues in
  *   a burned counter. Conservation invariant: streamed + burned === emitted.
@@ -32,7 +32,7 @@ import {
 export const DEFAULT_COOLDOWN_SEC = 172_800;
 /** Default cap recalibration interval: 48 hours (F14). */
 export const DEFAULT_CAP_INTERVAL_SEC = 172_800;
-/** Default κ = 1.2 in Wad. PLACEHOLDER — "e.g." value per F14, re-check at code drop. */
+/** Default κ = 1.2 in Wad. PLACEHOLDER, "e.g." value per F14, re-check at code drop. */
 export const DEFAULT_KAPPA_WAD = 1_200_000_000_000_000_000n;
 
 /** Cooldown scope (ARCHITECTURE.md §3 item 1). */
@@ -81,7 +81,7 @@ interface PositionState {
   allocation: Map<PoolId, Wad>;
   lastActionAt: number;
   accrued: Wad;
-  accruedByPool: Map<PoolId, Wad>; // same payouts as accrued — sums exactly
+  accruedByPool: Map<PoolId, Wad>; // same payouts as accrued, sums exactly
 }
 
 function assertValidTarget(pools: readonly PoolId[], target: TargetAllocation): void {
@@ -126,7 +126,7 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
   };
   const revenueByPool = new Map<PoolId, Wad>(); // same increments as revenueTotal
 
-  /** cap_pool = mulWad(κ, trailingRevenue / window) — exact floor semantics. */
+  /** cap_pool = mulWad(κ, trailingRevenue / window), exact floor semantics. */
   function recalibrateCaps(now: number): void {
     for (const pool of pools) {
       const trailing = revenue.revenueBetween(pool, Math.max(0, now - capWindowSec), now);
