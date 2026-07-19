@@ -14,10 +14,10 @@ export function Guide({ onClose }: { onClose: () => void }) {
         </button>
         <h2>Operator's guide</h2>
         <p>
-          The operator's manual for the replay console: every control, strategy knob, and instrument, in the order
-          you meet them on screen. Concepts live on the Theory page — how the exchange works, what the benchmarks
-          mean, which one a strategy must beat — and this page assumes them; if this is your first visit, read
-          Theory first.
+          The operator's manual for the replay console: every control and instrument, in the order you meet them on
+          screen. It assumes the concepts — the Theory page develops them, the Strategies page covers the decision
+          rules in the <code>engine</code> dropdown, and the Vocabulary page defines every term. If this is your
+          first visit, read those first.
         </p>
         <p>
           One property matters everywhere here: runs are deterministic. The same flight plan always produces exactly
@@ -26,93 +26,12 @@ export function Guide({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>Vocabulary</h2>
-        <dl>
-          <dt>Pool</dt>
-          <dd>
-            A trading pair on the exchange (e.g. vAMM-WETH/USDC). The prefix encodes the pool type: vAMM = volatile
-            pair, sAMM = stable pair, CL&lt;n&gt; = concentrated-liquidity (Slipstream) pool with tick spacing n.
-            Pools earn trading fees; those fees (plus any incentives) are the revenue that allocators compete for.
-          </dd>
-          <dt>Staking weight / allocation</dt>
-          <dd>
-            Your locked tokens give you weight; allocating it to a pool entitles you to a slice of that pool's
-            revenue, pro-rata against everyone else's weight on the same pool. Allocating is free to hold — the cost
-            of a bad allocation is the better revenue you didn't earn elsewhere.
-          </dd>
-          <dt>Epoch</dt>
-          <dd>
-            Aerodrome v2 runs on one-week cycles that flip every Thursday 00:00 UTC. Under v2 rules a position can
-            change its allocation once per epoch, and revenue settles as a weekly lump sum at the flip. Chart time
-            ticks land on these flips.
-          </dd>
-          <dt>Allocation cooldown</dt>
-          <dd>
-            The v3 (Aero) replacement for the epoch clock: allocations can change at any moment, but each change locks
-            that position for a minimum period — planned at launch to be 48 hours, per position. The cooldown is the
-            central constraint every strategy here works around.
-          </dd>
-          <dt>Cooldown scope</dt>
-          <dd>
-            "Per position" means each tranche's cooldown runs independently (the published plan), so staggered
-            tranches let you reallocate in a pipeline. "Global" is the pessimistic what-if where one change locks
-            everything — it exists to show how much of the tranche design's value depends on that one protocol detail.
-          </dd>
-          <dt>Tranche</dt>
-          <dd>
-            One separately-staked position. Positions can't be split after creation, so the tranche structure must
-            exist from the start. With N tranches on per-position cooldowns, you can move 1/N of your weight every
-            cooldown/N interval instead of everything at once every cooldown.
-          </dd>
-          <dt>Emissions</dt>
-          <dd>
-            New tokens the protocol streams to pools as liquidity rewards, split across pools by total allocated
-            weight. Emissions don't go to allocators here — they matter because the on-target instrument measures how
-            well allocation steered emissions toward where the revenue actually was.
-          </dd>
-          <dt>Gauge caps &amp; κ (kappa)</dt>
-          <dd>
-            v3's inflation brake: a pool's emission rate is capped at κ × its trailing revenue rate, recalibrated on
-            an interval (48h default). Emissions above the cap are burned, never paid. κ = 1.2 is the number Aero has
-            used in examples — treat it as a placeholder, not a commitment.
-          </dd>
-          <dt>Allocation decay</dt>
-          <dd>
-            An optional v3 behavior: an allocation left untouched slowly loses influence, so passive positions bleed
-            weight relative to active ones. Off by default here (the decay rate is unpublished).
-          </dd>
-          <dt>Crowd</dt>
-          <dd>
-            Everyone else's weight. The <em>reactive herd</em> chases trailing revenue with an information lag — it
-            sees the market as it was "lag" seconds ago and re-splits proportionally. A <em>static</em> crowd never
-            moves. The crowd is what you are racing: being early only pays if someone arrives after you.
-          </dd>
-          <dt>Wash-bait</dt>
-          <dd>
-            An adversarial pool that pumps fake fees in short bursts to look attractive, then pulls them. Strategies
-            that only read trailing revenue chase it and get nothing; persistence-aware scoring discounts it.
-          </dd>
-          <dt>Market / revenue benchmark</dt>
-          <dd>
-            The two dashed reference portfolios on every instrument: the market benchmark holds pools in proportion
-            to global vote weight, the revenue benchmark holds each epoch's realized revenue shares with foresight.
-            USD-denominated on historical replays. What they mean and which one a strategy must beat is Theory §5–6.
-          </dd>
-          <dt>Wad</dt>
-          <dd>
-            A fixed-point number scaled by 10¹⁸ — the exchange's native precision. A few strategy fields take Wad
-            decimal strings: <code>500000000000000000</code> means 0.5, i.e. 50%.
-          </dd>
-        </dl>
-      </div>
-
-      <div className="panel">
         <h2>The flight plan, panel by panel</h2>
 
         <h3>Strategy</h3>
         <p>
-          <strong>engine</strong> picks the decision rule (each explained in the next section). The fields below it
-          are that strategy's own knobs:
+          <strong>engine</strong> picks the decision rule — the four are explained on the Strategies page. The
+          fields below it are the selected strategy's own knobs:
         </p>
         <dl>
           <dt>lookbackSec</dt>
@@ -215,94 +134,6 @@ export function Guide({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>The strategies</h2>
-
-        <h3>How every strategy works</h3>
-        <p>
-          A strategy is a pure function that wakes on a fixed clock (its <em>cadence</em>, possibly phase-shifted —
-          the weekly one wakes just before epoch flips) and, given the market right now, proposes a{" "}
-          <em>target allocation</em>: what fraction of the portfolio should sit on each pool, summing to 100%. The
-          only information it gets is public and backward-looking — each pool's current vote weight and its{" "}
-          <em>trailing revenue</em>, the fees + incentives accrued over the strategy's lookback window. No strategy
-          here sees the future; they differ in how they turn that trailing signal into a target and in how reluctant
-          they are to act on it.
-        </p>
-        <p>
-          Strategies never move weight themselves. The <em>scheduler</em> takes the proposed target, compares it to
-          what each tranche currently holds, and rotates only the tranches whose cooldown has expired — so the
-          portfolio converges to a new target in staggered steps across several wake-ups, and re-proposing the same
-          target is a no-op. This makes rotations the scarce resource: every move spends that tranche's cooldown,
-          locking it through whatever happens next.
-        </p>
-        <p>
-          Two ideas recur across the strategies. First, <em>marginal yield</em> — what the next unit of weight
-          actually earns on a pool, R·W/(W+w)². It falls as your own weight w piles onto the crowd's W, which is
-          why a modest pool nobody stands on can beat the biggest earner on the board; the Theory page (§4) derives
-          it and builds the optimal allocation from it (§7). Second, <em>restraint</em>: because acting costs a
-          cooldown (and, live, gas), the better strategies carry an explicit device — a drift threshold, a
-          dead-band — that refuses trades too small to pay for themselves.
-        </p>
-
-        <h3>Revenue mirror — weekly / 48h / 24h / 1h</h3>
-        <p>
-          <strong>Signal:</strong> trailing revenue per pool over <code>lookbackSec</code>.{" "}
-          <strong>Target:</strong> exactly proportional — a pool that produced 12% of the lookback's revenue gets
-          12% of the portfolio, dilution ignored. <strong>Moves:</strong> every wake-up, unconditionally; no
-          restraint device at all. <strong>Why it exists:</strong> it is the investable twin of the revenue
-          benchmark, lagged by one window — the honest baseline any cleverer strategy must justify itself against.
-          The four variants share everything but the clock, so running them side by side isolates what acting more
-          often is worth. The weekly variant wakes <code>submitOffsetSec</code> before the Thursday flip, making it
-          the late voter of Theory §8, and is the only strategy that can run live against Aerodrome v2 today.
-        </p>
-
-        <h3>Persistence carry</h3>
-        <p>
-          <strong>Signal:</strong> trailing revenue, discounted by how erratically it arrived. The lookback is cut
-          into <code>buckets</code> equal sub-windows; volatility is the mean absolute deviation of the bucket
-          revenues over their mean, capped at 100%; each pool's revenue is then haircut in proportion, up to{" "}
-          <code>haircutWad</code> at full volatility. Two pools with identical totals stop being identical: the one
-          that earned steadily keeps its score, the one that earned everything in a single spike loses up to half of
-          it. <strong>Target:</strong> proportional to the haircut scores. <strong>Moves:</strong> only when the new
-          ideal has drifted more than <code>sWad</code> (in total allocation moved) from the last target it actually
-          submitted — an (s,S) rule, and it is careful not to "spend" that trigger while every tranche is still
-          locked. <strong>Why it exists:</strong> this is the strategy shaped for the v3 world, where a 48h cooldown
-          makes every move a commitment. The haircut is what refuses wash-bait (a pumped pool is maximally
-          volatile); the drift threshold is what keeps turnover low enough that the cooldowns are spent on moves
-          that matter.
-        </p>
-
-        <h3>Water-filling</h3>
-        <p>
-          <strong>Signal:</strong> trailing revenue per pool, plus each pool's current external weight — this is the
-          one family that looks at the crowd, not just the fees. <strong>Target:</strong> the allocation that
-          maximizes total expected revenue Σ wᵢRᵢ/(Wᵢ+wᵢ) for a portfolio of your size. At the optimum every funded
-          pool has the same marginal yield — like pouring water into connected basins until one level holds — which
-          the implementation finds exactly by binary-searching that common level (λ) in integer arithmetic. Pools
-          whose marginal yield never reaches the level get nothing. <strong>Moves:</strong> every wake-up (default
-          48h), no restraint device. <strong>Why it exists:</strong> it is the optimal response to a mispriced
-          crowd, and the reason "captured" can exceed 100% (Theory §7): where the mirror family copies revenue
-          shares, water-filling deliberately over-weights thin pools with real revenue and under-weights crowded
-          ones — big portfolios spread out, small ones concentrate. It is also the sizing engine inside Continuous
-          greedy.
-        </p>
-
-        <h3>Continuous greedy</h3>
-        <p>
-          <strong>Signal:</strong> the same inputs as Water-filling, re-read on every tick — down to one Base block
-          (2 seconds). <strong>Target:</strong> the water-filled ideal. <strong>Moves:</strong> almost never, and
-          that is the design. Each tick it measures how much better the best marginal yield anywhere is than the
-          worst one it currently holds — exactly what moving one unit of weight would gain. If no tranche is off
-          cooldown, nothing can move and it waits; if the gap is smaller than <code>thresholdWad + costWad</code>{" "}
-          (the noise floor plus what a rotation costs), moving would be churn and it re-affirms the last target;
-          only when the gap clears that dead-band does it jump to the full ideal. <strong>Why it exists:</strong> to
-          answer whether block-speed reaction is worth anything. Run the "latency race" Logbook entry: against a
-          fast crowd reading the same public signal the gap almost never clears the dead-band, and returns converge
-          to the market average minus the few rotations' cost — design principle P3, demonstrated rather than
-          asserted.
-        </p>
-      </div>
-
-      <div className="panel">
         <h2>Reading the instruments</h2>
         <dl>
           <dt>Return</dt>
@@ -358,7 +189,7 @@ export function Guide({ onClose }: { onClose: () => void }) {
             it as a diff. A row bright in the strategy view but dark in the revenue-bench view is weight the revenue
             never justified; bright in revenue-bench but dark in yours is a pool the strategy missed. The "captured"
             figure on the Vs-market gauge condenses that comparison into one number (Theory §6); if it looks oddly
-            low, check whether the edge itself collapsed before blaming the strategy (Theory §8–9).
+            low, check whether the edge itself collapsed before blaming the strategy (Theory §6).
           </dd>
         </dl>
       </div>

@@ -20,9 +20,10 @@ export function Theory({ onClose }: { onClose: () => void }) {
           Start here. This page owns the concepts everything else references: how these exchanges work, where
           returns come from, what the two benchmarks and the "captured" figure mean, and why the same strategy can
           look brilliant on Aerodrome v2 and merely competent on Aero v3. Everything is implemented literally in
-          the deterministic core. When you're oriented, the Guide is the operator's manual for the controls and
-          instruments, and the Logbook is a shelf of runs that demonstrate each claim made here. Sections 1–3 are
-          the background — how these exchanges actually work; if you already live in ve(3,3) land, start at §4.
+          the deterministic core. Read next in order: the Strategies page turns this into the four decision rules
+          the console can run, the Guide is the operator's manual for the controls and instruments, and the Logbook
+          is a shelf of runs that demonstrate each claim made here. Sections 1–3 are the background — how these
+          exchanges actually work; if you already live in ve(3,3) land, start at §4.
         </p>
       </div>
 
@@ -200,39 +201,13 @@ export function Theory({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="panel">
-        <h2>9. Where each strategy sits in this theory</h2>
+        <h2>9. What the strategies do about it</h2>
         <p>
-          The mechanics — each strategy's signal, target, and the rule for when it actually moves — live in the
-          Guide's strategy section. This section only places them on the map the previous sections drew.
-        </p>
-        <dl>
-          <dt>Revenue mirror — weekly / 48h / 24h / 1h</dt>
-          <dd>
-            Allocates proportional to trailing revenue at a fixed cadence — a realizable approximation of the
-            revenue benchmark, lagged by one window. On v2, the weekly mirror phased late in the epoch is the late
-            voter. On v3 its lag is a pure cost, which is exactly what the cadence ladder demonstrates.
-          </dd>
-          <dt>Water-filling</dt>
-          <dd>
-            The optimal-response allocator of §7, fed trailing signals: maximizes expected share against the
-            observed crowd instead of mirroring revenue. The only strategy here that can legitimately exceed the
-            revenue benchmark when the crowd misprices.
-          </dd>
-          <dt>Persistence carry</dt>
-          <dd>
-            A prediction play for the streaming regime: scores pools by how persistent their revenue is, takes
-            weight before the lagged crowd arrives, and discounts wash-bait pumps that pure mirrors chase.
-          </dd>
-          <dt>Continuous greedy</dt>
-          <dd>
-            Event-driven rebalancing at minimal cooldown, using the water-filling allocator for sizing — probes how
-            much of the theoretical edge survives execution constraints (cooldowns, caps, turnover).
-          </dd>
-        </dl>
-        <p>
-          The operating doctrine, condensed: the business case is <em>captured × edge &gt; operating cost</em>.
-          Edge is exogenous and structurally decaying — faster crowds, and a v3 design built to compress
-          inefficiency — so capture is the only term the autopilot controls.
+          That is the whole argument: on v3 the edge is prediction, it is exogenous and structurally decaying, and
+          the business case reduces to <em>captured × edge &gt; operating cost</em>. The four decision rules that
+          try to capture it — the mirror baseline, the persistence-aware predictor, the size-aware optimal response,
+          and the block-speed reactor that argues against itself — each turn this theory into a concrete allocation
+          policy. They get their own page: continue to <strong>Strategies</strong>.
         </p>
       </div>
     </main>

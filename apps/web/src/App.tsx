@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfigPanel } from "./components/ConfigPanel.js";
 import { Guide } from "./components/Guide.js";
 import { Theory } from "./components/Theory.js";
+import { Strategies } from "./components/Strategies.js";
+import { Vocabulary } from "./components/Vocabulary.js";
 import { Logbook } from "./components/Logbook.js";
 import { Gauges } from "./components/Gauges.js";
 import { EquityChart } from "./components/EquityChart.js";
@@ -18,6 +20,18 @@ import type { DisplayResult, WorkerResponse } from "./lib/serialize.js";
 
 const STALE_AFTER_DAYS = 14;
 const DEBOUNCE_MS = 300;
+
+/** The doc pages, in reading order — one hash each, linked in the masthead. */
+type DocView = "theory" | "strategies" | "guide" | "vocabulary" | "logbook";
+const DOC_PAGES: { view: DocView; hash: string; label: string }[] = [
+  { view: "theory", hash: "#theory", label: "theory" },
+  { view: "strategies", hash: "#strategies", label: "strategies" },
+  { view: "guide", hash: "#guide", label: "guide" },
+  { view: "vocabulary", hash: "#vocabulary", label: "vocabulary" },
+  { view: "logbook", hash: "#logbook", label: "logbook" },
+];
+const VIEW_FOR_HASH = new Map(DOC_PAGES.map((p) => [p.hash, p.view]));
+type View = "console" | DocView;
 
 /** Strategy / market-bench / revenue-bench switch on both heat-map panels; the
  *  controls share one state so the maps always show the same portfolio. */
@@ -57,23 +71,14 @@ interface LiveState {
 
 export function App() {
   const [config, setConfig] = useState<RunConfig>(() => configFromHash(location.hash) ?? DEFAULT_RUN);
-  const [view, setView] = useState<"console" | "guide" | "theory" | "logbook">(() =>
-    location.hash === "#guide"
-      ? "guide"
-      : location.hash === "#theory"
-        ? "theory"
-        : location.hash === "#logbook"
-          ? "logbook"
-          : "console",
-  );
+  const [view, setView] = useState<View>(() => VIEW_FOR_HASH.get(location.hash) ?? "console");
   const [heatmapView, setHeatmapView] = useState<HeatmapView>("strategy");
 
-  // hash navigation (back button, pasted #guide/#theory links on an open page)
+  // hash navigation (back button, pasted doc-page links on an already-open page)
   useEffect(() => {
     const onHashChange = () => {
-      if (location.hash === "#guide") setView("guide");
-      else if (location.hash === "#theory") setView("theory");
-      else if (location.hash === "#logbook") setView("logbook");
+      const docView = VIEW_FOR_HASH.get(location.hash);
+      if (docView) setView(docView);
       else if (location.hash.startsWith("#run=")) setView("console");
     };
     window.addEventListener("hashchange", onHashChange);
@@ -179,39 +184,21 @@ export function App() {
         </h1>
         <span className="links">
           live replay · deterministic core · shared links replay exactly ·{" "}
-          <a
-            href="#theory"
-            onClick={(e) => {
-              e.preventDefault();
-              history.replaceState(null, "", "#theory");
-              setView("theory");
-            }}
-          >
-            theory
-          </a>{" "}
-          ·{" "}
-          <a
-            href="#guide"
-            onClick={(e) => {
-              e.preventDefault();
-              history.replaceState(null, "", "#guide");
-              setView("guide");
-            }}
-          >
-            guide
-          </a>{" "}
-          ·{" "}
-          <a
-            href="#logbook"
-            onClick={(e) => {
-              e.preventDefault();
-              history.replaceState(null, "", "#logbook");
-              setView("logbook");
-            }}
-          >
-            logbook
-          </a>{" "}
-          ·{" "}
+          {DOC_PAGES.map((page) => (
+            <span key={page.view}>
+              <a
+                href={page.hash}
+                onClick={(e) => {
+                  e.preventDefault();
+                  history.replaceState(null, "", page.hash);
+                  setView(page.view);
+                }}
+              >
+                {page.label}
+              </a>{" "}
+              ·{" "}
+            </span>
+          ))}
           <a href="https://github.com/leo-klima-agents/autopilot" rel="noreferrer">
             source
           </a>
@@ -221,33 +208,28 @@ export function App() {
         <div className="horizon" />
       </div>
 
-      {view === "guide" ? (
-        <Guide
-          onClose={() => {
+      {view !== "console" ? (
+        (() => {
+          const closeDoc = () => {
             history.replaceState(null, "", configToHash(config));
             setView("console");
-          }}
-        />
-      ) : view === "theory" ? (
-        <Theory
-          onClose={() => {
-            history.replaceState(null, "", configToHash(config));
-            setView("console");
-          }}
-        />
-      ) : view === "logbook" ? (
-        <Logbook
-          onClose={() => {
-            history.replaceState(null, "", configToHash(config));
-            setView("console");
-          }}
-          onOpenRun={(runConfig) => {
-            setConfig(runConfig);
-            setActivePreset(null);
-            history.replaceState(null, "", configToHash(runConfig));
-            setView("console");
-          }}
-        />
+          };
+          if (view === "theory") return <Theory onClose={closeDoc} />;
+          if (view === "strategies") return <Strategies onClose={closeDoc} />;
+          if (view === "guide") return <Guide onClose={closeDoc} />;
+          if (view === "vocabulary") return <Vocabulary onClose={closeDoc} />;
+          return (
+            <Logbook
+              onClose={closeDoc}
+              onOpenRun={(runConfig) => {
+                setConfig(runConfig);
+                setActivePreset(null);
+                history.replaceState(null, "", configToHash(runConfig));
+                setView("console");
+              }}
+            />
+          );
+        })()
       ) : (
       <main className="deck">
         <section aria-label="flight plan">
