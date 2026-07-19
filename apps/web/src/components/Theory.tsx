@@ -113,8 +113,9 @@ export function Theory({ onClose }: { onClose: () => void }) {
             A portfolio of your size holding every pool in proportion to its <em>global vote weight</em>, the
             market portfolio. It earns the global average by definition. It is investable: spread your votes like
             everyone else's, or park in a large relay, and you get approximately this. It carries no friction in the
-            simulation (no cooldowns, instant rebalancing): benchmarks are frictionless references; only the
-            strategy pays friction.
+            simulation (no cooldowns, instant rebalancing): it is the frictionless idealization of a passive
+            hold, which a real static allocation tracks with small drift. Benchmarks are frictionless references;
+            only the strategy pays friction.
           </dd>
           <dt>Revenue benchmark (cyan, dashed)</dt>
           <dd>
@@ -133,8 +134,11 @@ export function Theory({ onClose }: { onClose: () => void }) {
         <h2>6. Which benchmark must a strategy beat?</h2>
         <p>
           <strong>The market benchmark: it is the opportunity cost.</strong> If a strategy cannot beat it net of
-          friction (cooldowns spent, keeper gas, operational risk), the rational move is to hold the market and
-          delete the strategy. Because vote revenue is zero-sum around the average, beating the market benchmark is
+          friction (cooldowns spent, keeper gas, operational risk), the rational move is to hold a broad,
+          near-passive allocation and drop the active strategy. Cooldowns tax <em>changes</em>, not holding, so an
+          allocation that barely rotates pays almost no friction; the benchmark itself is the frictionless
+          idealization of that hold, and a real static allocation tracks it with small drift but negligible
+          turnover. Because vote revenue is zero-sum around the average, beating the market benchmark is
           exactly equivalent to extracting revenue share from other voters, which is the product's entire purpose.
           This is the go/no-go criterion for real capital.
         </p>
