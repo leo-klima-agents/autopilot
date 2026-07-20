@@ -103,7 +103,7 @@ export function persistenceFactor(
   let sum = 0n;
   for (const r of bucketRevenues) sum += r;
   const mean = sum / k;
-  if (mean === 0n) return WAD - mulDiv(haircutWad, WAD, WAD); // vol treated as 100%
+  if (mean === 0n) return WAD - haircutWad; // vol treated as 100% (haircut applied in full)
   let dev = 0n;
   for (const r of bucketRevenues) dev += r >= mean ? r - mean : mean - r;
   const mad = dev / k;

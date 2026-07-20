@@ -68,22 +68,37 @@ export function composeDisplayName(
   return `${prefix}${sanitizeSymbol(symbol0)}/${sanitizeSymbol(symbol1)}`;
 }
 
+/** True for a non-null, non-array object (`typeof x === "object"` also
+ *  matches `null` and arrays, which would let a malformed cache through and
+ *  then throw on the first `cache.tokens[addr]` access). */
+function isPlainObject(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null && !Array.isArray(x);
+}
+
 /** Loads tokens.json, returning an empty cache when absent or invalid. */
 export function loadTokenCache(path: string): TokenCacheV1 {
   try {
     const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
     if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      (parsed as { schemaVersion?: unknown }).schemaVersion === 1 &&
-      typeof (parsed as { tokens?: unknown }).tokens === "object"
+      isPlainObject(parsed) &&
+      parsed.schemaVersion === 1 &&
+      isPlainObject(parsed.tokens)
     ) {
-      return parsed as TokenCacheV1;
+      return parsed as unknown as TokenCacheV1;
     }
   } catch {
     // missing or malformed, start fresh
   }
   return { schemaVersion: 1, tokens: {} };
+}
+
+/** ERC-20 decimals is a uint8; anything else (fractional, negative, absent,
+ *  a huge value) would later throw in `10n ** BigInt(decimals)`. Clamp to a
+ *  valid integer in [0, 255], falling back to 18. */
+function normalizeDecimals(value: number | null | undefined): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 255
+    ? value
+    : 18;
 }
 
 /** Writes tokens.json (creating parent directories). */
@@ -210,7 +225,7 @@ export async function resolveTokens(
     cache.tokens[address] = {
       symbol: sanitizeSymbol(onchain.symbol ?? alchemy?.symbol ?? "UNKNOWN"),
       name: sanitizeName(onchain.name ?? alchemy?.name ?? "Unknown Token"),
-      decimals: onchain.decimals ?? alchemy?.decimals ?? 18,
+      decimals: normalizeDecimals(onchain.decimals ?? alchemy?.decimals),
       logo: alchemy?.logo ?? null,
     };
   }

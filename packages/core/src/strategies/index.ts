@@ -5,7 +5,11 @@ export {
   type ConfigSchema,
   type ConfigSchemaProperty,
 } from "./types.js";
-export { normalizeToWad } from "./normalize.js";
+export {
+  normalizeToWad,
+  clampToMaxPoolWeightWad,
+  VAULT_DEFAULT_MAX_POOL_WEIGHT_WAD,
+} from "./normalize.js";
 export {
   fixedGrid,
   fixedGridWeekly,

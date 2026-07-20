@@ -182,7 +182,11 @@ library LibDeterministic {
     }
 
     /// @notice pick the tranche to rotate next: cooldown elapsed, farthest from target by
-    ///         L1 distance, ties broken by lowest index. Mirrors packages/core scheduler.
+    ///         L1 distance, ties broken by lowest index. Mirrors packages/core scheduler,
+    ///         whose tie-break is ascending (lexicographic) tranche id: callers MUST pass
+    ///         `lastActionAt`/`distances` ordered by that same id order so "lowest index"
+    ///         here equals "lowest id" there. The differential harness enforces this and
+    ///         asserts exact parity (including two-digit ids where lexicographic != numeric).
     /// @param lastActionAt per-tranche last action timestamps
     /// @param distances per-tranche L1 distance to target (precomputed via l1Distance)
     /// @return found false when no tranche is rotatable

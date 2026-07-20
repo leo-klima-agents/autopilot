@@ -18,6 +18,7 @@ contract ExecutionFacet {
     error UnknownTranche(uint256 trancheId);
     error CooldownActive(uint256 trancheId, uint64 readyAt);
     error NoTargetSet();
+    error NoAllowedTargetPool();
 
     modifier onlyKeeper() {
         LibAccess.enforceRole(LibAccess.KEEPER_ROLE, msg.sender);
@@ -34,12 +35,28 @@ contract ExecutionFacet {
         uint64 readyAt = t.lastActionAt + ts.rotationCooldown;
         if (t.lastActionAt != 0 && block.timestamp < readyAt) revert CooldownActive(trancheId, readyAt);
 
+        // Rebuild the vote from the stored target, EXCLUDING any pool no longer
+        // allowlisted. Delisting a pool (setPoolAllowed(pool, false)) then takes effect on
+        // the very next rotation, without waiting for a fresh strategist target, and
+        // re-allowlisting restores it; the strategist's intent is preserved, not purged.
+        // Protocol facets treat the weights as relative, so a filtered subset re-votes the
+        // remaining pools pro-rata.
         uint256 n = ts.targetPools.length;
-        address[] memory pools = new address[](n);
-        uint256[] memory weights = new uint256[](n);
+        uint256 count;
         for (uint256 i; i < n; ++i) {
-            pools[i] = ts.targetPools[i];
-            weights[i] = ts.targetWeight[pools[i]];
+            if (ts.poolAllowed[ts.targetPools[i]]) ++count;
+        }
+        if (count == 0) revert NoAllowedTargetPool();
+
+        address[] memory pools = new address[](count);
+        uint256[] memory weights = new uint256[](count);
+        uint256 k;
+        for (uint256 i; i < n; ++i) {
+            address pool = ts.targetPools[i];
+            if (!ts.poolAllowed[pool]) continue;
+            pools[k] = pool;
+            weights[k] = ts.targetWeight[pool];
+            ++k;
         }
 
         IProtocolFacet(address(this)).allocate(t.positionTokenId, pools, weights);

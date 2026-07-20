@@ -233,6 +233,37 @@ contract AerodromeForkTest is Test, DiamondBuilder {
     }
 
     // ------------------------------------------------------------------
+    // distribute-window boundary: probe the REAL Voter's operator (§8.3, empirical).
+    // The facet reports the window open at exactly epochStart+1h; assert the chain
+    // agrees (accepts the vote there), so cooldownRemaining/allocationWindow never
+    // report ready one second before the Voter actually accepts.
+    // ------------------------------------------------------------------
+
+    function test_fork_voteAtExactDistributeWindowBoundary() public onlyForked {
+        _setTargets();
+        uint256 epochStart = block.timestamp - (block.timestamp % WEEK);
+        uint256 t1 = _createTranche(1_000e18);
+        (uint256 tokenId,,) = TrancheFacet(d.diamond).tranche(t1);
+
+        // Empirically: the real Voter reverts DistributeWindow at exactly epochStart+1h
+        // (its check is `block.timestamp > epochVoteStart`), and accepts one second later.
+        vm.warp(epochStart + WEEK + 1 hours);
+        vm.prank(KEEPER);
+        vm.expectRevert(DistributeWindow.selector);
+        ExecutionFacet(d.diamond).rotate(t1);
+        // the facet must agree: not ready yet at the boundary second
+        assertGt(IProtocolFacet(d.diamond).cooldownRemaining(tokenId), 0, "facet: still closed at +1h");
+        (uint64 opensAt,) = IProtocolFacet(d.diamond).allocationWindow();
+        assertGt(opensAt, block.timestamp, "facet: window opens after +1h");
+
+        vm.warp(epochStart + WEEK + 1 hours + 1); // one second later: open
+        assertEq(IProtocolFacet(d.diamond).cooldownRemaining(tokenId), 0, "facet: ready at +1h+1");
+        vm.prank(KEEPER);
+        ExecutionFacet(d.diamond).rotate(t1);
+        assertGt(IAeroVoter(VOTER).lastVoted(tokenId), 0, "vote recorded at +1h+1");
+    }
+
+    // ------------------------------------------------------------------
     // custody round-trip: NFT out (rescue) and back in (gated receipt)
     // ------------------------------------------------------------------
 

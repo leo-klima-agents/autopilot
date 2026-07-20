@@ -125,48 +125,83 @@ contract DifferentialTest is Test {
         uint256 nWait;
     }
 
-    /// @dev replays packages/core scheduler.plan: rotations farthest-first (ties by
-    ///      ascending id, lexicographic), then waits by readyAt ascending (ties by id)
+    /// @dev replays packages/core scheduler.plan THROUGH the production library: distances
+    ///      via LibDeterministic.l1Distance, rotation order via repeated
+    ///      LibDeterministic.selectRotation (fed id-sorted arrays so its lowest-index
+    ///      tie-break equals the scheduler's lowest-id tie-break); waits by readyAt asc.
     function _replayPlanCase(string memory json, string memory base) private view {
         PlanCase memory pc = _buildPlan(json, base);
-        _sortRotations(pc.rotations, pc.nRot);
         _sortWaits(pc.waits, pc.nWait);
         _assertPlan(json, base, pc);
     }
 
     function _buildPlan(string memory json, string memory base) private view returns (PlanCase memory pc) {
         pc.targetPools = vm.parseJsonKeys(json, string.concat(base, ".inputs.target"));
-        uint256 now_ = uint256(vm.parseJsonUint(json, string.concat(base, ".inputs.now")));
-        uint256 cooldown = uint256(vm.parseJsonUint(json, string.concat(base, ".inputs.cooldownSec")));
+        uint64 nowTs = uint64(vm.parseJsonUint(json, string.concat(base, ".inputs.now")));
+        uint64 cooldown = uint64(vm.parseJsonUint(json, string.concat(base, ".inputs.cooldownSec")));
 
-        uint256 trancheCount;
-        while (vm.keyExistsJson(json, string.concat(base, ".inputs.tranches[", vm.toString(trancheCount), "]"))) {
-            ++trancheCount;
+        uint256 tc;
+        while (vm.keyExistsJson(json, string.concat(base, ".inputs.tranches[", vm.toString(tc), "]"))) {
+            ++tc;
         }
-        pc.rotations = new PlanItem[](trancheCount);
-        pc.waits = new PlanItem[](trancheCount);
-        for (uint256 t; t < trancheCount; ++t) {
-            _classifyTranche(json, base, pc, t, now_, cooldown);
+
+        // gather per-tranche id, lastActionAt and L1 distance (distance via the twin)
+        string[] memory ids = new string[](tc);
+        uint64[] memory lastAt = new uint64[](tc);
+        uint256[] memory dist = new uint256[](tc);
+        for (uint256 t; t < tc; ++t) {
+            string memory tb = string.concat(base, ".inputs.tranches[", vm.toString(t), "]");
+            ids[t] = vm.parseJsonString(json, string.concat(tb, ".id"));
+            lastAt[t] = uint64(vm.parseJsonUint(json, string.concat(tb, ".lastActionAt")));
+            dist[t] = _distanceViaLib(json, base, tb, pc.targetPools);
+        }
+
+        // id-sorted arrays: selectRotation breaks distance ties by lowest index, so feeding
+        // it tranches in ascending-id order reproduces the scheduler's lowest-id tie-break
+        uint256[] memory ord = _idSortedOrder(ids);
+        uint64[] memory sLast = new uint64[](tc);
+        uint256[] memory sDist = new uint256[](tc);
+        string[] memory sIds = new string[](tc);
+        for (uint256 i; i < tc; ++i) {
+            sLast[i] = lastAt[ord[i]];
+            sDist[i] = dist[ord[i]];
+            sIds[i] = ids[ord[i]];
+        }
+
+        // rotations: peel off selectRotation (it filters cooldown + zero-distance itself)
+        pc.rotations = new PlanItem[](tc);
+        for (;;) {
+            (bool found, uint256 idx) = LibDeterministic.selectRotation(sLast, sDist, nowTs, cooldown);
+            if (!found) break;
+            pc.rotations[pc.nRot++] = PlanItem({id: sIds[idx], distance: sDist[idx], rotate: true});
+            sDist[idx] = 0;
+        }
+
+        // waits: off-target tranches selectRotation skipped because the cooldown is active
+        pc.waits = new PlanItem[](tc);
+        for (uint256 t; t < tc; ++t) {
+            if (dist[t] == 0) continue;
+            if (uint256(nowTs) >= uint256(lastAt[t]) + cooldown) continue;
+            pc.waits[pc.nWait++] = PlanItem({id: ids[t], distance: uint256(lastAt[t]) + cooldown, rotate: false});
         }
     }
 
-    function _classifyTranche(
-        string memory json,
-        string memory base,
-        PlanCase memory pc,
-        uint256 t,
-        uint256 now_,
-        uint256 cooldown
-    ) private view {
-        string memory tb = string.concat(base, ".inputs.tranches[", vm.toString(t), "]");
-        uint256 distance = _l1VsTarget(json, base, tb, pc.targetPools);
-        if (distance == 0) return;
-        uint256 readyAt = uint256(vm.parseJsonUint(json, string.concat(tb, ".lastActionAt"))) + cooldown;
-        string memory id = vm.parseJsonString(json, string.concat(tb, ".id"));
-        if (now_ >= readyAt) {
-            pc.rotations[pc.nRot++] = PlanItem({id: id, distance: distance, rotate: true});
-        } else {
-            pc.waits[pc.nWait++] = PlanItem({id: id, distance: readyAt, rotate: false});
+    /// @dev indices of `ids` in ascending lexicographic order (selection sort; tiny arrays),
+    ///      matching the TS scheduler's tie-break comparator
+    function _idSortedOrder(string[] memory ids) private pure returns (uint256[] memory ord) {
+        uint256 n = ids.length;
+        ord = new uint256[](n);
+        for (uint256 i; i < n; ++i) {
+            ord[i] = i;
+        }
+        for (uint256 i; i < n; ++i) {
+            uint256 lo = i;
+            for (uint256 j = i + 1; j < n; ++j) {
+                if (_strGt(ids[ord[lo]], ids[ord[j]])) lo = j;
+            }
+            if (lo != i) {
+                (ord[i], ord[lo]) = (ord[lo], ord[i]);
+            }
         }
     }
 
@@ -204,24 +239,33 @@ contract DifferentialTest is Test {
         }
     }
 
-    /// @dev L1 distance over the union of the tranche's allocation keys and target keys
-    function _l1VsTarget(string memory json, string memory base, string memory tb, string[] memory targetPools)
+    /// @dev L1 distance between the tranche's allocation and the target, computed through
+    ///      the production LibDeterministic.l1Distance over aligned (current, target) arrays
+    ///      built on the pool union, so the twin's distance math is exercised, not mirrored.
+    function _distanceViaLib(string memory json, string memory base, string memory tb, string[] memory targetPools)
         private
         view
-        returns (uint256 distance)
+        returns (uint256)
     {
         string[] memory allocPools = vm.parseJsonKeys(json, string.concat(tb, ".allocation"));
-        // pools in the allocation (target value 0 when absent)
-        for (uint256 p; p < allocPools.length; ++p) {
-            uint256 a = _u(json, string.concat(tb, ".allocation.", allocPools[p]));
-            uint256 b = _targetWeight(json, base, allocPools[p]);
-            distance += a > b ? a - b : b - a;
+        uint256 extra;
+        for (uint256 p; p < targetPools.length; ++p) {
+            if (!_contains(allocPools, targetPools[p])) ++extra;
         }
-        // pools only in the target
+        uint256[] memory cur = new uint256[](allocPools.length + extra);
+        uint256[] memory tgt = new uint256[](allocPools.length + extra);
+        for (uint256 p; p < allocPools.length; ++p) {
+            cur[p] = _u(json, string.concat(tb, ".allocation.", allocPools[p]));
+            tgt[p] = _targetWeight(json, base, allocPools[p]);
+        }
+        uint256 k = allocPools.length;
         for (uint256 p; p < targetPools.length; ++p) {
             if (_contains(allocPools, targetPools[p])) continue;
-            distance += _u(json, string.concat(base, ".inputs.target.", targetPools[p]));
+            // cur[k] stays 0 (pool only in target)
+            tgt[k] = _u(json, string.concat(base, ".inputs.target.", targetPools[p]));
+            ++k;
         }
+        return LibDeterministic.l1Distance(cur, tgt);
     }
 
     function _targetWeight(string memory json, string memory base, string memory pool)
@@ -234,26 +278,7 @@ contract DifferentialTest is Test {
         return _u(json, path);
     }
 
-    // insertion sorts mirroring the TS comparators exactly
-    function _sortRotations(PlanItem[] memory items, uint256 len) private pure {
-        for (uint256 i = 1; i < len; ++i) {
-            PlanItem memory key = items[i];
-            uint256 j = i;
-            while (j > 0 && _rotateAfter(items[j - 1], key)) {
-                items[j] = items[j - 1];
-                --j;
-            }
-            items[j] = key;
-        }
-    }
-
-    /// @dev true when `a` should sort after `b`: smaller distance, or equal distance and
-    ///      lexicographically greater id
-    function _rotateAfter(PlanItem memory a, PlanItem memory b) private pure returns (bool) {
-        if (a.distance != b.distance) return a.distance < b.distance;
-        return _strGt(a.id, b.id);
-    }
-
+    // insertion sort mirroring the TS wait comparator exactly (until asc, then id asc)
     function _sortWaits(PlanItem[] memory items, uint256 len) private pure {
         for (uint256 i = 1; i < len; ++i) {
             PlanItem memory key = items[i];

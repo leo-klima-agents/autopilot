@@ -10,7 +10,8 @@ import {
     IAeroVoter,
     IAeroVotingEscrow,
     IAeroRewardsDistributor,
-    IAeroRouter
+    IAeroRouter,
+    IAeroPoolFactory
 } from "../../interfaces/external/IAerodrome.sol";
 
 /// @title AerodromeFacet
@@ -43,6 +44,8 @@ contract AerodromeFacet is IProtocolFacet {
 
     error NothingToCompound();
     error InsufficientOutput(uint256 got, uint256 want);
+    error InvalidRoute();
+    error SwapPoolNotAllowed(address pool);
 
     function protocolId() external pure returns (bytes32) {
         return keccak256("aerodrome-v2");
@@ -84,17 +87,39 @@ contract AerodromeFacet is IProtocolFacet {
     function compound(uint256 tokenId, uint256 minAmountOut, bytes calldata data) external returns (uint256 added) {
         LibAccess.enforceSelfOrOwner();
         LibVaultStorage.ProtocolConfigStorage storage cfg = LibVaultStorage.protocolConfig();
+        IAeroVoter voter = IAeroVoter(cfg.voter);
         SwapLeg[] memory legs = abi.decode(data, (SwapLeg[]));
 
-        uint256 before = IERC20(cfg.token).balanceOf(address(this));
         for (uint256 i; i < legs.length; ++i) {
+            IAeroRouter.Route[] memory routes = legs[i].routes;
+            if (routes.length == 0) revert InvalidRoute();
+            // the leg must consume its declared reward token and end in the lock token
+            if (routes[0].from != legs[i].tokenIn) revert InvalidRoute();
+            if (routes[routes.length - 1].to != cfg.token) revert InvalidRoute();
+            // Every hop must route through a pool with a LIVE Aerodrome gauge. This is the
+            // damage ceiling that keeps the keeper hot key liveness-only (OPERATIONS §1): a
+            // compromised keeper can only move reward value through the deep, protocol-
+            // blessed pools the vault already votes on, never through an attacker-created
+            // pool used to extract value as slippage. Gauge creation is governance-gated, so
+            // the attacker cannot self-bless a malicious pool.
+            for (uint256 h; h < routes.length; ++h) {
+                IAeroRouter.Route memory r = routes[h];
+                address pool = IAeroPoolFactory(r.factory).getPool(r.from, r.to, r.stable);
+                address gauge = pool == address(0) ? address(0) : voter.gauges(pool);
+                if (gauge == address(0) || !voter.isAlive(gauge)) revert SwapPoolNotAllowed(pool);
+            }
             uint256 bal = IERC20(legs[i].tokenIn).balanceOf(address(this));
             if (bal == 0) continue;
             IERC20(legs[i].tokenIn).forceApprove(cfg.router, bal);
-            // per-leg minOut is 0; the aggregate is enforced below against minAmountOut
-            IAeroRouter(cfg.router).swapExactTokensForTokens(bal, 0, legs[i].routes, address(this), block.timestamp);
+            // per-leg minOut is 0; slippage is bounded by routing only through gauged pools
+            // plus the aggregate minAmountOut check below (keeper-supplied off-chain).
+            IAeroRouter(cfg.router).swapExactTokensForTokens(bal, 0, routes, address(this), block.timestamp);
         }
-        added = IERC20(cfg.token).balanceOf(address(this)) - before;
+        // Stake the diamond's entire lock-token balance, not just the swap delta: AERO-
+        // denominated rewards already held (e.g. AERO bribes) are compounded instead of
+        // stranded, and a leg whose output token is AERO itself cannot underflow. The vault
+        // holds no idle lock-token float (OPERATIONS §4); loose AERO is reward proceeds.
+        added = IERC20(cfg.token).balanceOf(address(this));
         if (added < minAmountOut) revert InsufficientOutput(added, minAmountOut);
         if (added == 0) revert NothingToCompound();
 
@@ -113,12 +138,16 @@ contract AerodromeFacet is IProtocolFacet {
     function cooldownRemaining(uint256 tokenId) external view returns (uint256) {
         uint256 epochStart = block.timestamp - (block.timestamp % WEEK);
         uint256 lastVoted = IAeroVoter(LibVaultStorage.protocolConfig().voter).lastVoted(tokenId);
+        // The Voter's distribute-window gate is `block.timestamp > epochVoteStart`
+        // (epochVoteStart = epochStart + 1h), so the FIRST votable second is
+        // epochStart + 1h + 1; reporting ready at exactly +1h reverts on-chain. Verified
+        // empirically in test_fork_voteAtExactDistributeWindowBoundary (§8.3).
         uint256 readyAt;
         if (lastVoted >= epochStart) {
-            // voted this epoch: free at next flip + 1h distribute window
-            readyAt = epochStart + WEEK + 1 hours;
-        } else if (block.timestamp < epochStart + 1 hours) {
-            readyAt = epochStart + 1 hours;
+            // voted this epoch: free just after next flip + 1h distribute window
+            readyAt = epochStart + WEEK + 1 hours + 1;
+        } else if (block.timestamp <= epochStart + 1 hours) {
+            readyAt = epochStart + 1 hours + 1;
         } else {
             return 0;
         }
@@ -131,11 +160,13 @@ contract AerodromeFacet is IProtocolFacet {
     }
 
     /// @inheritdoc IProtocolFacet
-    /// @dev vote window is [epochStart+1h, epochStart+WEEK-1h); the last hour is
-    ///      whitelist-only (A3) which this vault does not assume it has
+    /// @dev vote window is (epochStart+1h, epochStart+WEEK-1h); the Voter's gate is a strict
+    ///      `>` on epochVoteStart, so the first votable second is epochStart+1h+1 (see
+    ///      cooldownRemaining). The last hour is whitelist-only (A3), which this vault does
+    ///      not assume it has.
     function allocationWindow() external view returns (uint64 opensAt, uint64 closesAt) {
         uint256 epochStart = block.timestamp - (block.timestamp % WEEK);
-        uint256 voteStart = epochStart + 1 hours;
+        uint256 voteStart = epochStart + 1 hours + 1;
         opensAt = uint64(block.timestamp < voteStart ? voteStart : block.timestamp);
         closesAt = uint64(epochStart + WEEK - 1 hours);
     }

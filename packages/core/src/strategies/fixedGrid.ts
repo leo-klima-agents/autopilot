@@ -5,7 +5,7 @@
  * epoch, A4); the shorter grids target the v3 continuous model.
  */
 
-import { WEEK } from "../model/types.js";
+import { HOUR, WEEK } from "../model/types.js";
 import type { MarketState, PoolId, TargetAllocation, Wad } from "../model/types.js";
 import { normalizeToWad } from "./normalize.js";
 import type { ConfigSchema, Portfolio, Strategy } from "./types.js";
@@ -19,14 +19,17 @@ export interface FixedGridConfig {
    */
   pools?: readonly PoolId[];
   /**
-   * Weekly grid only: submit this many seconds before the epoch flip.
-   * Default 3600 (submit one hour before Thursday 00:00 UTC).
+   * Weekly grid only: submit this many seconds before the epoch flip. Must be
+   * within (1h, WEEK-1h) so the vote lands inside the votable window: the first
+   * hour is the distribute window (A2) and the last hour is whitelist-only (A3),
+   * both of which reject a non-whitelisted vault. Default 7200 (two hours before
+   * Thursday 00:00 UTC), a late-but-safe signal.
    */
   submitOffsetSec?: number;
 }
 
 /** Default fixedGrid config values. */
-export const fixedGridDefaults = { lookbackSec: WEEK, submitOffsetSec: 3_600 } as const;
+export const fixedGridDefaults = { lookbackSec: WEEK, submitOffsetSec: 2 * HOUR } as const;
 
 const configSchema: ConfigSchema = {
   type: "object",
@@ -45,9 +48,9 @@ const configSchema: ConfigSchema = {
     submitOffsetSec: {
       type: "integer",
       description:
-        "Weekly grid only: seconds before the epoch flip at which the target is submitted.",
-      default: 3_600,
-      minimum: 0,
+        "Weekly grid only: seconds before the epoch flip at which the target is submitted (must be within the votable window, i.e. > 1h and < WEEK-1h).",
+      default: 2 * HOUR,
+      minimum: HOUR + 1,
     },
   },
   additionalProperties: false,
@@ -76,6 +79,15 @@ export function fixedGrid(intervalSec: number, config: FixedGridConfig = {}): St
   }
   const cfg = { ...fixedGridDefaults, ...config };
   const weekly = intervalSec === WEEK;
+  // The weekly vote fires at epochStart + WEEK - submitOffsetSec; it must land
+  // strictly inside the votable window (epochStart+1h, epochStart+WEEK-1h) or
+  // the model's distribute-window / last-hour-whitelist gates reject every vote
+  // (silently swallowed as blockedSubmissions), so the strategy never votes.
+  if (weekly && (cfg.submitOffsetSec <= HOUR || cfg.submitOffsetSec >= WEEK - HOUR)) {
+    throw new Error(
+      `fixedGridWeekly: submitOffsetSec must be within (${HOUR}, ${WEEK - HOUR}); got ${cfg.submitOffsetSec}`,
+    );
+  }
   const phaseSec = weekly ? (WEEK - cfg.submitOffsetSec) % WEEK : 0;
   return {
     name: weekly ? "FixedGridWeekly" : `FixedGrid${intervalSec}s`,

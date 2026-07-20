@@ -103,8 +103,12 @@ export function createEpochModel(config: EpochModelConfig): ProtocolModel {
     if (es <= pos.lastVoted) {
       return new AllocationBlockedError("AlreadyVotedOrDeposited", es + WEEK + HOUR);
     }
-    if (now < es + HOUR) {
-      return new AllocationBlockedError("DistributeWindow", es + HOUR);
+    // Distribute window: the Voter's gate is `block.timestamp > epochVoteStart`
+    // (epochVoteStart = es + HOUR), so a vote at exactly es+HOUR reverts DistributeWindow
+    // and the first votable second is es+HOUR+1. Confirmed empirically against the real
+    // Aerodrome Voter (contracts/test/fork test_fork_voteAtExactDistributeWindowBoundary).
+    if (now <= es + HOUR) {
+      return new AllocationBlockedError("DistributeWindow", es + HOUR + 1);
     }
     if (enforceLastHour && now >= es + WEEK - HOUR && !pos.whitelisted) {
       return new AllocationBlockedError("NotWhitelistedNFT", es + WEEK + HOUR);
