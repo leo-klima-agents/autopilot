@@ -6,6 +6,7 @@
  * epochs flip at Thursday 00:00 UTC, and a viewer's local zone must not
  * shift which week a point appears in.
  */
+import { WEEK } from "@aero-autopilot/core/model";
 import type { DisplayResult } from "./serialize.js";
 
 export interface TimeAxis {
@@ -22,8 +23,6 @@ export interface TimeAxis {
    */
   epochTicks(minTs: number, maxTs: number, maxTicks?: number): number[];
 }
-
-const WEEK = 604_800;
 
 function weekGridTicks(anchor: number, minTs: number, maxTs: number, maxTicks: number): number[] {
   if (maxTs <= minTs) return [];
