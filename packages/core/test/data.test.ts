@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -17,6 +17,7 @@ import {
   type SugarLpEpoch,
 } from "../src/data/sugar.js";
 import { computeEpochUsd, usdWadOf } from "../src/data/usd.js";
+import { fetchHistoricalPrices, loadPriceCache, savePriceCache } from "../src/data/prices.js";
 import { rankPoolsByUsdRevenue } from "../src/data/cli.js";
 import {
   composeDisplayName,
@@ -547,5 +548,62 @@ describe("fetchLatestEpochs pagination", () => {
     const epochs = await fetchLatestEpochs(fake, 250, { pageSize: 100n });
     expect(calls).toEqual([0n, 100n, 200n]);
     expect(epochs.length).toBe(150);
+  });
+});
+
+describe("cache hardening (malformed input, transient failures)", () => {
+  it("loadTokenCache treats null/array tokens as an empty cache", () => {
+    const path = join(tempDir(), "tokens.json");
+    writeFileSync(path, JSON.stringify({ schemaVersion: 1, tokens: null }));
+    expect(loadTokenCache(path).tokens).toEqual({});
+    writeFileSync(path, JSON.stringify({ schemaVersion: 1, tokens: [] }));
+    expect(loadTokenCache(path).tokens).toEqual({});
+  });
+
+  it("loadPriceCache treats null/array maps as an empty cache", () => {
+    const path = join(tempDir(), "prices.json");
+    writeFileSync(path, JSON.stringify({ schemaVersion: 1, prices: null, unpriceable: {} }));
+    expect(loadPriceCache(path).prices).toEqual({});
+  });
+
+  it("normalizes an out-of-range on-chain decimals to 18, keeps a valid one", async () => {
+    const reader = (decimals: unknown): Erc20Reader => ({
+      readContract: async ({ functionName }) => {
+        if (functionName === "symbol") return "TKN";
+        if (functionName === "name") return "Token";
+        return decimals;
+      },
+    });
+    const bad = await resolveTokens(["0x2222222222222222222222222222222222222222"], {
+      client: reader(-3),
+    });
+    expect(bad.tokens["0x2222222222222222222222222222222222222222"]!.decimals).toBe(18);
+    const good = await resolveTokens(["0x3333333333333333333333333333333333333333"], {
+      client: reader(6),
+    });
+    expect(good.tokens["0x3333333333333333333333333333333333333333"]!.decimals).toBe(6);
+  });
+
+  it("a 400 records the skip sentinel without wiping previously cached prices", async () => {
+    const path = join(tempDir(), "prices.json");
+    const token = "0x1111111111111111111111111111111111111111";
+    savePriceCache(path, {
+      schemaVersion: 1,
+      prices: { [token]: { "2020-01-02": "1500000000000000000" } },
+      unpriceable: {},
+    });
+    const badFetch = (async () => ({
+      status: 400,
+      ok: false,
+      json: async () => ({}),
+    })) as unknown as typeof fetch;
+    await fetchHistoricalPrices(
+      [token],
+      { startTs: T0, endTs: T0 + 2 * WEEK },
+      { apiKey: "k", cachePath: path, fetchFn: badFetch, sleepFn: async () => {} },
+    );
+    const after = loadPriceCache(path);
+    expect(after.prices[token]?.["2020-01-02"]).toBe("1500000000000000000");
+    expect(after.unpriceable[token]).toBeDefined();
   });
 });

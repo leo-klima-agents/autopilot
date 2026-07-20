@@ -38,7 +38,8 @@ describe("EpochModel voting gates", () => {
   it("blocks voting during the first hour (distribute window)", () => {
     const model = setup(30 * 60);
     expect(model.canAllocate("p1")).toBe(false);
-    expect(model.nextAllocationTime("p1")).toBe(T0 + HOUR);
+    // Voter gate is strict (`> epochVoteStart`), so the first votable second is es+HOUR+1.
+    expect(model.nextAllocationTime("p1")).toBe(T0 + HOUR + 1);
     expect(() => model.submitAllocation("p1", wholeTo("a"))).toThrow(AllocationBlockedError);
     expect(() => model.submitAllocation("p1", wholeTo("a"))).toThrow(/DistributeWindow/);
   });
@@ -51,8 +52,8 @@ describe("EpochModel voting gates", () => {
     // Still blocked later in the same epoch.
     model.advance(3 * 24 * 3600);
     expect(model.canAllocate("p1")).toBe(false);
-    // New epoch + distribute window passed: free again.
-    model.advance(WEEK - 3 * 24 * 3600 - HOUR); // lands at flip + 1h
+    // New epoch + distribute window passed: free again (first votable second is +1h+1).
+    model.advance(WEEK - 3 * 24 * 3600 - HOUR + 1); // lands at flip + 1h + 1
     expect(model.canAllocate("p1")).toBe(true);
     model.submitAllocation("p1", wholeTo("b"));
   });

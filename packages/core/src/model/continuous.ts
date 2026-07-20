@@ -110,6 +110,19 @@ export function createContinuousModel(config: ContinuousModelConfig): ProtocolMo
   const decayEnabled = config.decay?.enabled ?? false;
   const decayRate = config.decay?.ratePerSecWad ?? 0n;
 
+  // With caps enabled, `advance` segments time on the cap-recalibration grid;
+  // a non-positive interval makes that loop fail to progress (infinite loop or
+  // time running backwards), and a non-positive window divides by zero in
+  // `recalibrateCaps`. Reject both up front rather than hanging at run time.
+  if (capsEnabled) {
+    if (!Number.isInteger(capIntervalSec) || capIntervalSec <= 0) {
+      throw new Error(`caps.intervalSec must be a positive integer, got ${capIntervalSec}`);
+    }
+    if (!Number.isInteger(capWindowSec) || capWindowSec <= 0) {
+      throw new Error(`caps.windowSec must be a positive integer, got ${capWindowSec}`);
+    }
+  }
+
   let t = startTime;
   let globalLastActionAt = startTime - cooldownSec;
   const positions = new Map<string, PositionState>();

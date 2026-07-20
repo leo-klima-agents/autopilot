@@ -158,6 +158,17 @@ export function runBacktest(
   const cooldownSec = config.cooldownSec ?? DEFAULT_COOLDOWN_SEC;
   const sampleIntervalSec = config.sampleIntervalSec ?? stepSec;
   const crowdUpdateSec = config.crowdUpdateSec ?? stepSec;
+  // Sampling and crowd updates fire on exact modulo checks against step-aligned
+  // time (`(t - startTime) % interval === 0`), so an interval that is not a
+  // positive integer multiple of stepSec silently samples rarely or never
+  // (empty equity curve, zeroed on-target metrics) and freezes the crowd model.
+  // Reject those configs instead of returning degenerate results.
+  if (!Number.isInteger(sampleIntervalSec) || sampleIntervalSec <= 0 || sampleIntervalSec % stepSec !== 0) {
+    throw new Error("sampleIntervalSec must be a positive integer multiple of stepSec");
+  }
+  if (!Number.isInteger(crowdUpdateSec) || crowdUpdateSec <= 0 || crowdUpdateSec % stepSec !== 0) {
+    throw new Error("crowdUpdateSec must be a positive integer multiple of stepSec");
+  }
   const onTol = config.onTargetToleranceWad ?? WAD / 50n; // 2pp
   const offTol = config.offTargetToleranceWad ?? WAD / 20n; // 5pp
   const optimalWindowSec = config.optimalWindowSec ?? 86_400;

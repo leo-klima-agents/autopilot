@@ -47,3 +47,9 @@ interface IAeroRouter {
         uint256 deadline
     ) external returns (uint256[] memory amounts);
 }
+
+interface IAeroPoolFactory {
+    /// @notice canonical pool for a token pair (address(0) if none); used to resolve a
+    ///         swap route hop to the pool the router will actually trade through
+    function getPool(address tokenA, address tokenB, bool stable) external view returns (address);
+}

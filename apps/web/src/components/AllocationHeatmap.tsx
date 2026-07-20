@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DisplayResult } from "../lib/serialize.js";
 import { timeAxisFor } from "../lib/timeAxis.js";
 import { TIME_AXIS_LEFT, TIME_AXIS_RIGHT_PAD } from "../lib/chartGeometry.js";
+import { pct } from "../lib/format.js";
 
 const ROW_H = 18;
 const TICK_ROW_H = 22;
@@ -94,7 +95,7 @@ export function AllocationHeatmap({
                     fill={cellColor(weights[i]?.[row] ?? 0)}
                   >
                     <title>
-                      {name} · {axis.label(ts)} · {(100 * (weights[i]?.[row] ?? 0)).toFixed(1)}%
+                      {name} · {axis.label(ts)} · {pct(weights[i]?.[row] ?? 0)}
                     </title>
                   </rect>
                 );

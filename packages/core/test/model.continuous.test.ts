@@ -349,3 +349,25 @@ describe("crowd models", () => {
     ).toBe(baited.revenueBetween("a", 0, 300));
   });
 });
+
+describe("ContinuousModel config validation", () => {
+  it("rejects a non-positive cap interval that would hang advance()", () => {
+    expect(() =>
+      createContinuousModel({
+        revenue: constantRevenue({ a: WAD }),
+        startTime: T0,
+        caps: { enabled: true, intervalSec: 0 },
+      }),
+    ).toThrow(/intervalSec/);
+  });
+
+  it("rejects a non-positive cap window", () => {
+    expect(() =>
+      createContinuousModel({
+        revenue: constantRevenue({ a: WAD }),
+        startTime: T0,
+        caps: { enabled: true, windowSec: 0 },
+      }),
+    ).toThrow(/windowSec/);
+  });
+});

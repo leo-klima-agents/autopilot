@@ -309,3 +309,35 @@ describe("calibration: published on-target progression (F21, ordering only)", ()
     expect(result.marketBenchmarkReturn).toBe(expected);
   });
 });
+
+describe("runBacktest config validation", () => {
+  it("rejects a sampleIntervalSec that is not a positive multiple of stepSec", () => {
+    const revenue = constantRevenue({ a: WAD });
+    const model = createContinuousModel({ revenue, startTime: T0, cooldownSec: HOUR });
+    expect(() =>
+      runBacktest(fixedGrid(HOUR, { lookbackSec: HOUR }), model, {
+        startTime: T0,
+        durationSec: 2 * HOUR,
+        stepSec: HOUR,
+        sampleIntervalSec: 5_000,
+        trancheCount: 1,
+        trancheWeight: WAD,
+      }),
+    ).toThrow(/sampleIntervalSec/);
+  });
+
+  it("rejects a crowdUpdateSec that is not a positive multiple of stepSec", () => {
+    const revenue = constantRevenue({ a: WAD });
+    const model = createContinuousModel({ revenue, startTime: T0, cooldownSec: HOUR });
+    expect(() =>
+      runBacktest(fixedGrid(HOUR, { lookbackSec: HOUR }), model, {
+        startTime: T0,
+        durationSec: 2 * HOUR,
+        stepSec: HOUR,
+        crowdUpdateSec: 5_000,
+        trancheCount: 1,
+        trancheWeight: WAD,
+      }),
+    ).toThrow(/crowdUpdateSec/);
+  });
+});

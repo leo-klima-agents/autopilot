@@ -20,6 +20,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { epochStart, WEEK } from "../model/types.js";
 import { withRetry, sleep } from "./retry.js";
 
 const WAD_DECIMALS = 18;
@@ -45,6 +46,12 @@ export function emptyPriceCache(): PriceCacheV1 {
   return { schemaVersion: 1, prices: {}, unpriceable: {} };
 }
 
+/** True for a non-null, non-array object (`typeof x === "object"` also
+ *  matches `null` and arrays, which would pass a malformed cache through). */
+function isPlainObject(x: unknown): x is Record<string, unknown> {
+  return typeof x === "object" && x !== null && !Array.isArray(x);
+}
+
 /** Loads the cache; a missing or malformed file yields a fresh empty cache. */
 export function loadPriceCache(path: string): PriceCacheV1 {
   if (!existsSync(path)) return emptyPriceCache();
@@ -54,8 +61,8 @@ export function loadPriceCache(path: string): PriceCacheV1 {
       typeof parsed === "object" &&
       parsed !== null &&
       (parsed as { schemaVersion?: unknown }).schemaVersion === 1 &&
-      typeof (parsed as { prices?: unknown }).prices === "object" &&
-      typeof (parsed as { unpriceable?: unknown }).unpriceable === "object"
+      isPlainObject((parsed as { prices?: unknown }).prices) &&
+      isPlainObject((parsed as { unpriceable?: unknown }).unpriceable)
     ) {
       return parsed as PriceCacheV1;
     }
@@ -191,7 +198,12 @@ export async function fetchHistoricalPrices(
         dateMap[pt.timestamp.slice(0, 10)] = parseUsdToWad(pt.value).toString();
       }
     }
-    if (unpriceable) delete cache.prices[token];
+    // A 400 records the skip-fetch sentinel but must NOT discard prices already
+    // cached from earlier runs: a transient/edge-case 400 on a token with a long
+    // history would otherwise wipe it, silently collapsing its USD revenue to 0
+    // and dropping it from the ranked universe. Drop only an empty date map so a
+    // never-priced token leaves no stray key.
+    if (unpriceable && Object.keys(dateMap).length === 0) delete cache.prices[token];
     if (cachePath) savePriceCache(cachePath, cache);
   }
   if (cachePath) savePriceCache(cachePath, cache);
@@ -200,8 +212,8 @@ export async function fetchHistoricalPrices(
 
 /** Thursday epoch-start dates within [startTs, endTs]. */
 function epochDatesInRange(startTs: number, endTs: number): string[] {
-  const WEEK = 7 * DAY_S;
-  const first = startTs - (startTs % WEEK);
+  // reuse the single epoch-grid definition (model/types) rather than re-deriving it
+  const first = epochStart(startTs);
   const dates: string[] = [];
   for (let ts = first; ts <= endTs; ts += WEEK) {
     if (ts >= startTs - WEEK) dates.push(priceDateForEpoch(ts));

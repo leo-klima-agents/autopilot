@@ -190,6 +190,61 @@
       }
     },
     {
+      "name": "tie-distance-two-digit-ids-lexicographic",
+      "inputs": {
+        "tranches": [
+          {
+            "id": "t2",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734998400,
+            "allocation": {
+              "pool-a": "1000000000000000000"
+            }
+          },
+          {
+            "id": "t10",
+            "positionWeight": "1000000000000000000",
+            "lastActionAt": 1734998400,
+            "allocation": {
+              "pool-a": "1000000000000000000"
+            }
+          }
+        ],
+        "target": {
+          "pool-a": "250000000000000000",
+          "pool-b": "250000000000000000",
+          "pool-c": "250000000000000000",
+          "pool-d": "250000000000000000"
+        },
+        "now": 1735171200,
+        "cooldownSec": 172800
+      },
+      "expected": {
+        "actions": [
+          {
+            "kind": "rotate",
+            "trancheId": "t10",
+            "allocation": {
+              "pool-a": "250000000000000000",
+              "pool-b": "250000000000000000",
+              "pool-c": "250000000000000000",
+              "pool-d": "250000000000000000"
+            }
+          },
+          {
+            "kind": "rotate",
+            "trancheId": "t2",
+            "allocation": {
+              "pool-a": "250000000000000000",
+              "pool-b": "250000000000000000",
+              "pool-c": "250000000000000000",
+              "pool-d": "250000000000000000"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "zero-cooldown-always-free",
       "inputs": {
         "tranches": [

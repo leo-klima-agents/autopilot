@@ -335,6 +335,20 @@ export function buildSchedulerFixtures(seed: bigint): FixtureFile<SchedulerCase>
     cd,
   );
   push(
+    // Ties are broken by LEXICOGRAPHIC id order, not numeric: "t10" < "t2". This case
+    // locks that both twins agree once ids reach two digits (the latent divergence the
+    // Solidity twin's index-based tie-break would otherwise hide, since the harness feeds
+    // selectRotation id-sorted arrays).
+    "tie-distance-two-digit-ids-lexicographic",
+    [
+      { id: "t2", positionWeight: WAD, lastActionAt: t0 - cd, allocation: new Map(concentrated) },
+      { id: "t10", positionWeight: WAD, lastActionAt: t0 - cd, allocation: new Map(concentrated) },
+    ],
+    uniform,
+    t0,
+    cd,
+  );
+  push(
     "zero-cooldown-always-free",
     [{ id: "t0", positionWeight: WAD, lastActionAt: t0, allocation: new Map() }],
     concentrated,

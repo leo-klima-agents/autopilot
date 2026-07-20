@@ -9,7 +9,11 @@ import {
   marginalYield,
 } from "../src/strategies/continuousGreedy.js";
 import { fixedGrid, fixedGrid48h, fixedGridWeekly } from "../src/strategies/fixedGrid.js";
-import { normalizeToWad } from "../src/strategies/normalize.js";
+import {
+  clampToMaxPoolWeightWad,
+  normalizeToWad,
+  VAULT_DEFAULT_MAX_POOL_WEIGHT_WAD,
+} from "../src/strategies/normalize.js";
 import {
   persistenceCarry,
   persistenceFactor,
@@ -79,10 +83,17 @@ describe("fixedGrid", () => {
   });
 
   it("weekly grid phases its cadence submitOffsetSec before the flip", () => {
-    const strategy = fixedGridWeekly({ submitOffsetSec: 3_600 });
+    const strategy = fixedGridWeekly({ submitOffsetSec: 2 * 3_600 });
     expect(strategy.cadenceSec).toBe(WEEK);
-    expect(strategy.phaseSec).toBe(WEEK - 3_600);
+    expect(strategy.phaseSec).toBe(WEEK - 2 * 3_600);
     expect(strategy.name).toBe("FixedGridWeekly");
+  });
+
+  it("rejects a weekly submitOffsetSec on or outside the votable window", () => {
+    // 1h is the distribute-window boundary; WEEK-1h the last-hour gate. Both blocked.
+    expect(() => fixedGridWeekly({ submitOffsetSec: 3_600 })).toThrow(/submitOffsetSec/);
+    expect(() => fixedGridWeekly({ submitOffsetSec: WEEK - 3_600 })).toThrow(/submitOffsetSec/);
+    expect(() => fixedGridWeekly({ submitOffsetSec: 0 })).toThrow(/submitOffsetSec/);
   });
 
   it("short grids share the factory", () => {
@@ -313,5 +324,43 @@ describe("continuousGreedy", () => {
 
   it("defaults to one Base block cadence", () => {
     expect(continuousGreedy().cadenceSec).toBe(2);
+  });
+});
+
+describe("clampToMaxPoolWeightWad (guardrail-valid targets, mirrors TargetsFacet)", () => {
+  const sumOf = (m: TargetAllocation): bigint => {
+    let s = 0n;
+    for (const v of m.values()) s += v;
+    return s;
+  };
+
+  it("returns an in-cap target unchanged", () => {
+    const t = new Map([
+      ["a", WAD / 2n],
+      ["b", WAD / 2n],
+    ]);
+    expect(clampToMaxPoolWeightWad(t, VAULT_DEFAULT_MAX_POOL_WEIGHT_WAD)).toEqual(t);
+  });
+
+  it("caps an over-weight pool and redistributes, still summing to WAD", () => {
+    const t = normalizeToWad(new Map([["a", 8n], ["b", 1n], ["c", 1n]])); // 0.8 / 0.1 / 0.1
+    const c = clampToMaxPoolWeightWad(t, WAD / 2n);
+    expect(sumOf(c)).toBe(WAD);
+    for (const v of c.values()) expect(v <= WAD / 2n).toBe(true);
+    expect(c.get("a")).toBe(WAD / 2n);
+    expect(c.get("b")).toBe(WAD / 4n);
+    expect(c.get("c")).toBe(WAD / 4n);
+  });
+
+  it("spreads a fully-concentrated target across zero-weight pools", () => {
+    const cap = (WAD * 4n) / 10n; // 0.4, feasible over 3 pools (1.2 >= 1)
+    const t = normalizeToWad(new Map([["a", 1n], ["b", 0n], ["c", 0n]])); // a = WAD
+    const c = clampToMaxPoolWeightWad(t, cap);
+    expect(sumOf(c)).toBe(WAD);
+    for (const v of c.values()) expect(v <= cap).toBe(true);
+  });
+
+  it("throws when the cap cannot sum to WAD", () => {
+    expect(() => clampToMaxPoolWeightWad(new Map([["a", WAD]]), WAD / 2n)).toThrow(/infeasible/);
   });
 });

@@ -1347,6 +1347,11 @@
   },
   {
     "type": "error",
+    "name": "NoAllowedTargetPool",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NoTargetSet",
     "inputs": []
   },
@@ -1562,6 +1567,11 @@
   },
   {
     "type": "error",
+    "name": "InvalidRoute",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotSelfOrOwner",
     "inputs": [
       {
@@ -1575,5 +1585,16 @@
     "type": "error",
     "name": "NothingToCompound",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SwapPoolNotAllowed",
+    "inputs": [
+      {
+        "name": "pool",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
   }
 ]

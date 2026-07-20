@@ -47,9 +47,15 @@ contract TargetsFacet {
         }
         if (sum != LibDeterministic.WAD) revert WeightsMustSumToWad(sum);
 
-        // max-reallocation-delta guardrail: L1 distance old→new over the union of pools
-        uint256 delta = _l1AgainstStored(ts, pools, weightsWad);
-        if (delta > ts.maxDeltaWad) revert DeltaAboveMax(delta, ts.maxDeltaWad);
+        // max-reallocation-delta guardrail: L1 distance old→new over the union of pools.
+        // Skipped for the genesis target: with no stored target the L1 distance from
+        // "nothing" to any valid (WAD-summing) target is exactly WAD, which would make the
+        // first setTargets revert under any maxDeltaWad < WAD (e.g. the 0.6e18 deploy
+        // default), bricking a fresh diamond until the Owner loosened the guardrail.
+        if (ts.targetPools.length != 0) {
+            uint256 delta = _l1AgainstStored(ts, pools, weightsWad);
+            if (delta > ts.maxDeltaWad) revert DeltaAboveMax(delta, ts.maxDeltaWad);
+        }
 
         // replace stored target
         for (uint256 i; i < ts.targetPools.length; ++i) {

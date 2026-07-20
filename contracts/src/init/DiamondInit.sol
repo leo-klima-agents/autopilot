@@ -40,6 +40,24 @@ contract DiamondInit {
 
     error InitAlreadyExecuted(bytes32 initId);
 
+    /// @notice emitted whenever the protocol integration config is (re)written, at genesis
+    ///         and on every protocol-swap cut. Monitoring reads this to confirm exactly what
+    ///         the vault was repointed to (the generic DiamondCut event carries only opaque
+    ///         init calldata). §4.3: events on every state change.
+    event ProtocolConfigSet(
+        address voter,
+        address votingEscrow,
+        address rewardsDistributor,
+        address token,
+        address router,
+        address acceptedCollection
+    );
+    /// @notice emitted once at genesis with the guardrail parameters written by init
+    event GuardrailsInitialized(uint96 maxPoolWeightWad, uint96 maxDeltaWad, uint64 rotationCooldown);
+    /// @notice emitted by the protocol-swap init so the September/August cut carries a
+    ///         queryable, decoded record (page target, OPERATIONS §3)
+    event ProtocolSwapExecuted(bytes32 indexed swapId);
+
     function _guard() private pure returns (InitGuard storage g) {
         bytes32 slot = INIT_SLOT;
         assembly {
@@ -75,12 +93,16 @@ contract DiamondInit {
         pc.token = cfg.token;
         pc.router = cfg.router;
         LibVaultStorage.custody().acceptedCollection = cfg.votingEscrow;
+        emit ProtocolConfigSet(
+            cfg.voter, cfg.votingEscrow, cfg.rewardsDistributor, cfg.token, cfg.router, cfg.votingEscrow
+        );
 
         // guardrails
         LibVaultStorage.TargetsStorage storage ts = LibVaultStorage.targets();
         ts.maxPoolWeightWad = cfg.maxPoolWeightWad;
         ts.maxDeltaWad = cfg.maxDeltaWad;
         ts.rotationCooldown = cfg.rotationCooldown;
+        emit GuardrailsInitialized(cfg.maxPoolWeightWad, cfg.maxDeltaWad, cfg.rotationCooldown);
     }
 
     /// @notice protocol-swap init, used by the August/September facet cuts to repoint
@@ -104,5 +126,7 @@ contract DiamondInit {
         pc.token = token;
         pc.router = router;
         LibVaultStorage.custody().acceptedCollection = votingEscrow;
+        emit ProtocolConfigSet(voter, votingEscrow, rewardsDistributor, token, router, votingEscrow);
+        emit ProtocolSwapExecuted(swapId);
     }
 }
