@@ -3,11 +3,12 @@
  * bearing fact about the Aero economy or the instruments. Every entry is a
  * complete RunConfig, "open run" replays it live, and the link is the same
  * URL-hash any shared run uses, so entries stay bit-reproducible. Synthetic
- * entries are seeded and reproduce forever; historical figures cited in the
- * notes were read from the July 2026 dataset and drift as the weekly data
- * refresh moves the replay window.
+ * entries are seeded and reproduce exactly under the generator version they
+ * are stamped with (these entries always carry the current one); historical
+ * figures cited in the notes were read from the July 2026 dataset and drift
+ * as the weekly data refresh moves the replay window.
  */
-import { configToHash, DEFAULT_RUN, PRESETS, type RunConfig } from "../lib/runConfig.js";
+import { configToHash, DEFAULT_RUN, PRESETS, syntheticData, type RunConfig } from "../lib/runConfig.js";
 
 const presetConfig = (id: string): RunConfig => {
   const preset = PRESETS.find((p) => p.id === id);
@@ -15,15 +16,10 @@ const presetConfig = (id: string): RunConfig => {
   return preset.config;
 };
 
-const MODEL_V3 = {
-  kind: "continuous",
-  cooldownSec: 172_800,
-  cooldownGranularity: "position",
-  emissionPerDay: 100_000,
-  caps: { enabled: true, kappaMilli: 1200, intervalSec: 172_800, windowSec: 172_800 },
-  decay: { enabled: false, ratePerDayMilli: 10 },
-} as const;
-const MODEL_V2 = { ...MODEL_V3, kind: "epoch" } as const;
+// One source of truth for the default physics: forking it here silently
+// gave logbook entries different parameters than the console default.
+const MODEL_V3 = DEFAULT_RUN.model;
+const MODEL_V2 = { ...MODEL_V3, kind: "epoch" as const };
 const RUN_12W = { durationWeeks: 12, stepSec: 3600, trancheCount: 4, trancheTokens: 250_000 } as const;
 const HERD_7D = { kind: "herd", lagSec: 604_800, multiple: 10 } as const;
 
@@ -79,7 +75,7 @@ export const LOGBOOK: LogEntry[] = [
     },
     why:
       "The identical weekly mirror, same data, same crowd, only the economy is switched from v2 epochs to v3 " +
-      "continuous streaming. Capture collapses (~97% → ~25% on the July 2026 dataset) because revenue now pays " +
+      "continuous streaming. Capture collapses (~97% → ~22% on the July 2026 dataset) because revenue now pays " +
       "current weights: allocating after you observe revenue earns only what comes afterward.",
     read:
       "Open this back-to-back with the late-voter entry and compare the captured figure, the difference is " +
@@ -92,7 +88,7 @@ export const LOGBOOK: LogEntry[] = [
     config: {
       strategy: { kind: "waterFilling", config: {} },
       model: { ...MODEL_V3, cooldownSec: 3600 },
-      data: { kind: "synthetic", seed: "42", poolCount: 8, epochCount: 20, process: "persistent" },
+      data: syntheticData({ process: "persistent" }),
       crowd: { kind: "static", lagSec: 604_800, multiple: 10 },
       run: { ...RUN_12W, durationWeeks: 16 },
     },
@@ -104,7 +100,7 @@ export const LOGBOOK: LogEntry[] = [
     read:
       "The phosphor line crosses and stays above the cyan one. In the earned heat-map, compare the strategy view " +
       "against the revenue-bench view: water-filling takes MORE than proportional share from thin high-revenue " +
-      "pools and skips crowded ones. Seeded and synthetic, so these numbers reproduce exactly, forever.",
+      "pools and skips crowded ones. Seeded and synthetic, so these numbers reproduce exactly for as long as the generator version in the link matches the console's (a banner flags the mismatch otherwise).",
   },
   {
     id: "edge-decays",
@@ -153,14 +149,14 @@ export const LOGBOOK: LogEntry[] = [
       "Go straight to the captured-vs-expected table: the CL100-USDC/cbBTC row reads ~1.4×, the shape of the " +
       "published 43% early-allocator edge, while mature pools sit near 1×. Then watch its row in the allocation " +
       "heat-map light up before the same row brightens in the market-bench view; that lead time is the whole " +
-      "trade. Seeded and synthetic, so these numbers reproduce exactly, forever.",
+      "trade. Seeded and synthetic, so these numbers reproduce exactly for as long as the generator version in the link matches the console's (a banner flags the mismatch otherwise).",
   },
   {
     id: "cbbtc-backtest",
     title: "The cbBTC backtest (the real thing)",
     config: presetConfig("cbbtc-backtest"),
     why:
-      "The replay window is parked over Sep 2024 – Mar 2025 (window end offset 71 weeks), when cbBTC launched on " +
+      "The replay window is pinned to Sep 2024 – Mar 2025 by an absolute date anchor, when cbBTC launched on " +
       "Base and CL100-WETH/cbBTC fees ramped from zero to ~$800k/week. This is the episode the published " +
       "early-allocator backtest measured at 1.43× — replayed against the real Alchemy-priced dataset, not a " +
       "simulation of it.",
@@ -168,7 +164,7 @@ export const LOGBOOK: LogEntry[] = [
       "The cbBTC rows start dark and ignite through the window in both heat-maps. In the captured-vs-expected " +
       "table, read the cbBTC pools' multiples against the mature pools' ~1×: allocating on a fresh signal while " +
       "the crowd trailed the ramp is where the edge lived. Historical figures drift as the weekly data refresh " +
-      "moves the dataset; the window offset keeps the episode in frame.",
+      "moves the dataset, but the date pin keeps this episode in frame until it ages out of the trailing 30-month window entirely — at which point the run fails loudly rather than silently replaying a different market.",
   },
   {
     id: "wash-bait",
@@ -203,7 +199,8 @@ export function Logbook({
         <p>
           Curated runs that each demonstrate one load-bearing fact about the economy or the instruments. Every
           entry replays live from its config, the "open run" button loads it into the console, and the link is an
-          ordinary shareable run URL. Synthetic entries are seeded and reproduce bit-for-bit forever; figures
+          ordinary shareable run URL. Synthetic entries are seeded and reproduce bit-for-bit under the generator
+          version stamped in their link (a banner flags a version mismatch); figures
           quoted for historical entries were read from the July 2026 dataset and drift as the weekly data refresh
           moves the replay window. Background for all of them is on the Theory page.
         </p>

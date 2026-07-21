@@ -69,7 +69,9 @@ export function EarningsHeatmap({
       {width > 0 && (
         <svg width={width} height={height} role="img" aria-label="revenue earned per pool over time">
           {poolNames.map((name, row) => (
-            <g key={name} transform={`translate(0 ${row * ROW_H})`}>
+            // keyed by address: displayName is symbol-composed and not
+            // guaranteed unique (the "?" fallback for unresolvable tokens)
+            <g key={result.allocation.pools[row] ?? name} transform={`translate(0 ${row * ROW_H})`}>
               <text className="heatmap-label" x={gridLeft - 8} y={ROW_H / 2 + 3} textAnchor="end">
                 {name.length > 24 ? `${name.slice(0, 23)}…` : name}
               </text>

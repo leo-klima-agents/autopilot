@@ -97,10 +97,12 @@ export function Guide({ onClose }: { onClose: () => void }) {
         <dl>
           <dt>source</dt>
           <dd>
-            <em>Aerodrome historical</em>: 24 months of real per-epoch fees and bribes for the top ~40 pools by
+            <em>Aerodrome historical</em>: 30 months of real per-epoch fees and bribes for the top ~40 pools by
             trailing revenue (Slipstream CL and v2 AMM pools alike), indexed on-chain and priced in USD from daily
             Alchemy price history; the x axis shows real dates and the instruments show dollars. The window end
-            offset parks the replay window in the past — 71 weeks back lands on the Sep 2024 cbBTC launch.{" "}
+            offset moves the replay window's END into the past (its start follows from the duration — reaching
+            the Sep 2024 cbBTC launch takes an end near Mar 2025 <em>plus</em> a ~26-week duration, which is why
+            the cbBTC-backtest preset pins the window to absolute dates instead of an offset).{" "}
             <em>Synthetic scenario</em>: a generated market, exactly reproducible from
             the seed; the x axis shows relative days (d0, d7, …) because its calendar anchor is arbitrary.
           </dd>

@@ -10,6 +10,7 @@ import { EquityChart } from "./components/EquityChart.js";
 import { AllocationHeatmap, type HeatmapView } from "./components/AllocationHeatmap.js";
 import { EarningsHeatmap } from "./components/EarningsHeatmap.js";
 import { CaptureTable } from "./components/CaptureTable.js";
+import { SYNTHETIC_GENERATOR_VERSION } from "@aero-autopilot/core/data/synthetic";
 import {
   DEFAULT_RUN,
   PRESETS,
@@ -223,6 +224,15 @@ export function App() {
 
   const preset = PRESETS.find((p) => p.id === activePreset);
 
+  // A synthetic link stamped with an older generator version (or none, i.e.
+  // pre-versioning) replays under today's generator and produces different
+  // numbers than when it was shared; say so instead of silently differing.
+  // Holds the link's generator version when stale, null otherwise.
+  const staleGeneratorVersion =
+    config.data.kind === "synthetic" && (config.data.gen ?? 1) !== SYNTHETIC_GENERATOR_VERSION
+      ? (config.data.gen ?? 1)
+      : null;
+
   return (
     <>
       <header className="masthead">
@@ -314,6 +324,13 @@ export function App() {
             <div className="banner">
               Historical dataset is {staleness} days old, replaying the last published data (the data pipeline
               refreshes weekly).
+            </div>
+          )}
+          {staleGeneratorVersion !== null && (
+            <div className="banner">
+              This run was shared under synthetic generator v{staleGeneratorVersion} (current: v
+              {SYNTHETIC_GENERATOR_VERSION}): the same seed now replays a recalibrated market, so the numbers
+              differ from when the link was made.
             </div>
           )}
           {live.error && (

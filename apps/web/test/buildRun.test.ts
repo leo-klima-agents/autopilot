@@ -105,6 +105,40 @@ describe("historical window anchoring", () => {
     expect(() => buildAndRun(config, historicalDataset(completeAt))).toThrow(/offset/);
   });
 
+  it("windowEndTs pins the window's end to an absolute epoch boundary", () => {
+    const pinTs = LAST_TS - 4 * WEEK; // an epoch start well inside the fixture
+    const config: RunConfig = {
+      ...historicalConfig(2),
+      data: { kind: "historical", windowEndTs: pinTs },
+    };
+    const run = buildAndRun(config, historicalDataset(completeAt));
+    expect(run.startTime + run.durationSec).toBe(pinTs);
+    // mid-week pins snap down to the epoch boundary; ends past the dataset clamp
+    const midWeek = buildAndRun(
+      { ...historicalConfig(2), data: { kind: "historical", windowEndTs: pinTs + 12_345 } },
+      historicalDataset(completeAt),
+    );
+    expect(midWeek.startTime + midWeek.durationSec).toBe(pinTs);
+    const future = buildAndRun(
+      { ...historicalConfig(2), data: { kind: "historical", windowEndTs: LAST_TS + 10 * WEEK } },
+      historicalDataset(completeAt),
+    );
+    expect(future.startTime + future.durationSec).toBe(LAST_TS + WEEK);
+  });
+
+  it("throws instead of silently truncating a pinned window that cannot fit", () => {
+    // end pinned 6 weeks into a 10-epoch dataset, 8 weeks requested: only
+    // ~5 fit — silent clamping here replays metrics over the wrong span
+    const config: RunConfig = {
+      ...historicalConfig(8),
+      data: { kind: "historical", windowEndTs: THURSDAY + 6 * WEEK },
+    };
+    expect(() => buildAndRun(config, historicalDataset(completeAt))).toThrow(/offset|duration/);
+    // the same request WITHOUT a pinned end keeps the documented benign
+    // clamp-to-available behavior (see "clamps to the earliest start")
+    expect(() => buildAndRun(historicalConfig(500), historicalDataset(completeAt))).not.toThrow();
+  });
+
   it("decodes legacy configs (no endOffsetWeeks, pre-mixed process kinds) and runs them", () => {
     // a config shaped exactly like an old shared link: historical without
     // endOffsetWeeks, and a synthetic one with a legacy process kind

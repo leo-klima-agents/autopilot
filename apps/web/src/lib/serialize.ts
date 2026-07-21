@@ -5,7 +5,22 @@
  * touches bigint again. Conversion Wad → float is analytics-only (P2 allows
  * floats outside fixture paths).
  */
+import { poolCaptures } from "@aero-autopilot/core/backtest";
 import type { BuiltRun } from "./buildRun.js";
+
+/** One row of the captured-vs-expected table, converted to display floats.
+ *  Computed HERE via core's poolCaptures() — the single definition of the
+ *  capture statistic — so the UI can never drift from what core's
+ *  calibration tests pin down. */
+export interface DisplayCapture {
+  /** Pool address: unique, stable — the React key. */
+  pool: string;
+  name: string;
+  earned: number;
+  benchmarkEarned: number;
+  /** earned / benchmark expectation; null when the benchmark held nothing. */
+  multiple: number | null;
+}
 
 export interface DisplayResult {
   totalReturn: number;
@@ -37,6 +52,8 @@ export interface DisplayResult {
     /** Cumulative revenue the foresight benchmark earned per pool. */
     revenueBenchmarkEarned: number[][];
   };
+  /** Captured-vs-expected rows (core poolCaptures, float-converted). */
+  captures: DisplayCapture[];
   datasetGeneratedAt: string | undefined;
   /** Historical timestamps are real dates; synthetic ones are an arbitrary anchor. */
   dataKind: "historical" | "synthetic";
@@ -87,6 +104,13 @@ export function toDisplayResult(run: BuiltRun): DisplayResult {
         row.map((w) => Number(w) / WAD),
       ),
     },
+    captures: poolCaptures(result).map((c) => ({
+      pool: c.pool,
+      name: run.poolNames.get(c.pool) ?? c.pool,
+      earned: Number(c.earned) / WAD,
+      benchmarkEarned: Number(c.benchmarkEarned) / WAD,
+      multiple: c.captureMultipleWad === null ? null : Number(c.captureMultipleWad) / WAD,
+    })),
     datasetGeneratedAt: run.datasetGeneratedAt,
     dataKind: run.dataKind,
     revenueUnit: run.revenueUnit,
