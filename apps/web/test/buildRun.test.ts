@@ -87,6 +87,37 @@ describe("historical window anchoring", () => {
   });
 });
 
+describe("revenueUnit", () => {
+  it("synthetic runs report USD (the archetypes are dollar-calibrated)", () => {
+    const run = buildAndRun(DEFAULT_RUN, null);
+    expect(run.revenueUnit).toBe("usd");
+    expect(run.dataKind).toBe("synthetic");
+  });
+
+  it("priced historical runs report USD", () => {
+    const run = buildAndRun(historicalConfig(2), historicalDataset(completeAt));
+    expect(run.revenueUnit).toBe("usd");
+  });
+
+  it("unpriced datasets fall back to index units", () => {
+    const dataset = historicalDataset(completeAt) as {
+      pools: { epochs: { feesUsd?: string; bribesUsd?: string; fees: unknown[] }[] }[];
+    };
+    for (const pool of dataset.pools) {
+      for (const epoch of pool.epochs) {
+        // raw fee amounts keep revenue nonzero once the USD fields are gone
+        epoch.fees = [
+          { token: "0x5555555555555555555555555555555555555555", amount: epoch.feesUsd! },
+        ];
+        delete epoch.feesUsd;
+        delete epoch.bribesUsd;
+      }
+    }
+    const run = buildAndRun(historicalConfig(2), dataset);
+    expect(run.revenueUnit).toBe("index");
+  });
+});
+
 describe("per-pool earned revenue passthrough", () => {
   it("earned matches the allocation grid dims and serializes to floats", () => {
     const run = buildAndRun(historicalConfig(2), historicalDataset(completeAt));

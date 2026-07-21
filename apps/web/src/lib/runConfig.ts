@@ -67,7 +67,7 @@ export const PRESETS: { id: string; label: string; blurb: string; config: RunCon
     id: "early-allocator",
     label: "Early allocator",
     blurb:
-      "The cbBTC arc: a persistence-aware strategy takes weight in a growing pool before the lagged crowd arrives, earns an outsized revenue share, and cedes it as the herd catches up.",
+      "The cbBTC arc: CL100-WETH/cbBTC ramps up from nothing while a persistence-aware strategy takes weight before the lagged crowd arrives, earns an outsized revenue share, and cedes it as the herd catches up.",
     config: {
       strategy: { kind: "persistenceCarry", config: { lookbackSec: 172_800 } },
       model: {

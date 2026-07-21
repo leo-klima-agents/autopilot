@@ -17,6 +17,13 @@ const STRATEGIES: { kind: StrategyKind; label: string }[] = [
   { kind: "continuousGreedy", label: "Continuous greedy" },
 ];
 
+const STEPS: { sec: number; label: string }[] = [
+  { sec: 1_800, label: "30 min" },
+  { sec: 3_600, label: "1 h" },
+  { sec: 7_200, label: "2 h" },
+  { sec: 21_600, label: "6 h" },
+];
+
 const COOLDOWNS: { sec: number; label: string }[] = [
   { sec: 604_800, label: "7 d (v2 epoch)" },
   { sec: 172_800, label: "48 h (v3 launch plan)" },
@@ -34,6 +41,8 @@ export function ConfigPanel({ config, onChange }: Props) {
   const strategy = probeStrategy(config.strategy.kind);
   const patch = (p: Partial<RunConfig>) => onChange({ ...config, ...p });
   const syn = config.data.kind === "synthetic" ? config.data : null;
+  // wash-bait targets a pool index into the sorted universe (historical = top 30)
+  const poolLimit = syn ? syn.poolCount : 30;
 
   return (
     <>
@@ -200,7 +209,10 @@ export function ConfigPanel({ config, onChange }: Props) {
               />
             </div>
             <div className="field">
-              <label htmlFor="process">fee process</label>
+              <label htmlFor="process">
+                scenario flavor
+                <span className="hint">real pool archetypes; flavor tilts their processes</span>
+              </label>
               <select
                 id="process"
                 value={syn.process}
@@ -208,9 +220,9 @@ export function ConfigPanel({ config, onChange }: Props) {
                   patch({ data: { ...syn, process: e.target.value as "persistent" | "bursty" | "regime" } })
                 }
               >
-                <option value="persistent">persistent</option>
-                <option value="bursty">bursty</option>
-                <option value="regime">regime-switching</option>
+                <option value="persistent">realistic mix</option>
+                <option value="bursty">bursty (amplified bursts)</option>
+                <option value="regime">regime (market-wide swings)</option>
               </select>
             </div>
             <div className="field">
@@ -222,6 +234,20 @@ export function ConfigPanel({ config, onChange }: Props) {
                 max={30}
                 value={syn.poolCount}
                 onChange={(e) => patch({ data: { ...syn, poolCount: Math.round(e.target.valueAsNumber) } })}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="epochs">
+                epochs, weeks
+                <span className="hint">data span; runs truncate to it</span>
+              </label>
+              <input
+                id="epochs"
+                type="number"
+                min={4}
+                max={52}
+                value={syn.epochCount}
+                onChange={(e) => patch({ data: { ...syn, epochCount: Math.round(e.target.valueAsNumber) } })}
               />
             </div>
           </>
@@ -266,6 +292,69 @@ export function ConfigPanel({ config, onChange }: Props) {
             />
           </div>
         )}
+        <div className="field alert-field">
+          <label htmlFor="washbait">
+            wash-bait attack
+            <span className="hint">adversarial fake-fee pumps on one pool</span>
+          </label>
+          <input
+            id="washbait"
+            type="checkbox"
+            checked={config.crowd.washBait !== undefined}
+            onChange={(e) => {
+              // omit the key entirely when off; old share URLs stay byte-identical
+              const { washBait: _drop, ...rest } = config.crowd;
+              patch({
+                crowd: e.target.checked ? { ...rest, washBait: { poolIndex: 0, rateMultiple: 8 } } : rest,
+              });
+            }}
+          />
+        </div>
+        {config.crowd.washBait && (
+          <>
+            <div className="field alert-field">
+              <label htmlFor="washpool">
+                baited pool index
+                <span className="hint">0..{poolLimit - 1}, into the sorted universe</span>
+              </label>
+              <input
+                id="washpool"
+                type="number"
+                min={0}
+                max={poolLimit - 1}
+                value={config.crowd.washBait.poolIndex}
+                onChange={(e) =>
+                  patch({
+                    crowd: {
+                      ...config.crowd,
+                      washBait: { ...config.crowd.washBait!, poolIndex: Math.round(e.target.valueAsNumber) },
+                    },
+                  })
+                }
+              />
+            </div>
+            <div className="field alert-field">
+              <label htmlFor="washrate">
+                pump ÷ organic rate
+                <span className="hint">fake-fee rate as a multiple of the pool's average</span>
+              </label>
+              <input
+                id="washrate"
+                type="number"
+                min={1}
+                value={config.crowd.washBait.rateMultiple}
+                onChange={(e) =>
+                  patch({
+                    crowd: {
+                      ...config.crowd,
+                      washBait: { ...config.crowd.washBait!, rateMultiple: Math.round(e.target.valueAsNumber) },
+                    },
+                  })
+                }
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="panel">
@@ -280,6 +369,23 @@ export function ConfigPanel({ config, onChange }: Props) {
             value={config.run.durationWeeks}
             onChange={(e) => patch({ run: { ...config.run, durationWeeks: Math.round(e.target.valueAsNumber) } })}
           />
+        </div>
+        <div className="field">
+          <label htmlFor="step">
+            sim step
+            <span className="hint">finer steps cost compute; 1 h is the default</span>
+          </label>
+          <select
+            id="step"
+            value={config.run.stepSec}
+            onChange={(e) => patch({ run: { ...config.run, stepSec: Number(e.target.value) } })}
+          >
+            {STEPS.map((s) => (
+              <option key={s.sec} value={s.sec}>
+                {s.label}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="field">
           <label htmlFor="tranches">

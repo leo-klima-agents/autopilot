@@ -46,9 +46,13 @@ export function useContainerWidth(): [React.RefObject<HTMLDivElement>, number] {
 export function AllocationHeatmap({
   result,
   view = "strategy",
+  order,
 }: {
   result: DisplayResult;
   view?: HeatmapView;
+  /** Row permutation (indices into dataset order); identity when omitted.
+   *  Shared with EarningsHeatmap/RevenueHistogram so rows line up. */
+  order?: number[] | undefined;
 }) {
   const { times, poolNames } = result.allocation;
   const weights =
@@ -59,6 +63,7 @@ export function AllocationHeatmap({
         : result.allocation.weights;
   const [containerRef, width] = useContainerWidth();
   if (times.length === 0 || poolNames.length === 0) return null;
+  const rows = order ?? poolNames.map((_, i) => i);
   const axis = timeAxisFor(result);
 
   const t0 = times[0] ?? result.startTime;
@@ -76,32 +81,36 @@ export function AllocationHeatmap({
     <div ref={containerRef}>
       {width > 0 && (
         <svg width={width} height={height} role="img" aria-label="allocation weight per pool over time">
-          {poolNames.map((name, row) => (
-            <g key={name} transform={`translate(0 ${row * ROW_H})`}>
-              <text className="heatmap-label" x={gridLeft - 8} y={ROW_H / 2 + 3} textAnchor="end">
-                {name.length > 24 ? `${name.slice(0, 23)}…` : name}
-              </text>
-              {times.map((ts, i) => {
-                // a cell covers [tᵢ, tᵢ₊₁), allocation holds between samples
-                const left = x(ts);
-                const right = i + 1 < times.length ? x(times[i + 1]!) : gridRight;
-                return (
-                  <rect
-                    key={ts}
-                    x={left}
-                    y={2}
-                    width={Math.max(0.5, right - left)}
-                    height={ROW_H - 4}
-                    fill={cellColor(weights[i]?.[row] ?? 0)}
-                  >
-                    <title>
-                      {name} · {axis.label(ts)} · {pct(weights[i]?.[row] ?? 0)}
-                    </title>
-                  </rect>
-                );
-              })}
-            </g>
-          ))}
+          {rows.map((pool, row) => {
+            const name = poolNames[pool] ?? "";
+            return (
+              <g key={name} transform={`translate(0 ${row * ROW_H})`}>
+                <text className="heatmap-label" x={gridLeft - 8} y={ROW_H / 2 + 3} textAnchor="end">
+                  <title>{name}</title>
+                  {name.length > 24 ? `${name.slice(0, 23)}…` : name}
+                </text>
+                {times.map((ts, i) => {
+                  // a cell covers [tᵢ, tᵢ₊₁), allocation holds between samples
+                  const left = x(ts);
+                  const right = i + 1 < times.length ? x(times[i + 1]!) : gridRight;
+                  return (
+                    <rect
+                      key={ts}
+                      x={left}
+                      y={2}
+                      width={Math.max(0.5, right - left)}
+                      height={ROW_H - 4}
+                      fill={cellColor(weights[i]?.[pool] ?? 0)}
+                    >
+                      <title>
+                        {name} · {axis.label(ts)} · {pct(weights[i]?.[pool] ?? 0)}
+                      </title>
+                    </rect>
+                  );
+                })}
+              </g>
+            );
+          })}
           {/* epoch-flip-aligned time ticks, same positions as the chart above */}
           {axis
             .epochTicks(t0, tN, Math.max(2, Math.min(8, Math.floor(gridW / 118))))

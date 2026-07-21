@@ -6,7 +6,8 @@ import { fmt, moneyFor, pct } from "../lib/format.js";
 export function Gauges({ result }: { result: DisplayResult }) {
   const vs = result.returnVsMarket;
   const usd = result.revenueUnit === "usd";
-  // USD runs are Alchemy-priced fees + bribes; index runs are synthetic units
+  // USD runs are priced fees + bribes (historical or dollar-calibrated
+  // synthetic); index runs are unpriced datasets
   const money = moneyFor(result.revenueUnit);
   return (
     <div className="gauge-row">

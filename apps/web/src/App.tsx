@@ -9,6 +9,8 @@ import { Gauges } from "./components/Gauges.js";
 import { EquityChart } from "./components/EquityChart.js";
 import { AllocationHeatmap, type HeatmapView } from "./components/AllocationHeatmap.js";
 import { EarningsHeatmap } from "./components/EarningsHeatmap.js";
+import { RevenueHistogram } from "./components/RevenueHistogram.js";
+import { poolOrderByRevenue, poolTotals } from "./lib/poolSummary.js";
 import {
   DEFAULT_RUN,
   PRESETS,
@@ -69,7 +71,7 @@ function ViewToggle({
   return (
     <div className="seg-toggle" role="group" aria-label="heatmap portfolio">
       {(["strategy", "market", "revenue"] as const).map((v) => (
-        <button key={v} className={view === v ? "active" : ""} onClick={() => onChange(v)}>
+        <button key={v} className={view === v ? "active" : ""} aria-pressed={view === v} onClick={() => onChange(v)}>
           {v === "strategy" ? "strategy" : v === "market" ? "market bench" : "revenue bench"}
         </button>
       ))}
@@ -220,6 +222,14 @@ export function App() {
     return ageDays > STALE_AFTER_DAYS ? Math.floor(ageDays) : null;
   }, [live.result, config.data.kind]);
 
+  // shared row order for the heatmaps and the histogram: strategy-earned
+  // totals, descending, so rows never jump when the portfolio toggle flips
+  const rowOrder = useMemo(() => {
+    if (!live.result) return undefined;
+    const alloc = live.result.allocation;
+    return poolOrderByRevenue(poolTotals(alloc).strategy, alloc.poolNames);
+  }, [live.result]);
+
   const preset = PRESETS.find((p) => p.id === activePreset);
 
   return (
@@ -359,14 +369,38 @@ export function App() {
                   <p className="placard">Allocation over time{viewSuffix(heatmapView)}</p>
                   <ViewToggle view={heatmapView} onChange={setHeatmapView} />
                 </div>
-                <AllocationHeatmap result={live.result} view={heatmapView} />
+                <AllocationHeatmap result={live.result} view={heatmapView} order={rowOrder} />
+                <div className="legend">
+                  <span>intensity ∝ portfolio weight · rows sorted by strategy revenue</span>
+                </div>
               </div>
               <div className="panel">
                 <div className="panel-head">
                   <p className="placard">Earned revenue per pool{viewSuffix(heatmapView)}</p>
                   <ViewToggle view={heatmapView} onChange={setHeatmapView} />
                 </div>
-                <EarningsHeatmap result={live.result} view={heatmapView} />
+                <EarningsHeatmap result={live.result} view={heatmapView} order={rowOrder} />
+                <div className="legend">
+                  <span>per-interval revenue, p95-normalized · row totals at the right edge</span>
+                </div>
+              </div>
+              <div className="panel">
+                <p className="placard">Revenue capture per pool</p>
+                <RevenueHistogram result={live.result} order={rowOrder} />
+                <div className="legend">
+                  <span>
+                    <span className="chip" style={{ background: "#6FD3A6" }} />
+                    strategy earned
+                  </span>
+                  <span>
+                    <span className="chip" style={{ background: "#E8B44F" }} />
+                    market bench earned
+                  </span>
+                  <span>
+                    <span className="chip" style={{ background: "#6FB8D3" }} />
+                    revenue bench (foresight), the bug on each row
+                  </span>
+                </div>
               </div>
             </>
           ) : (

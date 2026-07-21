@@ -142,6 +142,13 @@ select {
   }
 }
 
+/* grid children default to min-width auto, so a fixed-width SVG (heatmaps,
+   histogram) would lock the column at its old width and block shrinking;
+   min-width 0 lets panels narrow so the ResizeObserver can re-measure */
+.deck > section {
+  min-width: 0;
+}
+
 .panel {
   background: var(--face);
   border: 1px solid var(--edge);
@@ -184,6 +191,11 @@ select {
   display: block;
   color: var(--placard);
   font-size: 10.5px;
+}
+
+/* adversarial controls (wash-bait) carry the alert tint */
+.field.alert-field label {
+  color: var(--alert);
 }
 
 input,
