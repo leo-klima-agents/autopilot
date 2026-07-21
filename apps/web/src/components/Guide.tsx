@@ -100,15 +100,19 @@ export function Guide({ onClose }: { onClose: () => void }) {
             <em>Aerodrome historical</em>: real per-epoch fees and bribes for the top ~30 pools by trailing
             revenue (Slipstream CL and v2 AMM pools alike), indexed on-chain and priced in USD from daily
             Alchemy price history; the x axis shows real dates and the instruments show dollars. <em>Synthetic scenario</em>: a generated market, exactly reproducible from
-            the seed; the x axis shows relative days (d0, d7, …) because its calendar anchor is arbitrary.
+            the seed; the x axis shows relative days (d0, d7, …) because its calendar anchor is arbitrary. Synthetic
+            pools mirror real Aerodrome archetypes, dollar-calibrated to each real pool's median weekly fees and
+            bribes, so the instruments show dollars here too.
           </dd>
           <dt>seed</dt>
           <dd>The random seed. Same seed, same market, always; this is what makes shared links exact.</dd>
-          <dt>fee process</dt>
+          <dt>scenario flavor</dt>
           <dd>
-            The personality of synthetic fees. <em>persistent</em>: levels drift slowly; yesterday predicts today.
-            <em> bursty</em>: occasional 5× fee weeks land at random. <em>regime-switching</em>: pools flip between a
-            quiet state and a 4× hot state and stay there for a while.
+            The market's personality on top of the per-pool archetypes (steady blue-chips, burst-prone memecoins,
+            regime-switching rotation pools, a ramping cbBTC-style newcomer, bribe-funded stables).{" "}
+            <em>steady market</em>: each archetype behaves per its calibration. <em>turbulent</em>: fee bursts land
+            far more often, everywhere. <em>regime-switching market</em>: the whole market flips between a quiet
+            state and a correlated 2× hot state and stays there for a while.
           </dd>
           <dt>crowd / herd lag / crowd ÷ portfolio</dt>
           <dd>
@@ -181,8 +185,16 @@ export function Guide({ onClose }: { onClose: () => void }) {
           <dd>
             The allocation map's payoff twin: same pools, same timeline, but amber intensity is the revenue your
             portfolio actually earned from that pool during each interval. The figure at the right end of a row is that
-            pool's cumulative contribution over the whole run (USD on historical replays). A bright allocation row over
-            a dark revenue row is weight parked where the fees never showed up.
+            pool's cumulative contribution over the whole run (in USD, both replay modes are dollar-priced). A bright
+            allocation row over a dark revenue row is weight parked where the fees never showed up.
+          </dd>
+          <dt>Revenue capture per pool</dt>
+          <dd>
+            The end-of-run totals behind the earnings map, pool by pool: your phosphor bar over the market
+            benchmark's amber bar, with a cyan tick marking the foresight benchmark's total, the ceiling a
+            perfectly-timed same-size portfolio would have taken from that pool. Phosphor past amber is capture;
+            a cyan tick far right of both is the pool everyone underplayed. Rows across all three pool panels
+            share one order, biggest pools first.
           </dd>
           <dt>strategy / market bench / revenue bench toggle</dt>
           <dd>

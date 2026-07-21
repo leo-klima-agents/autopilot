@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import type { DisplayResult } from "../lib/serialize.js";
 import { timeAxisFor } from "../lib/timeAxis.js";
+import { fmt } from "../lib/format.js";
 import { TIME_AXIS_LEFT, TIME_AXIS_RIGHT_PAD, Y_AXIS_WIDTH } from "../lib/chartGeometry.js";
 
 // recharts sets tick/tooltip fonts via inline style, so mirror the CSS
@@ -23,6 +24,10 @@ const MONO = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberat
 export function EquityChart({ result }: { result: DisplayResult }) {
   const { times, equity, marketBenchmark, revenueBenchmark } = result.equity;
   const axis = timeAxisFor(result);
+  // equity is revenue per unit weight: comma-group large values, keep
+  // significant digits on small ones, "$"-prefix USD-priced runs
+  const money = (v: number, precision: number) =>
+    (result.revenueUnit === "usd" ? "$" : "") + (Math.abs(v) >= 1000 ? fmt(v, 0) : v.toPrecision(precision));
   const data = times.map((ts, i) => ({
     ts,
     equity: equity[i],
@@ -52,7 +57,7 @@ export function EquityChart({ result }: { result: DisplayResult }) {
           <YAxis
             stroke="#7C8A96"
             tick={{ fontSize: 10, fontFamily: MONO }}
-            tickFormatter={(v: number) => v.toPrecision(3)}
+            tickFormatter={(v: number) => money(v, 3)}
             width={Y_AXIS_WIDTH}
           />
           <Tooltip
@@ -63,7 +68,7 @@ export function EquityChart({ result }: { result: DisplayResult }) {
               fontSize: 11,
             }}
             labelFormatter={(ts) => axis.label(Number(ts))}
-            formatter={(value) => (typeof value === "number" ? value.toPrecision(6) : String(value))}
+            formatter={(value) => (typeof value === "number" ? money(value, 6) : String(value))}
           />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           <Line

@@ -9,6 +9,8 @@ import { Gauges } from "./components/Gauges.js";
 import { EquityChart } from "./components/EquityChart.js";
 import { AllocationHeatmap, type HeatmapView } from "./components/AllocationHeatmap.js";
 import { EarningsHeatmap } from "./components/EarningsHeatmap.js";
+import { RevenueHistogram } from "./components/RevenueHistogram.js";
+import { poolOrderByRevenue, poolTotals } from "./lib/poolSummary.js";
 import {
   DEFAULT_RUN,
   PRESETS,
@@ -69,7 +71,7 @@ function ViewToggle({
   return (
     <div className="seg-toggle" role="group" aria-label="heatmap portfolio">
       {(["strategy", "market", "revenue"] as const).map((v) => (
-        <button key={v} className={view === v ? "active" : ""} onClick={() => onChange(v)}>
+        <button key={v} className={view === v ? "active" : ""} aria-pressed={view === v} onClick={() => onChange(v)}>
           {v === "strategy" ? "strategy" : v === "market" ? "market bench" : "revenue bench"}
         </button>
       ))}
@@ -222,6 +224,14 @@ export function App() {
 
   const preset = PRESETS.find((p) => p.id === activePreset);
 
+  // one shared row order for every pool panel: biggest pools first, stable
+  // across the strategy/market/revenue view toggle
+  const poolSummary = useMemo(() => {
+    if (!live.result) return null;
+    const totals = poolTotals(live.result.allocation);
+    return { totals, order: poolOrderByRevenue(totals, live.result.allocation.poolNames) };
+  }, [live.result]);
+
   return (
     <>
       <header className="masthead">
@@ -359,15 +369,44 @@ export function App() {
                   <p className="placard">Allocation over time{viewSuffix(heatmapView)}</p>
                   <ViewToggle view={heatmapView} onChange={setHeatmapView} />
                 </div>
-                <AllocationHeatmap result={live.result} view={heatmapView} />
+                <AllocationHeatmap result={live.result} view={heatmapView} order={poolSummary?.order} />
+                <div className="legend">
+                  <span>cell intensity ∝ share of portfolio weight · rows sorted by pool size</span>
+                </div>
               </div>
               <div className="panel">
                 <div className="panel-head">
                   <p className="placard">Earned revenue per pool{viewSuffix(heatmapView)}</p>
                   <ViewToggle view={heatmapView} onChange={setHeatmapView} />
                 </div>
-                <EarningsHeatmap result={live.result} view={heatmapView} />
+                <EarningsHeatmap result={live.result} view={heatmapView} order={poolSummary?.order} />
+                <div className="legend">
+                  <span>
+                    cell intensity ∝ revenue earned per interval (p95-normalized) · right edge: cumulative
+                    total
+                  </span>
+                </div>
               </div>
+              {poolSummary && (
+                <div className="panel">
+                  <p className="placard">Revenue capture per pool</p>
+                  <RevenueHistogram result={live.result} totals={poolSummary.totals} order={poolSummary.order} />
+                  <div className="legend">
+                    <span>
+                      <span className="chip" style={{ background: "#6FD3A6" }} />
+                      strategy earned
+                    </span>
+                    <span>
+                      <span className="chip" style={{ background: "#E8B44F" }} />
+                      market bench earned
+                    </span>
+                    <span>
+                      <span className="chip" style={{ background: "#6FB8D3" }} />
+                      revenue bench (foresight ceiling)
+                    </span>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             !live.error && (

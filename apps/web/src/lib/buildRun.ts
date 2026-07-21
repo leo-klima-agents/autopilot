@@ -32,7 +32,7 @@ import { runBacktest, type BacktestResult } from "@aero-autopilot/core/backtest"
 // deep imports: the /data barrel pulls in node-only modules (fs-backed token
 // cache, indexer CLI) that cannot bundle for the browser
 import { validateDataset, type DatasetV1 } from "@aero-autopilot/core/data/schema";
-import { generateSyntheticDataset } from "@aero-autopilot/core/data/synthetic";
+import { generateSyntheticDataset, MAX_SYNTHETIC_POOLS } from "@aero-autopilot/core/data/synthetic";
 import { revenueProcessFromDataset } from "@aero-autopilot/core/data/revenue";
 import type { RunConfig, StrategyKind } from "./runConfig.js";
 
@@ -66,8 +66,8 @@ export interface BuiltRun {
   datasetGeneratedAt: string | undefined;
   /** Historical timestamps are real dates; synthetic ones are an arbitrary anchor. */
   dataKind: "historical" | "synthetic";
-  /** "usd" when the dataset carries Alchemy-priced revenue; "index" otherwise
-   *  (synthetic data sets feesUsd too, but its values are index units). */
+  /** "usd" when the dataset carries USD-priced revenue (Alchemy-priced sugar
+   *  data and the dollar-calibrated synthetic archetypes); "index" otherwise. */
   revenueUnit: "usd" | "index";
   startTime: number;
   durationSec: number;
@@ -82,7 +82,9 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
   } else {
     dataset = generateSyntheticDataset({
       seed: BigInt(config.data.seed),
-      poolCount: config.data.poolCount,
+      // clamp instead of throwing so old share links with out-of-roster
+      // poolCounts still replay
+      poolCount: Math.min(config.data.poolCount, MAX_SYNTHETIC_POOLS),
       epochCount: config.data.epochCount,
       kind: config.data.process,
     });
@@ -205,10 +207,11 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
     ...(crowd ? { crowd } : {}),
   });
 
-  const revenueUnit: "usd" | "index" =
-    dataset.source === "sugar" && dataset.pools.some((p) => p.epochs.some((e) => e.feesUsd !== undefined))
-      ? "usd"
-      : "index";
+  const revenueUnit: "usd" | "index" = dataset.pools.some((p) =>
+    p.epochs.some((e) => e.feesUsd !== undefined),
+  )
+    ? "usd"
+    : "index";
 
   return {
     result,

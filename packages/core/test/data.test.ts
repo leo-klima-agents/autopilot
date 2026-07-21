@@ -6,7 +6,7 @@ import { WAD } from "../src/math/fixed.js";
 import { WEEK } from "../src/model/types.js";
 import { parseAmount, validateDataset, type DatasetV1 } from "../src/data/schema.js";
 import { epochRevenueWad, revenueProcessFromDataset } from "../src/data/revenue.js";
-import { generateSyntheticDataset } from "../src/data/synthetic.js";
+import { generateSyntheticDataset, MAX_SYNTHETIC_POOLS } from "../src/data/synthetic.js";
 import {
   epochsForMonths,
   fetchLatestEpochs,
@@ -173,6 +173,125 @@ describe("generateSyntheticDataset", () => {
       startTs: T0 + 12_345,
     });
     expect(dataset.pools[0]!.epochs[0]!.ts).toBe(T0);
+  });
+
+  it("caps poolCount at the archetype roster size", () => {
+    expect(MAX_SYNTHETIC_POOLS).toBe(30);
+    expect(() =>
+      generateSyntheticDataset({
+        seed: 1n,
+        poolCount: MAX_SYNTHETIC_POOLS + 1,
+        epochCount: 1,
+        kind: "persistent",
+        startTs: T0,
+      }),
+    ).toThrow(/poolCount/);
+  });
+});
+
+describe("synthetic realism (calibrated archetypes)", () => {
+  const dataset = generateSyntheticDataset({
+    seed: 42n,
+    poolCount: 30,
+    epochCount: 30,
+    kind: "persistent",
+    startTs: T0,
+  });
+
+  it("names pools after real Aerodrome archetypes with real shapes", () => {
+    const byName = new Map(dataset.pools.map((p) => [p.displayName, p]));
+    const flagship = dataset.pools[0]!;
+    expect(flagship.displayName).toBe("CL100-WETH/USDC");
+    expect(flagship.tickSpacing).toBe(100);
+    expect(flagship.stable).toBe(false);
+    // a stable sAMM pool appears early enough for small poolCounts
+    const stablePool = dataset.pools.slice(0, 5).find((p) => p.stable);
+    expect(stablePool?.displayName).toBe("sAMM-msUSD/USDC");
+    expect(stablePool?.tickSpacing).toBeUndefined();
+    // vAMM pools never carry tickSpacing
+    expect(byName.get("vAMM-USDC/AERO")?.tickSpacing).toBeUndefined();
+    // addresses keep the sim: prefix and lexicographic == roster order
+    const addresses = dataset.pools.map((p) => p.address);
+    expect(addresses.every((a) => a.startsWith("sim:pool-"))).toBe(true);
+    expect([...addresses].sort()).toEqual(addresses);
+  });
+
+  it("keeps feesUsd/bribesUsd exactly equal to the token-amount sums", () => {
+    for (const pool of dataset.pools) {
+      for (const epoch of pool.epochs) {
+        const feeSum = epoch.fees.reduce((acc, f) => acc + parseAmount(f.amount), 0n);
+        expect(parseAmount(epoch.feesUsd!)).toBe(feeSum);
+        const bribeSum = epoch.bribes.reduce((acc, b) => acc + parseAmount(b.amount), 0n);
+        if (epoch.bribesUsd !== undefined) {
+          expect(parseAmount(epoch.bribesUsd)).toBe(bribeSum);
+          expect(bribeSum > 0n).toBe(true);
+        } else {
+          expect(epoch.bribes).toHaveLength(0);
+        }
+      }
+    }
+  });
+
+  it("bribe archetypes post incentives most weeks; others never do", () => {
+    const bribed = dataset.pools.find((p) => p.displayName === "sAMM-msUSD/USDC")!;
+    const bribeWeeks = bribed.epochs.filter((e) => e.bribesUsd !== undefined).length;
+    expect(bribeWeeks).toBeGreaterThan(bribed.epochs.length / 2);
+    const unbribed = dataset.pools.find((p) => p.displayName === "CL100-WETH/USDC")!;
+    expect(unbribed.epochs.every((e) => e.bribes.length === 0)).toBe(true);
+  });
+
+  it("votes lag revenue by one week within the calibrated noise band", () => {
+    for (const pool of dataset.pools) {
+      for (let e = 1; e < pool.epochs.length; e += 1) {
+        const prev = pool.epochs[e - 1]!;
+        const prevRevenue = parseAmount(prev.feesUsd!) + parseAmount(prev.bribesUsd ?? "0");
+        const votes = parseAmount(pool.epochs[e]!.votes);
+        expect(votes >= (prevRevenue * 544n * 700n) / 1000n).toBe(true);
+        expect(votes <= (prevRevenue * 544n * 1300n) / 1000n).toBe(true);
+      }
+    }
+  });
+
+  it("emissions are pro-rata votes of a frozen weekly budget", () => {
+    const weekly: bigint[] = [];
+    for (let e = 0; e < 30; e += 1) {
+      let sum = 0n;
+      for (const pool of dataset.pools) sum += parseAmount(pool.epochs[e]!.emissions) * BigInt(WEEK);
+      weekly.push(sum);
+    }
+    const max = weekly.reduce((a, b) => (a > b ? a : b));
+    const min = weekly.reduce((a, b) => (a < b ? a : b));
+    // per-pool rate flooring loses < 1 wei/sec each
+    expect(max - min <= BigInt(dataset.pools.length) * BigInt(WEEK)).toBe(true);
+    // per-epoch, a pool's emission share equals its vote share (both pro-rata)
+    const e0 = dataset.pools.map((p) => p.epochs[0]!);
+    const totalVotes = e0.reduce((acc, e) => acc + parseAmount(e.votes), 0n);
+    for (const epoch of e0) {
+      const expected = (max * parseAmount(epoch.votes)) / totalVotes;
+      const actual = parseAmount(epoch.emissions) * BigInt(WEEK);
+      const diff = expected > actual ? expected - actual : actual - expected;
+      // `max` is itself flooring-lossy (≤ poolCount wei/sec low) and each
+      // rate floors once more, so allow both loss sources
+      expect(diff <= BigInt(dataset.pools.length + 1) * BigInt(WEEK)).toBe(true);
+    }
+  });
+
+  it("keeps the flagship pool in a realistic weekly-fee band", () => {
+    const flagship = dataset.pools[0]!;
+    const fees = flagship.epochs.map((e) => parseAmount(e.feesUsd!)).sort((a, b) => (a < b ? -1 : 1));
+    const median = fees[Math.floor(fees.length / 2)]!;
+    // CL100-WETH/USDC median is ~$263k/wk; jitter and drift stay well inside
+    expect(median >= 130_000n * WAD).toBe(true);
+    expect(median <= 650_000n * WAD).toBe(true);
+  });
+
+  it("ramps the emerging pool from a fraction of base toward above-base", () => {
+    const emerging = dataset.pools.find((p) => p.displayName === "CL100-WETH/cbBTC")!;
+    const first = parseAmount(emerging.epochs[0]!.feesUsd!);
+    const lastQuarter = emerging.epochs.slice(-8).map((e) => parseAmount(e.feesUsd!));
+    const lateMedian = [...lastQuarter].sort((a, b) => (a < b ? -1 : 1))[4]!;
+    // the cbBTC arc: late-run revenue is a multiple of the launch level
+    expect(lateMedian > first * 4n).toBe(true);
   });
 });
 

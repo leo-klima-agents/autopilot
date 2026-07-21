@@ -87,6 +87,34 @@ describe("historical window anchoring", () => {
   });
 });
 
+describe("revenueUnit", () => {
+  it("reports usd for any dataset carrying feesUsd (synthetic included)", () => {
+    expect(buildAndRun(DEFAULT_RUN, null).revenueUnit).toBe("usd");
+    expect(buildAndRun(historicalConfig(2), historicalDataset(completeAt)).revenueUnit).toBe("usd");
+  });
+
+  it("falls back to index units when a dataset is unpriced", () => {
+    const raw = historicalDataset(completeAt) as {
+      pools: { epochs: Record<string, unknown>[]; }[];
+    };
+    for (const pool of raw.pools) {
+      for (const epoch of pool.epochs) {
+        epoch.fees = [{ token: "0x2222222222222222222222222222222222222222", amount: "1000000000000000000" }];
+        delete epoch.feesUsd;
+        delete epoch.bribesUsd;
+      }
+    }
+    expect(buildAndRun(historicalConfig(2), raw).revenueUnit).toBe("index");
+  });
+
+  it("synthetic pools are named after real Aerodrome archetypes", () => {
+    const run = buildAndRun(DEFAULT_RUN, null);
+    const names = [...run.poolNames.values()];
+    expect(names).toContain("CL100-WETH/USDC");
+    expect(names.every((n) => !n.includes("SIM"))).toBe(true);
+  });
+});
+
 describe("per-pool earned revenue passthrough", () => {
   it("earned matches the allocation grid dims and serializes to floats", () => {
     const run = buildAndRun(historicalConfig(2), historicalDataset(completeAt));

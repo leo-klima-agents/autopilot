@@ -200,7 +200,10 @@ export function ConfigPanel({ config, onChange }: Props) {
               />
             </div>
             <div className="field">
-              <label htmlFor="process">fee process</label>
+              <label htmlFor="process">
+                scenario flavor
+                <span className="hint">pools mirror real Aerodrome archetypes ($-calibrated)</span>
+              </label>
               <select
                 id="process"
                 value={syn.process}
@@ -208,9 +211,9 @@ export function ConfigPanel({ config, onChange }: Props) {
                   patch({ data: { ...syn, process: e.target.value as "persistent" | "bursty" | "regime" } })
                 }
               >
-                <option value="persistent">persistent</option>
-                <option value="bursty">bursty</option>
-                <option value="regime">regime-switching</option>
+                <option value="persistent">steady market</option>
+                <option value="bursty">turbulent (burst-prone)</option>
+                <option value="regime">regime-switching market</option>
               </select>
             </div>
             <div className="field">
@@ -222,6 +225,24 @@ export function ConfigPanel({ config, onChange }: Props) {
                 max={30}
                 value={syn.poolCount}
                 onChange={(e) => patch({ data: { ...syn, poolCount: Math.round(e.target.valueAsNumber) } })}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="epochs">
+                weeks of data
+                <span className="hint">the run replays inside this span</span>
+              </label>
+              <input
+                id="epochs"
+                type="number"
+                min={4}
+                max={52}
+                value={syn.epochCount}
+                onChange={(e) =>
+                  patch({
+                    data: { ...syn, epochCount: Math.min(52, Math.max(4, Math.round(e.target.valueAsNumber))) },
+                  })
+                }
               />
             </div>
           </>
@@ -266,6 +287,71 @@ export function ConfigPanel({ config, onChange }: Props) {
             />
           </div>
         )}
+        <div className="field">
+          <label htmlFor="washbait">
+            wash-bait pool
+            <span className="hint">one pool pumps fake fees in 2-day bursts</span>
+          </label>
+          <input
+            id="washbait"
+            type="checkbox"
+            checked={config.crowd.washBait !== undefined}
+            onChange={(e) => {
+              const { washBait: _drop, ...rest } = config.crowd;
+              patch({
+                crowd: e.target.checked ? { ...rest, washBait: { poolIndex: 2, rateMultiple: 8 } } : rest,
+              });
+            }}
+          />
+        </div>
+        {config.crowd.washBait && (
+          <>
+            <div className="field">
+              <label htmlFor="washpool">bait pool index</label>
+              <input
+                id="washpool"
+                type="number"
+                min={0}
+                max={(syn ? syn.poolCount : 30) - 1}
+                value={config.crowd.washBait.poolIndex}
+                onChange={(e) =>
+                  patch({
+                    crowd: {
+                      ...config.crowd,
+                      washBait: {
+                        ...config.crowd.washBait!,
+                        poolIndex: Math.max(0, Math.round(e.target.valueAsNumber)),
+                      },
+                    },
+                  })
+                }
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="washrate">
+                pump × baseline
+                <span className="hint">bait rate as a multiple of the pool's real rate</span>
+              </label>
+              <input
+                id="washrate"
+                type="number"
+                min={1}
+                value={config.crowd.washBait.rateMultiple}
+                onChange={(e) =>
+                  patch({
+                    crowd: {
+                      ...config.crowd,
+                      washBait: {
+                        ...config.crowd.washBait!,
+                        rateMultiple: Math.max(1, Math.round(e.target.valueAsNumber)),
+                      },
+                    },
+                  })
+                }
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="panel">
@@ -304,6 +390,34 @@ export function ConfigPanel({ config, onChange }: Props) {
             value={config.run.trancheTokens}
             onChange={(e) => patch({ run: { ...config.run, trancheTokens: Math.round(e.target.valueAsNumber) } })}
           />
+        </div>
+        <div className="field">
+          <label htmlFor="step">
+            sim step
+            <span className="hint">finer steps cost compute time</span>
+          </label>
+          <select
+            id="step"
+            value={config.run.stepSec}
+            onChange={(e) => patch({ run: { ...config.run, stepSec: Number(e.target.value) } })}
+          >
+            {[
+              { sec: 1800, label: "30 min" },
+              { sec: 3600, label: "1 h" },
+              { sec: 7200, label: "2 h" },
+              { sec: 21_600, label: "6 h" },
+            ]
+              .concat(
+                [1800, 3600, 7200, 21_600].includes(config.run.stepSec)
+                  ? []
+                  : [{ sec: config.run.stepSec, label: `${config.run.stepSec} s` }],
+              )
+              .map((s) => (
+                <option key={s.sec} value={s.sec}>
+                  {s.label}
+                </option>
+              ))}
+          </select>
         </div>
       </div>
     </>

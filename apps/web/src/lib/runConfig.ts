@@ -15,6 +15,9 @@ export type StrategyKind =
   | "continuousGreedy";
 
 export type ModelKind = "epoch" | "continuous";
+/** Synthetic scenario flavor: "persistent" replays the calibrated archetype
+ *  mix as-is; "bursty" amplifies burst frequency market-wide; "regime" adds a
+ *  correlated market-wide high/low chain (see core data/synthetic.ts). */
 export type SyntheticKind = "persistent" | "bursty" | "regime";
 export type CrowdKind = "none" | "static" | "herd";
 
