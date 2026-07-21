@@ -27,9 +27,12 @@ function cellColor(t: number): string {
 export function EarningsHeatmap({
   result,
   view = "strategy",
+  order,
 }: {
   result: DisplayResult;
   view?: HeatmapView;
+  /** Display-row → pool-index permutation (shared across the pool panels). */
+  order?: number[] | undefined;
 }) {
   const { times, poolNames } = result.allocation;
   const earned =
@@ -68,43 +71,48 @@ export function EarningsHeatmap({
     <div ref={containerRef}>
       {width > 0 && (
         <svg width={width} height={height} role="img" aria-label="revenue earned per pool over time">
-          {poolNames.map((name, row) => (
-            <g key={name} transform={`translate(0 ${row * ROW_H})`}>
-              <text className="heatmap-label" x={gridLeft - 8} y={ROW_H / 2 + 3} textAnchor="end">
-                {name.length > 24 ? `${name.slice(0, 23)}…` : name}
-              </text>
-              {times.map((ts, i) => {
-                const left = x(ts);
-                const right = i + 1 < times.length ? x(times[i + 1]!) : gridRight;
-                const d = deltas[i]?.[row] ?? 0;
-                return (
-                  <rect
-                    key={ts}
-                    x={left}
-                    y={2}
-                    width={Math.max(0.5, right - left)}
-                    height={ROW_H - 4}
-                    fill={cellColor(scale > 0 ? d / scale : 0)}
-                  >
-                    <title>
-                      {name} · {axis.label(ts)} · {money(d, 2)} earned
-                    </title>
-                  </rect>
-                );
-              })}
-              {/* cumulative row total, overlaid EFIS-readout style so the
-                  time axis stays exactly aligned with the panels above */}
-              <text
-                className="heatmap-label heatmap-total"
-                x={gridRight - 4}
-                y={ROW_H / 2 + 3}
-                textAnchor="end"
-                style={{ paintOrder: "stroke", stroke: "#0B0F14", strokeWidth: 3 }}
-              >
-                {money(finals[row] ?? 0, 0)}
-              </text>
-            </g>
-          ))}
+          {poolNames.map((_, displayRow) => {
+            const row = order?.[displayRow] ?? displayRow;
+            const name = poolNames[row]!;
+            return (
+              <g key={name} transform={`translate(0 ${displayRow * ROW_H})`}>
+                <text className="heatmap-label" x={gridLeft - 8} y={ROW_H / 2 + 3} textAnchor="end">
+                  {name.length > 24 ? `${name.slice(0, 23)}…` : name}
+                  <title>{name}</title>
+                </text>
+                {times.map((ts, i) => {
+                  const left = x(ts);
+                  const right = i + 1 < times.length ? x(times[i + 1]!) : gridRight;
+                  const d = deltas[i]?.[row] ?? 0;
+                  return (
+                    <rect
+                      key={ts}
+                      x={left}
+                      y={2}
+                      width={Math.max(0.5, right - left)}
+                      height={ROW_H - 4}
+                      fill={cellColor(scale > 0 ? d / scale : 0)}
+                    >
+                      <title>
+                        {name} · {axis.label(ts)} · {money(d, 2)} earned
+                      </title>
+                    </rect>
+                  );
+                })}
+                {/* cumulative row total, overlaid EFIS-readout style so the
+                    time axis stays exactly aligned with the panels above */}
+                <text
+                  className="heatmap-label heatmap-total"
+                  x={gridRight - 4}
+                  y={ROW_H / 2 + 3}
+                  textAnchor="end"
+                  style={{ paintOrder: "stroke", stroke: "#0B0F14", strokeWidth: 3 }}
+                >
+                  {money(finals[row] ?? 0, 0)}
+                </text>
+              </g>
+            );
+          })}
           {/* epoch-flip-aligned time ticks, same positions as the chart above */}
           {axis
             .epochTicks(t0, tN, Math.max(2, Math.min(8, Math.floor(gridW / 118))))

@@ -40,7 +40,7 @@ export interface DisplayResult {
   datasetGeneratedAt: string | undefined;
   /** Historical timestamps are real dates; synthetic ones are an arbitrary anchor. */
   dataKind: "historical" | "synthetic";
-  /** "usd" when revenue is Alchemy-priced USD; "index" for synthetic units. */
+  /** "usd" when the dataset carries USD-priced revenue; "index" otherwise. */
   revenueUnit: "usd" | "index";
   startTime: number;
   durationSec: number;
