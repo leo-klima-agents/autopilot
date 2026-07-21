@@ -8,6 +8,7 @@ import {
   configToHash,
   decodeRunConfig,
   encodeRunConfig,
+  type RunConfig,
 } from "../src/lib/runConfig.js";
 
 describe("run-config URL serialization", () => {
@@ -39,5 +40,31 @@ describe("run-config URL serialization", () => {
     expect(configFromHash("#run=%%%")).toBeUndefined();
     expect(configFromHash("#run=aGVsbG8")).toBeUndefined(); // valid b64, not a config
     expect(configFromHash("#other")).toBeUndefined();
+  });
+
+  it("validates the data variant at the decode boundary", () => {
+    const withData = (data: unknown) =>
+      configToHash({ ...DEFAULT_RUN, data: data as RunConfig["data"] });
+    // an unknown process kind must fall back (never reach the worker throw)
+    expect(configFromHash(withData({ ...DEFAULT_RUN.data, process: "growth" }))).toBeUndefined();
+    // malformed window fields invalidate the config rather than being
+    // silently dropped (a fractional offset used to be floored to zero)
+    expect(configFromHash(withData({ kind: "historical", endOffsetWeeks: 0.5 }))).toBeUndefined();
+    expect(configFromHash(withData({ kind: "historical", endOffsetWeeks: -3 }))).toBeUndefined();
+    expect(configFromHash(withData({ kind: "historical", windowEndTs: "soon" }))).toBeUndefined();
+    // well-formed variants pass
+    expect(configFromHash(withData({ kind: "historical", endOffsetWeeks: 4 }))).toBeDefined();
+    expect(configFromHash(withData({ kind: "historical", windowEndTs: 1_741_219_200 }))).toBeDefined();
+  });
+
+  it("decodes legacy synthetic links (no gen stamp, legacy kinds)", () => {
+    const legacy = {
+      ...DEFAULT_RUN,
+      data: { kind: "synthetic", seed: "7", poolCount: 6, epochCount: 20, process: "regime" },
+    } as RunConfig;
+    const decoded = configFromHash(configToHash(legacy));
+    expect(decoded).toEqual(legacy);
+    // the missing stamp is what the App's version banner keys on
+    expect(decoded?.data.kind === "synthetic" && decoded.data.gen).toBeUndefined();
   });
 });

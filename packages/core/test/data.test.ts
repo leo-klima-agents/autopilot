@@ -25,7 +25,7 @@ import {
 } from "../src/data/sugar.js";
 import { computeEpochUsd, usdWadOf } from "../src/data/usd.js";
 import { fetchHistoricalPrices, loadPriceCache, savePriceCache } from "../src/data/prices.js";
-import { rankPoolsByUsdRevenue } from "../src/data/cli.js";
+import { parseCliArgs, rankPoolsByUsdRevenue } from "../src/data/cli.js";
 import {
   composeDisplayName,
   loadTokenCache,
@@ -182,6 +182,19 @@ describe("generateSyntheticDataset", () => {
     ).toThrow(/unknown kind/);
   });
 
+  it("rejects poolCount past the address sort-order bound", () => {
+    // sim:pool-NN addresses are 2-digit fixed width; a 3-digit index would
+    // sort out of roster order and silently retarget pool-index consumers.
+    expect(() =>
+      generateSyntheticDataset({ seed: 1n, poolCount: 101, epochCount: 1, kind: "mixed" }),
+    ).toThrow(/sort-order bound/);
+    const max = generateSyntheticDataset({ seed: 1n, poolCount: 100, epochCount: 1, kind: "mixed" });
+    const sorted = [...max.pools.map((p) => p.address)].sort();
+    expect(sorted).toEqual(max.pools.map((p) => p.address));
+    // long-tail token0 addresses are well-formed (0x + 40 hex chars)
+    for (const pool of max.pools) expect(pool.token0).toMatch(/^0x[0-9a-fA-F]{40}$/);
+  });
+
   it("week-aligns the start timestamp", () => {
     const dataset = generateSyntheticDataset({
       seed: 2n,
@@ -240,6 +253,25 @@ describe("generateSyntheticDataset", () => {
     for (const epoch of top.epochs) {
       expect(parseAmount(epoch.bribesUsd ?? "0") < parseAmount(epoch.feesUsd!) / 100n).toBe(true);
     }
+  });
+
+  it("seeds epoch-0 votes with the bribe budget (no spurious week-one break)", () => {
+    // 24 pools reaches the bribe-dominant sAMM archetypes (bribes ~10x fees):
+    // their epoch-0 vote share must already reflect fees + bribes, not fees
+    // alone, or the series shows a fake ~11x jump into epoch 1.
+    const dataset = generateSyntheticDataset({
+      seed: 4n,
+      poolCount: 24,
+      epochCount: 4,
+      kind: "mixed",
+      startTs: T0,
+    });
+    const sammFarm = dataset.pools.find((p) => p.displayName === "sAMM-WETH/msETH")!;
+    const votes = sammFarm.epochs.map((e) => parseAmount(e.votes));
+    // steady drift and noise move votes well under 2x week over week; the
+    // old fees-only seeding produced ~11x here
+    expect(votes[1]! < 2n * votes[0]!).toBe(true);
+    expect(votes[0]! < 2n * votes[1]!).toBe(true);
   });
 
   it("splits votes and emissions exactly across the universe at real scale", () => {
@@ -668,6 +700,27 @@ describe("pool selection", () => {
       3,
     );
     expect(ranked.map((p) => p.address)).toEqual(["0xb", "0xa", "0xc"]);
+  });
+});
+
+describe("parseCliArgs", () => {
+  it("parses space and equals forms, maps flags to typed options", () => {
+    expect(parseCliArgs(["--months", "2", "--topN", "5"])).toEqual({ months: 2, topN: 5 });
+    expect(parseCliArgs(["--months=2", "--candidateN=8"])).toEqual({ months: 2, candidateN: 8 });
+    expect(parseCliArgs([])).toEqual({});
+  });
+
+  it("returns null for --help", () => {
+    expect(parseCliArgs(["--help"])).toBeNull();
+  });
+
+  it("rejects unknown flags, positionals, and non-positive-integer values", () => {
+    expect(() => parseCliArgs(["--bogus", "1"])).toThrow(/Unknown option/);
+    expect(() => parseCliArgs(["12"])).toThrow();
+    expect(() => parseCliArgs(["--months", "0"])).toThrow(/positive integer/);
+    expect(() => parseCliArgs(["--months", "2.5"])).toThrow(/positive integer/);
+    // a flag missing its value must not silently swallow the next flag
+    expect(() => parseCliArgs(["--months", "--topN", "5"])).toThrow();
   });
 });
 

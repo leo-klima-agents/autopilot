@@ -48,6 +48,16 @@ import type { DatasetV1, EpochRecord, PoolRecord } from "./schema.js";
  *  default: real venues are a mixture). */
 export type SyntheticProcessKind = "persistent" | "bursty" | "regime" | "mixed";
 
+/**
+ * Generator version, bumped on any change that alters the numbers a given
+ * (seed, config) produces — the archetype recalibration that introduced it
+ * was such a change. Consumers that serialize synthetic configs (the web
+ * app's share links) stamp this in and can tell a link generated under an
+ * older generator from one that reproduces exactly today. Version 1 is the
+ * original uncalibrated generator (vAMM-SIMxx pools, $1k×2^k fees).
+ */
+export const SYNTHETIC_GENERATOR_VERSION = 2;
+
 /** Per-pool process kinds (the archetype column behind "mixed"). */
 type PoolProcessKind = "persistent" | "bursty" | "regime" | "growth";
 
@@ -104,8 +114,12 @@ export const GROWTH_RAMP_START = 3;
 export const GROWTH_RAMP_EPOCHS = 10;
 const GROWTH_PER_EPOCH_MILLI = 1_350n;
 
-/** Index of the growth-archetype pool in the roster (the cbBTC slot). */
-export const GROWTH_POOL_INDEX = 3;
+/** Pools are addressed `sim:pool-NN` with a fixed-width index so that
+ *  lexicographically sorted addresses equal roster order — an invariant the
+ *  web app's pool-index controls (wash-bait targeting) rely on. Two digits
+ *  bound poolCount at 100; the generator rejects larger universes rather
+ *  than silently breaking the sort order. */
+const MAX_POOL_COUNT = 100;
 
 interface PoolArchetype {
   displayName: string;
@@ -175,6 +189,10 @@ const ROSTER: readonly PoolArchetype[] = [
   { displayName: "sAMM-msUSD/USDC", stable: true, token0: MSUSD, token1: USDC, baseFeesUsdWad: 1_200n * WAD, bribeToFeeMilli: 9_100n, process: "persistent" },
 ];
 
+/** Index of the growth-archetype pool (the cbBTC slot), derived from the
+ *  roster so inserting or reordering archetypes cannot desynchronize it. */
+export const GROWTH_POOL_INDEX = ROSTER.findIndex((a) => a.process === "growth");
+
 function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
@@ -189,7 +207,8 @@ function archetypeFor(p: number): PoolArchetype {
   return {
     displayName: `vAMM-SIM${pad(p)}/USDC`,
     stable: false,
-    token0: `0x000000000000000000000000000000000000${pad(p)}1`,
+    // 0x + 37 zeros + 2-digit index + 1 = a well-formed 40-hex address
+    token0: `0x0000000000000000000000000000000000000${pad(p)}1`,
     token1: USDC,
     baseFeesUsdWad: base,
     bribeToFeeMilli: 0n,
@@ -202,6 +221,11 @@ export function generateSyntheticDataset(config: SyntheticConfig): DatasetV1 {
   const { seed, poolCount, epochCount, kind } = config;
   if (poolCount <= 0 || epochCount <= 0) {
     throw new Error("generateSyntheticDataset: poolCount and epochCount must be positive");
+  }
+  if (poolCount > MAX_POOL_COUNT) {
+    throw new Error(
+      `generateSyntheticDataset: poolCount ${poolCount} exceeds ${MAX_POOL_COUNT} (address sort-order bound)`,
+    );
   }
   if (!["persistent", "bursty", "regime", "mixed"].includes(kind)) {
     throw new Error(`generateSyntheticDataset: unknown kind ${JSON.stringify(kind)}`);
@@ -274,8 +298,13 @@ export function generateSyntheticDataset(config: SyntheticConfig): DatasetV1 {
     // exactly what pulls votes), one epoch behind, with per-pool noise.
     const scores = new Map<string, bigint>();
     for (let p = 0; p < poolCount; p += 1) {
+      // Epoch 0 has no trailing week; seed it with the pool's expected
+      // steady-state total (base fees plus the archetype's bribe budget) so
+      // bribe-dominant pools are not spuriously under-voted in week one.
       const trailing =
-        e === 0 ? baseLevels[p]! : feesUsd[p]![e - 1]! + bribesUsd[p]![e - 1]!;
+        e === 0
+          ? (baseLevels[p]! * (1_000n + archetypes[p]!.bribeToFeeMilli)) / 1_000n
+          : feesUsd[p]![e - 1]! + bribesUsd[p]![e - 1]!;
       const noisy = (trailing * (800n + votesPrng.nextBigintBelow(401n))) / 1_000n;
       scores.set(addresses[p]!, noisy);
     }

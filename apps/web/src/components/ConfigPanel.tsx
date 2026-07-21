@@ -1,8 +1,21 @@
 /** The flight plan: strategy, model, data, crowd, run sizing. Every control
  *  writes into one RunConfig object. Nothing here computes; the worker does. */
 import { probeStrategy } from "../lib/buildRun.js";
-import type { RunConfig, StrategyKind } from "../lib/runConfig.js";
+import {
+  SYNTHETIC_KINDS,
+  syntheticData,
+  type RunConfig,
+  type StrategyKind,
+  type SyntheticKind,
+} from "../lib/runConfig.js";
 import { SchemaForm } from "./SchemaForm.js";
+
+const PROCESS_LABELS: Record<SyntheticKind, string> = {
+  mixed: "mixed (realistic archetypes)",
+  persistent: "persistent",
+  bursty: "bursty",
+  regime: "regime-switching",
+};
 
 // Display labels only; the `kind` ids are serialized into share URLs and
 // must stay stable. "Revenue mirror" names the POLICY (allocate proportional
@@ -178,31 +191,34 @@ export function ConfigPanel({ config, onChange }: Props) {
             value={config.data.kind}
             onChange={(e) =>
               patch({
-                data:
-                  e.target.value === "historical"
-                    ? { kind: "historical" }
-                    : { kind: "synthetic", seed: "42", poolCount: 8, epochCount: 20, process: "mixed" },
+                data: e.target.value === "historical" ? { kind: "historical" } : syntheticData(),
               })
             }
           >
             <option value="synthetic">synthetic scenario (seeded)</option>
-            <option value="historical">Aerodrome historical (top 40 pools, 24 months)</option>
+            <option value="historical">Aerodrome historical (top 40 pools, 30 months)</option>
           </select>
         </div>
         {config.data.kind === "historical" && (
           <div className="field">
             <label htmlFor="endoffset">
               window end offset
-              <span className="hint">weeks back from the dataset end (0 = latest)</span>
+              <span className="hint">
+                {config.data.windowEndTs !== undefined
+                  ? "preset pins the window to a fixed date; editing this takes manual control"
+                  : "weeks back from the dataset end (0 = latest)"}
+              </span>
             </label>
             <input
               id="endoffset"
               type="number"
               min={0}
               max={100}
-              value={config.data.endOffsetWeeks ?? 0}
+              value={config.data.windowEndTs !== undefined ? "" : (config.data.endOffsetWeeks ?? 0)}
+              placeholder={config.data.windowEndTs !== undefined ? "pinned" : undefined}
               onChange={(e) =>
                 patch({
+                  // manual takeover: an explicit offset replaces any preset pin
                   data: { kind: "historical", endOffsetWeeks: Math.max(0, Math.round(e.target.valueAsNumber) || 0) },
                 })
               }
@@ -225,15 +241,14 @@ export function ConfigPanel({ config, onChange }: Props) {
                 id="process"
                 value={syn.process}
                 onChange={(e) =>
-                  patch({
-                    data: { ...syn, process: e.target.value as "persistent" | "bursty" | "regime" | "mixed" },
-                  })
+                  patch({ data: { ...syn, process: e.target.value as SyntheticKind } })
                 }
               >
-                <option value="mixed">mixed (realistic archetypes)</option>
-                <option value="persistent">persistent</option>
-                <option value="bursty">bursty</option>
-                <option value="regime">regime-switching</option>
+                {SYNTHETIC_KINDS.map((kind) => (
+                  <option key={kind} value={kind}>
+                    {PROCESS_LABELS[kind]}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="field">

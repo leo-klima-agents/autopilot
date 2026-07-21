@@ -8,6 +8,7 @@ import { WAD } from "@aero-autopilot/core/math";
 import {
   WEEK,
   HOUR,
+  epochStart,
   createContinuousModel,
   createEpochModel,
   reactiveHerd,
@@ -104,16 +105,23 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
   const generatedAtSec = Date.parse(dataset.generatedAt) / 1000;
   const lastEpochPartial =
     config.data.kind === "historical" && generatedAtSec < lastEpochStart + WEEK;
-  let dataEnd = lastEpochPartial ? lastEpochStart : lastEpochStart + WEEK;
-  // Historical runs may park the window's end in the past (endOffsetWeeks
-  // back from the dataset end) to replay a specific episode, e.g. the
-  // Sep 2024 - Feb 2025 cbBTC ramp. Synthetic runs ignore it (their start
-  // is already fixed).
-  if (config.data.kind === "historical" && (config.data.endOffsetWeeks ?? 0) > 0) {
-    dataEnd -= Math.floor(config.data.endOffsetWeeks!) * WEEK;
-    if (dataEnd <= dataStart + WEEK) {
-      throw new Error("window end offset reaches past the start of the dataset");
-    }
+  const naturalEnd = lastEpochPartial ? lastEpochStart : lastEpochStart + WEEK;
+  // Historical runs may park the window's end in the past to replay a
+  // specific episode: `windowEndTs` pins an absolute date (refresh-proof,
+  // what presets use), `endOffsetWeeks` is the relative UI control.
+  // Synthetic runs ignore both (their start is already fixed).
+  const windowEndTs = config.data.kind === "historical" ? config.data.windowEndTs : undefined;
+  const endOffsetWeeks =
+    config.data.kind === "historical" ? Math.floor(config.data.endOffsetWeeks ?? 0) : 0;
+  const explicitEnd = windowEndTs !== undefined || endOffsetWeeks > 0;
+  // The window ends AT the pinned timestamp (snapped down to an epoch
+  // boundary), never past the dataset's own end.
+  const dataEnd =
+    windowEndTs !== undefined
+      ? Math.min(naturalEnd, epochStart(windowEndTs))
+      : naturalEnd - endOffsetWeeks * WEEK;
+  if (explicitEnd && dataEnd <= dataStart + WEEK) {
+    throw new Error("window end offset reaches past the start of the dataset");
   }
 
   const wash = config.crowd.washBait;
@@ -134,9 +142,10 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
   // -- timing ----------------------------------------------------------------
   const stepSec = config.run.stepSec;
   // Earliest allowed start: one week of history for signals. Historical runs
-  // anchor the window at the dataset's END so a short duration replays the
-  // LATEST weeks (the ones that reflect the venue today), not the oldest;
-  // synthetic processes are stationary, so they keep the fixed start.
+  // anchor the window at its effective END (the dataset's end, unless a
+  // window pin moved it into the past) so a short duration replays the weeks
+  // leading up to that end, not the oldest ones; synthetic processes are
+  // stationary, so they keep the fixed start.
   const earliestStart = dataStart + WEEK;
   const anchoredStart =
     config.data.kind === "historical"
@@ -148,6 +157,17 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
   let durationSec = Math.min(config.run.durationWeeks * WEEK, maxDuration);
   durationSec -= durationSec % stepSec;
   if (durationSec <= 0) throw new Error("duration too short for the dataset");
+  // A pinned window end that cannot fit the requested duration would
+  // otherwise clamp silently and replay a much shorter span than the user
+  // asked for (metrics over the wrong window). The +2h start shave and step
+  // rounding legitimately cost < 1 week; anything more is an error. Runs
+  // without an explicit end keep the documented benign clamping ("asked for
+  // more weeks than exist, got everything").
+  if (explicitEnd && durationSec < config.run.durationWeeks * WEEK - WEEK) {
+    throw new Error(
+      "window end offset leaves less history than the requested duration; shorten the run or reduce the offset",
+    );
+  }
 
   // -- model -----------------------------------------------------------------
   const emissionRatePerSec = (BigInt(config.model.emissionPerDay) * WAD) / 86_400n;

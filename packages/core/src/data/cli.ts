@@ -1,13 +1,16 @@
 /**
- * `pnpm data` entry point: builds data/aerodrome-epochs.v1.json (24 months of
+ * `pnpm data` entry point: builds data/aerodrome-epochs.v1.json (30 months of
  * weekly epochs for the top ~40 pools) plus the data/tokens.json and
  * data/prices.json caches. Batched, retried, rate limited, idempotent, safe
  * to re-run. Requires BASE_RPC_URL; ALCHEMY_API_KEY enables USD pricing.
  *
- * The defaults (24 months, 40 pools) match the published Aero methodology:
- * the emissions-accuracy study ran over the top 40 Aerodrome pools, and the
+ * The defaults match the published Aero methodology plus headroom: the
+ * emissions-accuracy study ran over the top 40 Aerodrome pools, and the
  * cbBTC early-allocator backtest covers Sep 2024 - Feb 2025, which a
- * 12-month window would miss entirely.
+ * 12-month window would miss entirely. 30 months (rather than 24) keeps
+ * that episode inside the trailing window for another year of weekly
+ * refreshes; the cbBTC-backtest preset pins its window to absolute dates
+ * and fails loudly once the episode finally ages out.
  *
  * Pool selection is two-stage (methodology inspired by ldeso/aerodrome):
  *   stage 1, top `candidateN` alive-gauge pools by CURRENT-epoch votes
@@ -26,6 +29,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { parseArgs } from "node:util";
 import type { DatasetV1, PoolRecord } from "./schema.js";
 import { parseAmount } from "./schema.js";
 import {
@@ -100,7 +104,7 @@ export function rankPoolsByUsdRevenue(records: readonly PoolRecord[], topN: numb
 
 /** Builds the dataset plus token/price caches. Exported for orchestration. */
 export async function buildDataset({
-  months = 24,
+  months = 30,
   topN = 40,
   candidateN = 80,
 }: { months?: number; topN?: number; candidateN?: number } = {}): Promise<void> {
@@ -216,6 +220,8 @@ export async function buildDataset({
   if (pricedAt !== undefined) dataset.pricedAt = pricedAt;
   const outPath = resolve(DATA_DIR, "aerodrome-epochs.v1.json");
   mkdirSync(dirname(outPath), { recursive: true });
+  // Pretty-printed on purpose (reviewable weekly-refresh diffs); the ~17KB
+  // gzipped transfer delta on the static host is an accepted cost.
   writeFileSync(outPath, `${JSON.stringify(dataset, null, 2)}\n`, "utf8");
   console.log(`data: wrote ${outPath} (${finalRecords.length} pools, <=${maxEpochs} epochs each)`);
 }
@@ -224,31 +230,62 @@ const isDirectRun =
   process.argv[1] !== undefined &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
 
+const CLI_USAGE =
+  "usage: pnpm data [-- --months N] [--topN N] [--candidateN N]\n" +
+  "  --months      trailing window length in months (default 30)\n" +
+  "  --topN        pools kept after USD ranking (default 40)\n" +
+  "  --candidateN  vote-ranked candidates fetched (default 80)";
+
 /** Parses `--months N --topN N --candidateN N` overrides for direct runs
- *  (smoke runs against the live chain: `pnpm data -- --months 2 --topN 5`).
- *  Throws on unknown flags or non-positive-integer values. */
+ *  (smoke runs against the live chain: `pnpm data -- --months 2 --topN 5`;
+ *  `--months=2` works too). Returns null when --help was asked. Throws on
+ *  unknown flags or non-positive-integer values. */
 export function parseCliArgs(
   argv: readonly string[],
-): { months?: number; topN?: number; candidateN?: number } {
-  const known = new Set(["--months", "--topN", "--candidateN"]);
-  const out: Record<string, number> = {};
-  for (let i = 0; i < argv.length; i += 2) {
-    const flag = argv[i]!;
-    if (!known.has(flag)) throw new Error(`unknown flag: ${flag}`);
-    const value = Number(argv[i + 1]);
+): { months?: number; topN?: number; candidateN?: number } | null {
+  const { values } = parseArgs({
+    args: [...argv],
+    options: {
+      months: { type: "string" },
+      topN: { type: "string" },
+      candidateN: { type: "string" },
+      help: { type: "boolean" },
+    },
+    strict: true,
+    allowPositionals: false,
+  });
+  if (values.help) return null;
+  const out: { months?: number; topN?: number; candidateN?: number } = {};
+  for (const key of ["months", "topN", "candidateN"] as const) {
+    const raw = values[key];
+    if (raw === undefined) continue;
+    const value = Number(raw);
     if (!Number.isInteger(value) || value <= 0) {
-      throw new Error(`${flag} needs a positive integer, got ${JSON.stringify(argv[i + 1])}`);
+      throw new Error(`--${key} needs a positive integer, got ${JSON.stringify(raw)}`);
     }
-    out[flag.slice(2)] = value;
+    out[key] = value;
   }
   return out;
 }
 
 if (isDirectRun) {
-  Promise.resolve()
-    .then(() => buildDataset(parseCliArgs(process.argv.slice(2))))
-    .catch((err: unknown) => {
+  // Async wrapper (top-level await is unavailable: tsx compiles this
+  // package as CJS): parseCliArgs throws synchronously on bad flags and
+  // buildDataset rejects on runtime failures; both must land in the same
+  // catch so every failure prints the friendly message and sets the exit
+  // code instead of an uncaught stack trace.
+  void (async () => {
+    try {
+      const overrides = parseCliArgs(process.argv.slice(2));
+      if (overrides === null) {
+        console.log(CLI_USAGE);
+      } else {
+        await buildDataset(overrides);
+      }
+    } catch (err) {
       console.error(`data: failed: ${String(err)}`);
+      console.error(CLI_USAGE);
       process.exitCode = 1;
-    });
+    }
+  })();
 }
