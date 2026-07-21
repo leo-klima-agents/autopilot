@@ -6,7 +6,14 @@ import { WAD } from "../src/math/fixed.js";
 import { WEEK } from "../src/model/types.js";
 import { parseAmount, validateDataset, type DatasetV1 } from "../src/data/schema.js";
 import { epochRevenueWad, revenueProcessFromDataset } from "../src/data/revenue.js";
-import { generateSyntheticDataset } from "../src/data/synthetic.js";
+import {
+  generateSyntheticDataset,
+  GROWTH_POOL_INDEX,
+  GROWTH_RAMP_EPOCHS,
+  GROWTH_RAMP_START,
+  TOTAL_VEAERO_WAD,
+  WEEKLY_EMISSIONS_WAD,
+} from "../src/data/synthetic.js";
 import {
   epochsForMonths,
   fetchLatestEpochs,
@@ -142,8 +149,8 @@ describe("generateSyntheticDataset", () => {
     );
   });
 
-  it("emits schema-valid datasets for all three process kinds", () => {
-    for (const kind of ["persistent", "bursty", "regime"] as const) {
+  it("emits schema-valid datasets for all four process kinds", () => {
+    for (const kind of ["persistent", "bursty", "regime", "mixed"] as const) {
       const dataset = generateSyntheticDataset({
         seed: 5n,
         poolCount: 2,
@@ -164,6 +171,17 @@ describe("generateSyntheticDataset", () => {
     }
   });
 
+  it("rejects an unknown process kind", () => {
+    expect(() =>
+      generateSyntheticDataset({
+        seed: 1n,
+        poolCount: 1,
+        epochCount: 1,
+        kind: "chaotic" as never,
+      }),
+    ).toThrow(/unknown kind/);
+  });
+
   it("week-aligns the start timestamp", () => {
     const dataset = generateSyntheticDataset({
       seed: 2n,
@@ -173,6 +191,136 @@ describe("generateSyntheticDataset", () => {
       startTs: T0 + 12_345,
     });
     expect(dataset.pools[0]!.epochs[0]!.ts).toBe(T0);
+  });
+
+  it("names pools like the real venue (CL/vAMM/sAMM, tickSpacing, stable)", () => {
+    const dataset = generateSyntheticDataset({
+      seed: 3n,
+      poolCount: 30,
+      epochCount: 2,
+      kind: "mixed",
+      startTs: T0,
+    });
+    for (const pool of dataset.pools) {
+      expect(pool.displayName).toMatch(/^(CL\d+|vAMM|sAMM)-[^/]+\/.+$/);
+      if (pool.displayName.startsWith("CL")) {
+        expect(pool.tickSpacing).toBeGreaterThan(0);
+        expect(pool.stable).toBe(false);
+      } else {
+        expect(pool.tickSpacing).toBeUndefined();
+        expect(pool.stable).toBe(pool.displayName.startsWith("sAMM"));
+      }
+    }
+    // the roster reaches past its fixed entries into the deterministic tail
+    expect(dataset.pools.at(-1)!.displayName).toMatch(/^vAMM-SIM\d+\/USDC$/);
+    // realistic headline: the largest pool is the CL100 WETH/USDC book
+    expect(dataset.pools[0]!.displayName).toBe("CL100-WETH/USDC");
+  });
+
+  it("populates bribes, with bribe-dominant archetypes exceeding their fees", () => {
+    // 24 pools reaches the sAMM bribe-farm entries at the roster tail.
+    const dataset = generateSyntheticDataset({
+      seed: 4n,
+      poolCount: 24,
+      epochCount: 6,
+      kind: "mixed",
+      startTs: T0,
+    });
+    const bribed = dataset.pools.filter((p) =>
+      p.epochs.some((e) => parseAmount(e.bribesUsd ?? "0") > 0n),
+    );
+    expect(bribed.length).toBeGreaterThan(5);
+    const sammFarm = dataset.pools.find((p) => p.displayName === "sAMM-WETH/msETH")!;
+    for (const epoch of sammFarm.epochs) {
+      expect(parseAmount(epoch.bribesUsd!) > parseAmount(epoch.feesUsd!)).toBe(true);
+      expect(epoch.bribes).toHaveLength(1);
+    }
+    // headline pools are effectively unbribed, like the real book
+    const top = dataset.pools[0]!;
+    for (const epoch of top.epochs) {
+      expect(parseAmount(epoch.bribesUsd ?? "0") < parseAmount(epoch.feesUsd!) / 100n).toBe(true);
+    }
+  });
+
+  it("splits votes and emissions exactly across the universe at real scale", () => {
+    const poolCount = 8;
+    const dataset = generateSyntheticDataset({
+      seed: 6n,
+      poolCount,
+      epochCount: 3,
+      kind: "mixed",
+      startTs: T0,
+    });
+    for (let e = 0; e < 3; e += 1) {
+      let votes = 0n;
+      let emissionsPerSec = 0n;
+      for (const pool of dataset.pools) {
+        votes += parseAmount(pool.epochs[e]!.votes);
+        emissionsPerSec += parseAmount(pool.epochs[e]!.emissions);
+      }
+      // votes split the veAERO total exactly
+      expect(votes).toBe(TOTAL_VEAERO_WAD);
+      // per-second emission rates integrate to the weekly budget, up to the
+      // per-pool floor when converting weekly amounts to rates
+      const weekly = emissionsPerSec * BigInt(WEEK);
+      expect(weekly <= WEEKLY_EMISSIONS_WAD).toBe(true);
+      expect(weekly > WEEKLY_EMISSIONS_WAD - BigInt(poolCount) * BigInt(WEEK)).toBe(true);
+    }
+  });
+
+  it("keeps existing pools' fee paths bit-identical when poolCount grows", () => {
+    const small = generateSyntheticDataset({
+      seed: 8n,
+      poolCount: 4,
+      epochCount: 6,
+      kind: "mixed",
+      startTs: T0,
+    });
+    const large = generateSyntheticDataset({
+      seed: 8n,
+      poolCount: 9,
+      epochCount: 6,
+      kind: "mixed",
+      startTs: T0,
+    });
+    for (let p = 0; p < 4; p += 1) {
+      expect(large.pools[p]!.epochs.map((e) => e.feesUsd)).toEqual(
+        small.pools[p]!.epochs.map((e) => e.feesUsd),
+      );
+      expect(large.pools[p]!.epochs.map((e) => e.bribesUsd)).toEqual(
+        small.pools[p]!.epochs.map((e) => e.bribesUsd),
+      );
+    }
+  });
+
+  it("ramps the growth pool through the adoption window (mixed only)", () => {
+    const epochCount = GROWTH_RAMP_START + GROWTH_RAMP_EPOCHS + 2;
+    const mixed = generateSyntheticDataset({
+      seed: 5n,
+      poolCount: 6,
+      epochCount,
+      kind: "mixed",
+      startTs: T0,
+    });
+    const growth = mixed.pools[GROWTH_POOL_INDEX]!;
+    expect(growth.displayName).toContain("cbBTC");
+    const pre = parseAmount(growth.epochs[GROWTH_RAMP_START - 1]!.feesUsd!);
+    const post = parseAmount(growth.epochs[GROWTH_RAMP_START + GROWTH_RAMP_EPOCHS]!.feesUsd!);
+    expect(post > 8n * pre).toBe(true);
+    // legacy kinds keep the pool flat (one global process, no ramp)
+    const flat = generateSyntheticDataset({
+      seed: 5n,
+      poolCount: 6,
+      epochCount,
+      kind: "persistent",
+      startTs: T0,
+    });
+    const flatPool = flat.pools[GROWTH_POOL_INDEX]!;
+    const flatPre = parseAmount(flatPool.epochs[GROWTH_RAMP_START - 1]!.feesUsd!);
+    const flatPost = parseAmount(
+      flatPool.epochs[GROWTH_RAMP_START + GROWTH_RAMP_EPOCHS]!.feesUsd!,
+    );
+    expect(flatPost < 4n * flatPre).toBe(true);
   });
 });
 

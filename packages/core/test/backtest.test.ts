@@ -7,6 +7,9 @@ import { DAY, HOUR, WEEK } from "../src/model/types.js";
 import { revenueProcessFromDataset } from "../src/data/revenue.js";
 import { generateSyntheticDataset } from "../src/data/synthetic.js";
 import { fixedGrid, fixedGridWeekly } from "../src/strategies/fixedGrid.js";
+import { persistenceCarry } from "../src/strategies/persistenceCarry.js";
+import { poolCaptures } from "../src/backtest/capture.js";
+import { GROWTH_POOL_INDEX } from "../src/data/synthetic.js";
 import { constantRevenue, T0 } from "./helpers.js";
 
 describe("runBacktest", () => {
@@ -231,6 +234,76 @@ describe("runBacktest", () => {
       }),
     ).toThrow(/multiple/);
   });
+});
+
+describe("calibration: cbBTC early-allocator capture (growth archetype)", () => {
+  // The published arc (economic-case article): earliest cbBTC allocators
+  // realized ~43% more fees than a trailing-performance expectation over the
+  // Sep 2024 - Feb 2025 ramp, with the edge decaying as growth became
+  // predictable. Reproduced here with the mixed synthetic universe: a 24h
+  // predictive-ish signal re-allocated on a 48h cooldown (the published
+  // predictive setup) against a two-week-lagged crowd (the published
+  // baseline signal). Asserted as a band, never the exact 1.43 (the exact
+  // multiple is seed-dependent; the whole 9-seed sweep lands ~1.3-1.6).
+  const run = (epochCount: number, durationWeeks: number) => {
+    const dataset = generateSyntheticDataset({
+      seed: 13n,
+      poolCount: 8,
+      epochCount,
+      kind: "mixed",
+      startTs: T0,
+    });
+    const revenue = revenueProcessFromDataset(dataset);
+    const portfolioWeight = 1_000_000n * WAD;
+    const model = createContinuousModel({
+      revenue,
+      startTime: T0 + WEEK,
+      cooldownSec: 2 * DAY,
+      emissionRatePerSec: WAD,
+      caps: { enabled: true, kappaWad: (12n * WAD) / 10n },
+    });
+    const result = runBacktest(persistenceCarry({ lookbackSec: DAY }), model, {
+      startTime: T0 + WEEK,
+      durationSec: durationWeeks * WEEK,
+      stepSec: 4 * HOUR,
+      sampleIntervalSec: 12 * HOUR,
+      trancheCount: 4,
+      trancheWeight: portfolioWeight / 4n,
+      cooldownSec: 2 * DAY,
+      crowd: reactiveHerd({
+        revenue,
+        totalWeight: 12n * portfolioWeight,
+        lagSeconds: 2 * WEEK,
+      }),
+      crowdUpdateSec: 12 * HOUR,
+    });
+    const captures = poolCaptures(result);
+    const growth = captures[GROWTH_POOL_INDEX]!;
+    const others = captures.filter((_, i) => i !== GROWTH_POOL_INDEX);
+    return { growth, others };
+  };
+
+  it("captures ~1.4x on the growth pool while the crowd trails", () => {
+    const { growth, others } = run(20, 16);
+    expect(growth.pool).toBe("sim:pool-03");
+    expect(growth.captureMultipleWad).not.toBeNull();
+    // the published 1.43x, asserted as a band
+    expect(growth.captureMultipleWad! > (12n * WAD) / 10n).toBe(true);
+    expect(growth.captureMultipleWad! < 2n * WAD).toBe(true);
+    // the growth pool is where the edge concentrates: it beats the average
+    // capture across the rest of the universe
+    const otherAvg =
+      others.reduce((acc, c) => acc + (c.captureMultipleWad ?? WAD), 0n) / BigInt(others.length);
+    expect(growth.captureMultipleWad! > otherAvg).toBe(true);
+    expect(growth.earned > growth.benchmarkEarned).toBe(true);
+  }, 60_000);
+
+  it("the edge decays once the crowd catches up (extended window)", () => {
+    const ramp = run(20, 16);
+    const extended = run(34, 30);
+    // post-ramp weeks accrue at ~1x and dilute the whole-run multiple
+    expect(extended.growth.captureMultipleWad! < ramp.growth.captureMultipleWad!).toBe(true);
+  }, 60_000);
 });
 
 describe("calibration: published on-target progression (F21, ordering only)", () => {
