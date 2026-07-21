@@ -174,6 +174,89 @@ describe("generateSyntheticDataset", () => {
     });
     expect(dataset.pools[0]!.epochs[0]!.ts).toBe(T0);
   });
+
+  it("throws when poolCount exceeds the archetype roster", () => {
+    expect(() =>
+      generateSyntheticDataset({ seed: 1n, poolCount: 31, epochCount: 2, kind: "persistent", startTs: T0 }),
+    ).toThrow(/roster/);
+  });
+});
+
+describe("generateSyntheticDataset: archetype realism", () => {
+  const dataset = generateSyntheticDataset({
+    seed: 42n,
+    poolCount: 30,
+    epochCount: 30,
+    kind: "persistent",
+    startTs: T0,
+  });
+
+  it("pool 0 is the CL100-WETH/USDC flagship; a stable sAMM pool is in the first 5", () => {
+    const flagship = dataset.pools[0]!;
+    expect(flagship.displayName).toBe("CL100-WETH/USDC");
+    expect(flagship.tickSpacing).toBe(100);
+    expect(flagship.stable).toBe(false);
+    const firstFive = dataset.pools.slice(0, 5);
+    expect(firstFive.some((p) => p.stable && p.displayName.startsWith("sAMM-"))).toBe(true);
+  });
+
+  it("keeps zero-padded sim addresses so lexicographic sort == roster order", () => {
+    const addresses = dataset.pools.map((p) => p.address);
+    expect(addresses[0]).toBe("sim:pool-00");
+    expect([...addresses].sort()).toEqual(addresses);
+  });
+
+  it("feesUsd === Σ fees and bribesUsd === Σ bribes, exactly, every epoch", () => {
+    for (const pool of dataset.pools) {
+      for (const epoch of pool.epochs) {
+        const feeSum = epoch.fees.reduce((acc, f) => acc + parseAmount(f.amount), 0n);
+        const bribeSum = epoch.bribes.reduce((acc, b) => acc + parseAmount(b.amount), 0n);
+        expect(parseAmount(epoch.feesUsd!)).toBe(feeSum);
+        expect(parseAmount(epoch.bribesUsd ?? "0")).toBe(bribeSum);
+      }
+    }
+  });
+
+  it("bribe-funded archetypes bribe most epochs; no-bribe archetypes never do", () => {
+    // roster index 3 = sAMM-msUSD/USDC (bribes ~every epoch, skip prob 1/16)
+    const briber = dataset.pools[3]!;
+    const bribeWeeks = briber.epochs.filter((e) => e.bribes.length > 0).length;
+    expect(bribeWeeks).toBeGreaterThan(briber.epochs.length / 2);
+    // roster index 0 = CL100-WETH/USDC (baseBribesUsd 0n, never bribes)
+    expect(dataset.pools[0]!.epochs.every((e) => e.bribes.length === 0)).toBe(true);
+  });
+
+  it("votes land within [0.7,1.3] × 580 × prior-week revenue", () => {
+    for (const pool of dataset.pools) {
+      for (let e = 1; e < pool.epochs.length; e += 1) {
+        const prev = pool.epochs[e - 1]!;
+        const prevRevenue = parseAmount(prev.feesUsd!) + parseAmount(prev.bribesUsd ?? "0");
+        const votes = parseAmount(pool.epochs[e]!.votes);
+        expect(votes >= (prevRevenue * 580n * 700n) / 1000n).toBe(true);
+        expect(votes <= (prevRevenue * 580n * 1300n) / 1000n).toBe(true);
+      }
+    }
+  });
+
+  it("per-epoch Σ emissions × WEEK equals the frozen global budget within flooring", () => {
+    const weeklyTotals = dataset.pools[0]!.epochs.map((_, e) =>
+      dataset.pools.reduce((acc, p) => acc + parseAmount(p.epochs[e]!.emissions) * BigInt(WEEK), 0n),
+    );
+    const budget = weeklyTotals[0]!;
+    expect(budget > 0n).toBe(true);
+    // flooring loses < WEEK wei per pool (rate floor) + 1 wei (pro-rata floor)
+    const tolerance = BigInt(dataset.pools.length) * BigInt(WEEK + 1);
+    for (const total of weeklyTotals) {
+      expect(budget - total <= tolerance && total - budget <= tolerance).toBe(true);
+    }
+  });
+
+  it("flagship median weekly fees sit in a loose $130k–$650k band", () => {
+    const fees = dataset.pools[0]!.epochs.map((e) => parseAmount(e.feesUsd!)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    const median = fees[Math.floor(fees.length / 2)]!;
+    expect(median >= 130_000n * WAD).toBe(true);
+    expect(median <= 650_000n * WAD).toBe(true);
+  });
 });
 
 describe("sugar mapping helpers", () => {
