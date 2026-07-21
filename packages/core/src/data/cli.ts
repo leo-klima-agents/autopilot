@@ -220,10 +220,9 @@ export async function buildDataset({
   if (pricedAt !== undefined) dataset.pricedAt = pricedAt;
   const outPath = resolve(DATA_DIR, "aerodrome-epochs.v1.json");
   mkdirSync(dirname(outPath), { recursive: true });
-  // Compact on purpose: the site fetches this file, and pretty-printing
-  // adds ~70% parse/transfer bytes that only ever served human diffing
-  // (which GitHub truncates at this size anyway).
-  writeFileSync(outPath, `${JSON.stringify(dataset)}\n`, "utf8");
+  // Pretty-printed on purpose (reviewable weekly-refresh diffs); the ~17KB
+  // gzipped transfer delta on the static host is an accepted cost.
+  writeFileSync(outPath, `${JSON.stringify(dataset, null, 2)}\n`, "utf8");
   console.log(`data: wrote ${outPath} (${finalRecords.length} pools, <=${maxEpochs} epochs each)`);
 }
 
