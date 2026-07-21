@@ -1,8 +1,13 @@
 /**
- * `pnpm data` entry point: builds data/aerodrome-epochs.v1.json (12+ months of
- * weekly epochs for the top ~30 pools) plus the data/tokens.json and
+ * `pnpm data` entry point: builds data/aerodrome-epochs.v1.json (24 months of
+ * weekly epochs for the top ~40 pools) plus the data/tokens.json and
  * data/prices.json caches. Batched, retried, rate limited, idempotent, safe
  * to re-run. Requires BASE_RPC_URL; ALCHEMY_API_KEY enables USD pricing.
+ *
+ * The defaults (24 months, 40 pools) match the published Aero methodology:
+ * the emissions-accuracy study ran over the top 40 Aerodrome pools, and the
+ * cbBTC early-allocator backtest covers Sep 2024 - Feb 2025, which a
+ * 12-month window would miss entirely.
  *
  * Pool selection is two-stage (methodology inspired by ldeso/aerodrome):
  *   stage 1, top `candidateN` alive-gauge pools by CURRENT-epoch votes
@@ -10,8 +15,12 @@
  *   stage 2, top `topN` of those by trailing USD revenue (fees + bribes,
  *             Alchemy-priced at each epoch's Thursday start date).
  * Without ALCHEMY_API_KEY, stage 2 falls back to the vote ranking (unpriced).
+ * Known limitation (survivorship): stage 1 selects by votes as-of-today, so
+ * a pool that was large historically but whose gauge is dead or unvoted now
+ * never enters the universe, whatever the window length.
  *
  * This module is import-safe: nothing runs unless executed directly.
+ * Direct runs accept `--months N --topN N --candidateN N` for smoke runs.
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -91,9 +100,9 @@ export function rankPoolsByUsdRevenue(records: readonly PoolRecord[], topN: numb
 
 /** Builds the dataset plus token/price caches. Exported for orchestration. */
 export async function buildDataset({
-  months = 12,
-  topN = 30,
-  candidateN = 60,
+  months = 24,
+  topN = 40,
+  candidateN = 80,
 }: { months?: number; topN?: number; candidateN?: number } = {}): Promise<void> {
   const client = createSugarClient(); // throws when BASE_RPC_URL is unset
   const apiKey = process.env.ALCHEMY_API_KEY;
@@ -215,9 +224,31 @@ const isDirectRun =
   process.argv[1] !== undefined &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
 
+/** Parses `--months N --topN N --candidateN N` overrides for direct runs
+ *  (smoke runs against the live chain: `pnpm data -- --months 2 --topN 5`).
+ *  Throws on unknown flags or non-positive-integer values. */
+export function parseCliArgs(
+  argv: readonly string[],
+): { months?: number; topN?: number; candidateN?: number } {
+  const known = new Set(["--months", "--topN", "--candidateN"]);
+  const out: Record<string, number> = {};
+  for (let i = 0; i < argv.length; i += 2) {
+    const flag = argv[i]!;
+    if (!known.has(flag)) throw new Error(`unknown flag: ${flag}`);
+    const value = Number(argv[i + 1]);
+    if (!Number.isInteger(value) || value <= 0) {
+      throw new Error(`${flag} needs a positive integer, got ${JSON.stringify(argv[i + 1])}`);
+    }
+    out[flag.slice(2)] = value;
+  }
+  return out;
+}
+
 if (isDirectRun) {
-  buildDataset().catch((err: unknown) => {
-    console.error(`data: failed: ${String(err)}`);
-    process.exitCode = 1;
-  });
+  Promise.resolve()
+    .then(() => buildDataset(parseCliArgs(process.argv.slice(2))))
+    .catch((err: unknown) => {
+      console.error(`data: failed: ${String(err)}`);
+      process.exitCode = 1;
+    });
 }

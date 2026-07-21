@@ -226,10 +226,14 @@ Ordered by blast radius.
   [ldeso/aerodrome](https://github.com/ldeso/aerodrome)). The original ranking by current
   gauge emission rate empirically surfaced zero Slipstream CL pools, which dominate real
   fee revenue. Two causes: the ranking itself, and the `base.env` LpSugar deployment not
-  indexing CL pools at all (fixed by the newer deployment, A11). Stage 1: top ~60
+  indexing CL pools at all (fixed by the newer deployment, A11). Stage 1: top ~80
   alive-gauge pools by CURRENT-epoch votes (`RewardsSugar.epochsLatest`; CL pools included
-  naturally). Stage 2: top 30 of those by trailing 12-month USD revenue. `fetchTopPools`
-  (emission ranking) is kept only as the no-key fallback.
+  naturally). Stage 2: top 40 of those by trailing 24-month USD revenue (revised
+  2026-07-21: 40 pools and 24 months match the published methodology — the accuracy study
+  runs over the top 40 pools, and the cbBTC early-allocator episode of Sep 2024 – Feb 2025
+  sits outside any 12-month window). Known survivorship limitation: stage 1 selects by
+  votes as-of-today, so pools that died before the snapshot never enter the universe.
+  `fetchTopPools` (emission ranking) is kept only as the no-key fallback.
 - **Revenue is USD-priced** (revised 2026-07-18). Per-epoch `feesUsd`/`bribesUsd` are
   computed at index time from the Alchemy Prices API (daily history,
   `api.g.alchemy.com/prices/v1`): each reward amount × that token's price at the epoch's

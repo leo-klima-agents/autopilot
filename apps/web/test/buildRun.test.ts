@@ -85,6 +85,42 @@ describe("historical window anchoring", () => {
     expect(short.startTime).toBe(long.startTime);
     expect(short.result.equityCurve.times[0]).toBe(long.result.equityCurve.times[0]);
   });
+
+  it("endOffsetWeeks parks the window's end that many weeks in the past", () => {
+    const config: RunConfig = {
+      ...historicalConfig(2),
+      data: { kind: "historical", endOffsetWeeks: 3 },
+    };
+    const run = buildAndRun(config, historicalDataset(completeAt));
+    const dataEnd = LAST_TS + WEEK - 3 * WEEK;
+    expect(run.startTime).toBe(dataEnd - 2 * WEEK + 2 * HOUR);
+    expect(run.startTime + run.durationSec).toBe(dataEnd);
+  });
+
+  it("rejects an end offset that reaches past the dataset start", () => {
+    const config: RunConfig = {
+      ...historicalConfig(2),
+      data: { kind: "historical", endOffsetWeeks: 50 },
+    };
+    expect(() => buildAndRun(config, historicalDataset(completeAt))).toThrow(/offset/);
+  });
+
+  it("decodes legacy configs (no endOffsetWeeks, pre-mixed process kinds) and runs them", () => {
+    // a config shaped exactly like an old shared link: historical without
+    // endOffsetWeeks, and a synthetic one with a legacy process kind
+    const legacyHistorical = JSON.parse(JSON.stringify(historicalConfig(2))) as RunConfig;
+    delete (legacyHistorical.data as { endOffsetWeeks?: number }).endOffsetWeeks;
+    const run = buildAndRun(legacyHistorical, historicalDataset(completeAt));
+    expect(run.durationSec).toBe(2 * WEEK - 2 * HOUR);
+
+    const legacySynthetic: RunConfig = {
+      ...DEFAULT_RUN,
+      data: { kind: "synthetic", seed: "7", poolCount: 6, epochCount: 20, process: "regime" },
+      run: { ...DEFAULT_RUN.run, durationWeeks: 2 },
+    };
+    const synRun = buildAndRun(legacySynthetic, null);
+    expect(synRun.result.equityCurve.times.length).toBeGreaterThan(0);
+  });
 });
 
 describe("per-pool earned revenue passthrough", () => {

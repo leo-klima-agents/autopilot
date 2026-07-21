@@ -97,18 +97,24 @@ export function Guide({ onClose }: { onClose: () => void }) {
         <dl>
           <dt>source</dt>
           <dd>
-            <em>Aerodrome historical</em>: real per-epoch fees and bribes for the top ~30 pools by trailing
-            revenue (Slipstream CL and v2 AMM pools alike), indexed on-chain and priced in USD from daily
-            Alchemy price history; the x axis shows real dates and the instruments show dollars. <em>Synthetic scenario</em>: a generated market, exactly reproducible from
+            <em>Aerodrome historical</em>: 24 months of real per-epoch fees and bribes for the top ~40 pools by
+            trailing revenue (Slipstream CL and v2 AMM pools alike), indexed on-chain and priced in USD from daily
+            Alchemy price history; the x axis shows real dates and the instruments show dollars. The window end
+            offset parks the replay window in the past — 71 weeks back lands on the Sep 2024 cbBTC launch.{" "}
+            <em>Synthetic scenario</em>: a generated market, exactly reproducible from
             the seed; the x axis shows relative days (d0, d7, …) because its calendar anchor is arbitrary.
           </dd>
           <dt>seed</dt>
           <dd>The random seed. Same seed, same market, always; this is what makes shared links exact.</dd>
           <dt>fee process</dt>
           <dd>
-            The personality of synthetic fees. <em>persistent</em>: levels drift slowly; yesterday predicts today.
+            The personality of synthetic fees. <em>mixed</em> (the realistic default): every pool runs its own
+            archetype from a roster calibrated to the real top pools — recognizable names, fee scales from ~$365k
+            down to ~$1k a week, bribe-dominant pools, and one cbBTC-like growth pool that ramps ~20× over ten
+            weeks. <em>persistent</em>: levels drift slowly; yesterday predicts today.
             <em> bursty</em>: occasional 5× fee weeks land at random. <em>regime-switching</em>: pools flip between a
-            quiet state and a 4× hot state and stay there for a while.
+            quiet state and a 4× hot state and stay there for a while. The single-process kinds apply one
+            personality to the whole (still realistically scaled) universe.
           </dd>
           <dt>crowd / herd lag / crowd ÷ portfolio</dt>
           <dd>
@@ -184,6 +190,14 @@ export function Guide({ onClose }: { onClose: () => void }) {
             pool's cumulative contribution over the whole run (USD on historical replays). A bright allocation row over
             a dark revenue row is weight parked where the fees never showed up.
           </dd>
+          <dt>Captured vs expected table</dt>
+          <dd>
+            Per pool: the revenue your portfolio earned against what a passive market-cap portfolio of the same
+            total weight would have earned from the same pool, and their ratio, the capture multiple. Above 1×
+            you took more than your share; the published cbBTC early-allocator backtest reads 1.43× in exactly
+            this column. Mature, efficiently-voted pools sit near 1× — the multiple only moves where the crowd's
+            weights trail the revenue.
+          </dd>
           <dt>strategy / market bench / revenue bench toggle</dt>
           <dd>
             Flips both heat-maps between three same-size portfolios: yours and the two benchmarks (Theory §5). Use
@@ -200,9 +214,16 @@ export function Guide({ onClose }: { onClose: () => void }) {
         <dl>
           <dt>Early allocator</dt>
           <dd>
-            A regime-switching market with a slow crowd (3-day lag). Persistence carry takes weight in a pool as it
-            turns hot, earns an outsized revenue share while alone, and cedes it as the herd arrives: the cbBTC
-            story from Aero's economic case, in miniature.
+            The mixed universe's cbBTC-like growth pool ramps ~20× while a two-week-lagged crowd trails it.
+            Persistence carry on a 24h signal takes weight early, earns an outsized revenue share while alone, and
+            cedes it as the herd arrives: the cbBTC story from Aero's economic case, in miniature. The capture
+            table reads ~1.4× on that pool, the published 43% early-allocator edge.
+          </dd>
+          <dt>cbBTC backtest</dt>
+          <dd>
+            The same story on the real dataset: the replay window parks over Sep 2024 – Mar 2025, when cbBTC
+            launched on Base and its pools' fees ramped from zero to ~$800k/week. The heat-map rows ignite and the
+            capture table shows the cbBTC pools well above 1×.
           </dd>
           <dt>Latency race</dt>
           <dd>

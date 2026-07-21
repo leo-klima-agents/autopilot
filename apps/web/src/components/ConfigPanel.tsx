@@ -181,14 +181,34 @@ export function ConfigPanel({ config, onChange }: Props) {
                 data:
                   e.target.value === "historical"
                     ? { kind: "historical" }
-                    : { kind: "synthetic", seed: "42", poolCount: 8, epochCount: 20, process: "persistent" },
+                    : { kind: "synthetic", seed: "42", poolCount: 8, epochCount: 20, process: "mixed" },
               })
             }
           >
             <option value="synthetic">synthetic scenario (seeded)</option>
-            <option value="historical">Aerodrome historical (top 30 pools)</option>
+            <option value="historical">Aerodrome historical (top 40 pools, 24 months)</option>
           </select>
         </div>
+        {config.data.kind === "historical" && (
+          <div className="field">
+            <label htmlFor="endoffset">
+              window end offset
+              <span className="hint">weeks back from the dataset end (0 = latest)</span>
+            </label>
+            <input
+              id="endoffset"
+              type="number"
+              min={0}
+              max={100}
+              value={config.data.endOffsetWeeks ?? 0}
+              onChange={(e) =>
+                patch({
+                  data: { kind: "historical", endOffsetWeeks: Math.max(0, Math.round(e.target.valueAsNumber) || 0) },
+                })
+              }
+            />
+          </div>
+        )}
         {syn && (
           <>
             <div className="field">
@@ -205,9 +225,12 @@ export function ConfigPanel({ config, onChange }: Props) {
                 id="process"
                 value={syn.process}
                 onChange={(e) =>
-                  patch({ data: { ...syn, process: e.target.value as "persistent" | "bursty" | "regime" } })
+                  patch({
+                    data: { ...syn, process: e.target.value as "persistent" | "bursty" | "regime" | "mixed" },
+                  })
                 }
               >
+                <option value="mixed">mixed (realistic archetypes)</option>
                 <option value="persistent">persistent</option>
                 <option value="bursty">bursty</option>
                 <option value="regime">regime-switching</option>

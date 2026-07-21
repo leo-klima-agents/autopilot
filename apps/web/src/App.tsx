@@ -9,6 +9,7 @@ import { Gauges } from "./components/Gauges.js";
 import { EquityChart } from "./components/EquityChart.js";
 import { AllocationHeatmap, type HeatmapView } from "./components/AllocationHeatmap.js";
 import { EarningsHeatmap } from "./components/EarningsHeatmap.js";
+import { CaptureTable } from "./components/CaptureTable.js";
 import {
   DEFAULT_RUN,
   PRESETS,
@@ -367,6 +368,10 @@ export function App() {
                   <ViewToggle view={heatmapView} onChange={setHeatmapView} />
                 </div>
                 <EarningsHeatmap result={live.result} view={heatmapView} />
+              </div>
+              <div className="panel">
+                <p className="placard">Captured vs expected, per pool</p>
+                <CaptureTable result={live.result} />
               </div>
             </>
           ) : (
