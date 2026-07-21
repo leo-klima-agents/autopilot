@@ -104,7 +104,17 @@ export function buildAndRun(config: RunConfig, historical: unknown | null): Buil
   const generatedAtSec = Date.parse(dataset.generatedAt) / 1000;
   const lastEpochPartial =
     config.data.kind === "historical" && generatedAtSec < lastEpochStart + WEEK;
-  const dataEnd = lastEpochPartial ? lastEpochStart : lastEpochStart + WEEK;
+  let dataEnd = lastEpochPartial ? lastEpochStart : lastEpochStart + WEEK;
+  // Historical runs may park the window's end in the past (endOffsetWeeks
+  // back from the dataset end) to replay a specific episode, e.g. the
+  // Sep 2024 - Feb 2025 cbBTC ramp. Synthetic runs ignore it (their start
+  // is already fixed).
+  if (config.data.kind === "historical" && (config.data.endOffsetWeeks ?? 0) > 0) {
+    dataEnd -= Math.floor(config.data.endOffsetWeeks!) * WEEK;
+    if (dataEnd <= dataStart + WEEK) {
+      throw new Error("window end offset reaches past the start of the dataset");
+    }
+  }
 
   const wash = config.crowd.washBait;
   if (wash) {

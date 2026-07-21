@@ -15,7 +15,7 @@ export type StrategyKind =
   | "continuousGreedy";
 
 export type ModelKind = "epoch" | "continuous";
-export type SyntheticKind = "persistent" | "bursty" | "regime";
+export type SyntheticKind = "persistent" | "bursty" | "regime" | "mixed";
 export type CrowdKind = "none" | "static" | "herd";
 
 export interface RunConfig {
@@ -32,7 +32,13 @@ export interface RunConfig {
     decay: { enabled: boolean; ratePerDayMilli: number };
   };
   data:
-    | { kind: "historical" }
+    | {
+        kind: "historical";
+        /** Shift the replay window's END this many weeks back from the
+         *  dataset end (0/absent = the latest weeks). Lets presets aim at a
+         *  past episode, e.g. the Sep 2024 - Feb 2025 cbBTC ramp. */
+        endOffsetWeeks?: number;
+      }
     | { kind: "synthetic"; seed: string; poolCount: number; epochCount: number; process: SyntheticKind };
   crowd: {
     kind: CrowdKind;
@@ -56,7 +62,7 @@ export const DEFAULT_RUN: RunConfig = {
     caps: { enabled: true, kappaMilli: 1200, intervalSec: 172_800, windowSec: 172_800 },
     decay: { enabled: false, ratePerDayMilli: 10 },
   },
-  data: { kind: "synthetic", seed: "42", poolCount: 8, epochCount: 20, process: "persistent" },
+  data: { kind: "synthetic", seed: "42", poolCount: 8, epochCount: 20, process: "mixed" },
   crowd: { kind: "herd", lagSec: 604_800, multiple: 10 },
   run: { durationWeeks: 12, stepSec: 3600, trancheCount: 4, trancheTokens: 250_000 },
 };
@@ -67,9 +73,9 @@ export const PRESETS: { id: string; label: string; blurb: string; config: RunCon
     id: "early-allocator",
     label: "Early allocator",
     blurb:
-      "The cbBTC arc: a persistence-aware strategy takes weight in a growing pool before the lagged crowd arrives, earns an outsized revenue share, and cedes it as the herd catches up.",
+      "The cbBTC arc, synthetically: the mixed universe's CL100-USDC/cbBTC pool ramps ~20× over ten weeks. A 24h-signal allocator on a 48h cooldown takes weight before the two-week-lagged crowd arrives — the capture table shows it earning ~1.4× the passive expectation from that pool (the published 43% early-allocator edge), decaying as the herd catches up.",
     config: {
-      strategy: { kind: "persistenceCarry", config: { lookbackSec: 172_800 } },
+      strategy: { kind: "persistenceCarry", config: { lookbackSec: 86_400 } },
       model: {
         kind: "continuous",
         cooldownSec: 172_800,
@@ -78,9 +84,29 @@ export const PRESETS: { id: string; label: string; blurb: string; config: RunCon
         caps: { enabled: true, kappaMilli: 1200, intervalSec: 172_800, windowSec: 172_800 },
         decay: { enabled: false, ratePerDayMilli: 10 },
       },
-      data: { kind: "synthetic", seed: "7", poolCount: 6, epochCount: 20, process: "regime" },
-      crowd: { kind: "herd", lagSec: 3 * 86_400, multiple: 12 },
-      run: { durationWeeks: 14, stepSec: 3600, trancheCount: 4, trancheTokens: 250_000 },
+      data: { kind: "synthetic", seed: "13", poolCount: 8, epochCount: 20, process: "mixed" },
+      crowd: { kind: "herd", lagSec: 14 * 86_400, multiple: 12 },
+      run: { durationWeeks: 16, stepSec: 3600, trancheCount: 4, trancheTokens: 250_000 },
+    },
+  },
+  {
+    id: "cbbtc-backtest",
+    label: "cbBTC backtest",
+    blurb:
+      "The real thing: the replay window is parked over Sep 2024 – Mar 2025, when cbBTC launched on Base and CL100-WETH/cbBTC fees ramped from zero to ~$800k/week. Watch the cbBTC rows light up in the heat-maps and read the capture table — the same arc the published early-allocator backtest measured at 1.43×.",
+    config: {
+      strategy: { kind: "persistenceCarry", config: { lookbackSec: 86_400 } },
+      model: {
+        kind: "continuous",
+        cooldownSec: 172_800,
+        cooldownGranularity: "position",
+        emissionPerDay: 100_000,
+        caps: { enabled: true, kappaMilli: 1200, intervalSec: 172_800, windowSec: 172_800 },
+        decay: { enabled: false, ratePerDayMilli: 10 },
+      },
+      data: { kind: "historical", endOffsetWeeks: 71 },
+      crowd: { kind: "herd", lagSec: 14 * 86_400, multiple: 12 },
+      run: { durationWeeks: 26, stepSec: 3600, trancheCount: 4, trancheTokens: 250_000 },
     },
   },
   {
@@ -98,7 +124,7 @@ export const PRESETS: { id: string; label: string; blurb: string; config: RunCon
         caps: { enabled: false, kappaMilli: 1200, intervalSec: 172_800, windowSec: 172_800 },
         decay: { enabled: false, ratePerDayMilli: 10 },
       },
-      data: { kind: "synthetic", seed: "99", poolCount: 8, epochCount: 8, process: "bursty" },
+      data: { kind: "synthetic", seed: "99", poolCount: 8, epochCount: 8, process: "persistent" },
       crowd: { kind: "herd", lagSec: 3600, multiple: 10 },
       run: { durationWeeks: 4, stepSec: 1800, trancheCount: 2, trancheTokens: 500_000 },
     },

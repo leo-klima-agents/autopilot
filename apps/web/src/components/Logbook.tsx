@@ -128,27 +128,47 @@ export const LOGBOOK: LogEntry[] = [
     title: "Latency race (fast is not smart)",
     config: presetConfig("latency-race"),
     why:
-      "Continuous greedy at a one-block cooldown against a one-hour-lagged crowd on bursty revenue. It captures a " +
-      "high fraction of the edge, but look at how small the edge is: with a crowd this fast, the benchmarks " +
-      "nearly touch, and reactive returns converge to the system average. Speed alone demonstrates its own " +
-      "futility (design principle P3: sub-weekly value is simulation-only).",
+      "Continuous greedy at a one-block cooldown against a one-hour-lagged crowd on persistent revenue. With a " +
+      "crowd this fast and no structural change to front-run, the benchmarks nearly touch (the edge is ~0.1% of " +
+      "the market return) and the vs-market figure hovers at zero or just below: reactive returns converge to " +
+      "the system average minus latency costs. Speed alone demonstrates its own futility (design principle P3: " +
+      "sub-weekly value is simulation-only).",
     read:
-      "The three equity lines almost coincide, read the absolute vs-market number, not the captured percentage. " +
-      "A high capture of a vanishing edge pays for no infrastructure. Compare with the edge-decays entry: same " +
-      "lesson from the crowd side instead of the strategy side.",
+      "The three equity lines almost coincide, read the absolute vs-market number, not the captured percentage " +
+      "(any percentage of a vanishing edge is noise). A one-block cooldown pays for no infrastructure here. " +
+      "Compare with the edge-decays entry: same lesson from the crowd side instead of the strategy side. Then " +
+      "switch the fee process to bursty and watch greedy find real dislocations, it is the market's " +
+      "predictability, not the strategy's speed, that decides whether cadence pays.",
   },
   {
     id: "early-allocator",
-    title: "Early allocator (the cbBTC arc)",
+    title: "Early allocator (the cbBTC arc, synthetic)",
     config: presetConfig("early-allocator"),
     why:
-      "A regime-switching market with a three-day-lagged crowd: persistence scoring takes weight in a pool as its " +
-      "revenue regime turns on, earns an outsized share while alone, and cedes it as the herd arrives, the " +
-      "published cbBTC early-allocator story, reproduced synthetically.",
+      "The mixed synthetic universe carries a growth archetype: CL100-USDC/cbBTC enters small and ramps ~20× over " +
+      "ten weeks, the published cbBTC adoption arc in miniature. A 24h-signal allocator on a 48h cooldown takes " +
+      "weight in it before the two-week-lagged crowd arrives, earns an outsized share while alone, and cedes it " +
+      "as the herd catches up.",
     read:
-      "Watch the allocation heat-map for a row that lights up before the same row brightens in the market-bench " +
-      "view; that lead time is the whole trade. The equity gap over the market benchmark opens exactly during " +
-      "the solo window and plateaus once the crowd catches up.",
+      "Go straight to the captured-vs-expected table: the CL100-USDC/cbBTC row reads ~1.4×, the shape of the " +
+      "published 43% early-allocator edge, while mature pools sit near 1×. Then watch its row in the allocation " +
+      "heat-map light up before the same row brightens in the market-bench view; that lead time is the whole " +
+      "trade. Seeded and synthetic, so these numbers reproduce exactly, forever.",
+  },
+  {
+    id: "cbbtc-backtest",
+    title: "The cbBTC backtest (the real thing)",
+    config: presetConfig("cbbtc-backtest"),
+    why:
+      "The replay window is parked over Sep 2024 – Mar 2025 (window end offset 71 weeks), when cbBTC launched on " +
+      "Base and CL100-WETH/cbBTC fees ramped from zero to ~$800k/week. This is the episode the published " +
+      "early-allocator backtest measured at 1.43× — replayed against the real Alchemy-priced dataset, not a " +
+      "simulation of it.",
+    read:
+      "The cbBTC rows start dark and ignite through the window in both heat-maps. In the captured-vs-expected " +
+      "table, read the cbBTC pools' multiples against the mature pools' ~1×: allocating on a fresh signal while " +
+      "the crowd trailed the ramp is where the edge lived. Historical figures drift as the weekly data refresh " +
+      "moves the dataset; the window offset keeps the episode in frame.",
   },
   {
     id: "wash-bait",
