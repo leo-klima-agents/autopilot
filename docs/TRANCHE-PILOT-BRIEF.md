@@ -10,8 +10,10 @@
 Build a vault that pools users' AERO into staked (sAERO) positions and continuously re-allocates
 them toward productive pools, with **no owner, no keeper, no oracle, no upgrade path, and no
 off-chain computation**. Every state transition is either user-initiated (deposit) or
-permissionless-with-bounty (rebalance, claim, compound). The deployer's keys are worthless the
-moment the constructor returns.
+permissionless-with-bounty (claim, compound, propose, rebalance) — and because reallocation rides
+as a side-effect hook on the self-funding claim/compound calls (§3.4), the strategy stays live
+without anyone being *assigned* to run it. The deployer's keys are worthless the moment the
+constructor returns.
 
 The design discipline is borrowed from high-assurance systems (seL4, Qubes OS): make the trusted
 computing base so small that it can be audited exhaustively, prove or fuzz every invariant, and
@@ -120,8 +122,9 @@ confirmed in published code. Keep a diff log (published code vs this table) from
    protocol's minimum stake with margin), anyone calls `activate()`: the vault creates
    **K permanent sAERO stakes** of equal size (G2/G3) and records their tokenIds. Irreversible.
    Refunds end.
-4. **Steady state**, four permissionless operations (§3.4): `deposit`, `rebalance`,
-   `claimRevenue`, `compound`.
+4. **Steady state**, permissionless operations (§3.4): `deposit`, `propose`, `claimRevenue`,
+   `compound`, `rebalance` — where `claimRevenue`/`compound` also advance the strategy via the
+   rebalance hook, so reallocation needs no dedicated caller.
 5. **There is no step 5.** No pause, no sunset, no admin unwind. The vault runs as long as the
    protocol does. If the protocol dies, allocations persist (G5) and shares keep their claim on
    whatever revenue still accrues.
@@ -163,15 +166,52 @@ confirmed in published code. Keep a diff log (published code vs this table) from
 
 ### 3.4 Permissionless operations and bounties
 
-Every mutating function is callable by anyone; callers earn in-kind bounties (constant
-`BOUNTY_BPS`, default 30 bps, of the value they move). No roles exist.
+Every mutating function is callable by anyone; callers earn in-kind bounties. No roles exist.
 
 | Function | What it does | Bounty |
 |---|---|---|
-| `rebalance(uint8 tranche, address[] gauges)` | In-slot only. Validates the candidate set on-chain (§4.2), reads each gauge's cap from the factory (G6), submits the allocation to the Voter with the cap values as relative weights. | `BOUNTY_AERO` flat, paid from the vault's loose (claimed, not yet compounded) AERO; zero if none — depositors are the natural altruistic callers. |
-| `claimRevenue(uint8 tranche, address[] rewardContracts)` | Claims exchange revenue. Each target is validated against the protocol's own gauge→reward registry (never a free-form address). Received amounts are measured by **balance delta** (fee-on-transfer safe) and credited to the per-token distributor (§3.5). | `BOUNTY_BPS` of each claimed token, in kind. |
-| `compound()` | Stakes the vault's entire loose AERO balance (revenue in AERO, donations) into the smallest tranche; increases `totalPrincipal`, raising share value. | `BOUNTY_BPS` of the amount compounded. |
+| `propose(uint8 tranche, address[] gauges)` | Records a candidate gauge set for the tranche's *current* slot if its total factory cap strictly exceeds the standing set's (§4.2). Each candidate is validated on-chain (factory-registered, cap > 0, no duplicates, ≤ `MAX_GAUGES`) at proposal time, so the standing set is **always pre-validated**. Pure bookkeeping; touches no position. | none (cheap; proposers are candidates' beneficiaries) |
+| `claimRevenue(uint8 tranche, address[] rewardContracts)` | Claims exchange revenue for the tranche. Each target is validated against the protocol's own gauge→reward registry (never a free-form address). Received amounts are measured by **balance delta** (fee-on-transfer safe) and credited to the per-token distributor (§3.5). **Then runs the opportunistic rebalance hook (below).** | `BOUNTY_BPS` (default 30) of each claimed token, in kind, **plus** the rebalance bounty if the hook fires. |
+| `compound()` | Stakes the vault's entire loose AERO balance (revenue in AERO, donations) into the smallest tranche; increases `totalPrincipal`, raising share value. **Then runs the opportunistic rebalance hook for that tranche.** | `BOUNTY_BPS` of the amount compounded, **plus** the rebalance bounty if the hook fires. |
+| `rebalance(uint8 tranche)` | Standalone entry to the same hook, for callers who only want to advance the strategy. Reverts if the hook's preconditions are not met (so a wasted call fails loudly rather than silently no-op'ing). | the escalating rebalance bounty (below). |
 | `deposit(uint256 amount)` / share transfers / `claimUser(address token)` | User-facing; no bounty. | — |
+
+**The opportunistic rebalance hook.** Claiming and compounding are self-funding, so they are
+called often; the hook lets them advance the strategy as a side effect, giving `rebalance`
+liveness for free instead of relying on altruistic callers. It is deliberately *not* a separate
+trusted trigger — it is a tail branch of functions that already run.
+
+Precisely, at the tail of `claimRevenue`/`compound`/`rebalance` for tranche `i`, the hook fires
+**iff all of**: (a) `i` is in its slot (§3.3), (b) the protocol reports `i`'s cooldown elapsed,
+(c) a non-empty standing candidate set exists for the current slot. When it fires it submits the
+**standing (already-validated) set** to the Voter with each gauge's live factory cap as its
+relative weight, sets `i`'s last-rebalance time, and pays the caller the escalating rebalance
+bounty. When any precondition is false the hook is skipped — an ordinary branch, **not** a
+swallowed error (§5.1 bans `try/catch`).
+
+Two properties make the coupling safe, both are §5.4 invariants:
+
+- **The hook is revert-free by construction.** It only ever submits a *pre-validated* standing set
+  for an *eligible* tranche, so given (a)–(c) the Voter call cannot revert on our inputs.
+  Therefore a claim can never be blocked by the strategy: revenue claiming stays live even if the
+  gauge signal is broken. (This is exactly why §4.2 pins propose-improve as the default and why
+  `rebalance` takes no caller-supplied `gauges[]` — an arbitrary set could revert and would
+  reintroduce a claim-griefing path.)
+- **The claimer never subsidizes the rebalance.** The rebalance gas is covered by the rebalance
+  bounty, paid on top of the claim bounty, so a small in-slot claim still nets positive whether or
+  not the hook fires. The claim bounty and the rebalance bounty are computed and paid
+  independently.
+
+**Escalating rebalance bounty (liveness guarantee).** Flat or purely-altruistic incentives left
+the most important operation with the softest guarantee. Instead the rebalance bounty **ramps with
+staleness**: `bounty = min(BOUNTY_MAX_AERO, BOUNTY_RAMP_AERO × (now − lastRebalance[i]) / C)`,
+paid from the vault's loose (claimed, not-yet-compounded) AERO, capped by what is on hand. The
+longer a tranche goes un-rebalanced, the larger the reward to whoever moves it, so the bounty is
+guaranteed to eventually clear any caller's gas cost; in steady state it settles near the marginal
+caller's gas. In the common case the hook fires inside a claim that a searcher was calling anyway,
+so the ramp rarely climbs. Bounty payment is skipped (not reverted) when no loose AERO is
+available — the safety net is that a missed rebalance only lets allocations go **stale**, which
+degrades returns toward the market average (G5) but never risks principal.
 
 ### 3.5 Revenue distribution
 
@@ -195,7 +235,8 @@ routes and price protection, which need either an oracle or an operator; all thr
 | `SEED_BURN` | 1e3 shares | inflation-attack dead shares. |
 | `MIN_DEPOSIT` | 1e18 (1 AERO) | dust and accumulator-precision hygiene. |
 | `BOUNTY_BPS` | 30 | Relay-inspired; large enough to cover gas at Base fees for realistic claim sizes. |
-| `BOUNTY_AERO` | 1e18 | flat rebalance bounty. |
+| `BOUNTY_RAMP_AERO` | 1e18 | rebalance bounty accrued per full cooldown of staleness (the ramp slope; §3.4). |
+| `BOUNTY_MAX_AERO` | 5e18 | ceiling on the escalating rebalance bounty, so ramp exposure is bounded. |
 | `MAX_GAUGES` | 16 | bounds allocation gas and mirrors protocol per-vote limits. |
 | `SERIES_CAP` | e.g. 2,000,000 AERO | hard deposit cap per series (§0: immutable release trains; blast-radius bound for any undiscovered bug). |
 
@@ -226,16 +267,25 @@ fully fresh, the edge is ≈ 0, never structurally negative-sum for shareholders
 
 Candidate-set validation (the subset problem — a caller could submit a self-serving gauge list):
 
-1. Preferred: **full on-chain enumeration**, if the published pool/gauge indexes (pool-factory.md)
-   make "top-`MAX_GAUGES` by cap" scannable at acceptable gas on Base. Measure after Aug 3; a
-   few-million-gas view loop once per Δ is acceptable on Base.
-2. Fallback: **propose-improve**. During the first half of a slot, anyone may propose a candidate
-   set; a proposal replaces the standing one only if its total cap is strictly higher. In the
-   second half, anyone executes the standing winner (bounty to the executor). Permissionless
-   competition converges to the true top set; a lazy round executes the previous set, which is
-   merely stale, not unsafe.
-3. Every candidate is individually validated on-chain regardless of mode: gauge exists in the
-   factory, is active (cap > 0), pool is protocol-registered, no duplicates, count ≤ `MAX_GAUGES`.
+**Default: propose-improve** (chosen because it makes the standing set *pre-validated*, which is
+what lets the §3.4 rebalance hook be revert-free — the reason claims can never be blocked by the
+strategy). Anyone calls `propose(tranche, gauges)` at any point in a slot; each candidate is
+validated on-chain at proposal time (gauge factory-registered, cap > 0, pool protocol-registered,
+no duplicates, count ≤ `MAX_GAUGES`), and the proposal replaces the standing set only if its total
+factory cap is strictly higher. The rebalance hook then submits that standing set when the tranche
+is in-slot and eligible. Permissionless competition converges to the true top-cap set; a slot with
+no new proposal reuses the previous set — merely stale, never unsafe or revert-prone. The standing
+set carries the slot index it was proposed for, so a set cannot leak across slots.
+
+**Optional upgrade (later series, if gas allows): full on-chain enumeration.** If the published
+pool/gauge indexes (pool-factory.md) make "top-`MAX_GAUGES` by cap" scannable at acceptable gas on
+Base (measure after Aug 3; a few-million-gas view loop once per Δ is plausible), a series can
+compute the set in-contract and drop `propose` entirely — strictly stronger (no dependence on a
+proposer showing up), at higher gas. This is a *different series*, not a runtime switch; the
+default series ships propose-improve so the revert-free coupling holds from day one.
+
+In both modes every candidate is individually validated on-chain: gauge exists in the factory, is
+active (cap > 0), pool is protocol-registered, no duplicates, count ≤ `MAX_GAUGES`.
 
 ### 4.3 Fallback mode: mirror (guaranteed tracking)
 
@@ -286,8 +336,10 @@ tranche-pilot/
 
 Shares: `totalShares`, `balanceOf`, `allowance`. Principal: `totalPrincipal`, `activated`,
 `tokenIds[K]`, `trancheStaked[K]`. Distributor: `accPerShare[token]`, `rewardDebt[user][token]`,
-`looseAero`. Strategy (propose-improve mode only): `standingSet`, `standingScore`, `slotOfSet`.
-Nothing else. Every variable's units and invariants are documented at the declaration.
+`looseAero`. Strategy: `standingSet[K]`, `standingScore[K]`, `slotOfSet[K]` (the pre-validated
+candidate set per tranche and the slot it belongs to) and `lastRebalance[K]` (drives both the
+staleness bounty ramp and the eligibility check). Nothing else. Every variable's units and
+invariants are documented at the declaration.
 
 ### 5.4 Invariants (the audit contract — each becomes a Foundry invariant test)
 
@@ -306,13 +358,29 @@ Nothing else. Every variable's units and invariants are documented at the declar
    every allocated gauge was factory-registered and cap-positive at submission.
 7. The contract never holds ETH; the only ERC-20 approval that ever exists is AERO → escrow, set
    transiently per call.
+8. **The rebalance hook can never cause a claim to revert.** For any reachable state and any
+   `claimRevenue`/`compound` call, if the pre-hook body succeeds the whole transaction succeeds:
+   the hook either is skipped (a precondition is false) or submits a pre-validated standing set
+   for an eligible tranche, which cannot revert on our inputs. (Tested by fuzzing claims across
+   arbitrary slot phases, cooldown states, standing-set contents, and adversarial reward tokens;
+   asserted symbolically on the hook's precondition branch.)
+9. **The claimer is never worse off for the hook firing.** `claimRevenue`'s payout to its caller
+   is independent of whether the hook fired; the rebalance bounty is funded only from `looseAero`
+   and paid on top, never from the caller's claimed tokens or any credited balance. (Corollary of
+   invariant 4.)
+10. The escalating rebalance bounty is bounded by `BOUNTY_MAX_AERO` and by available `looseAero`,
+    and `lastRebalance[i]` advances to `block.timestamp` on every fired hook — so the ramp resets
+    and total bounty outflow over any window is bounded.
 
 ### 5.5 Events
 
-`Deposited`, `SeedWithdrawn`, `Activated(tokenIds)`, `Rebalanced(tranche, gauges, weights, caller)`,
-`RevenueClaimed(tranche, token, amount, bounty, caller)`, `Compounded(amount, tranche, caller)`,
-`UserClaimed(user, token, amount)`, plus ERC-20 events. Everything a monitoring dashboard needs is
-reconstructable from events alone.
+`Deposited`, `SeedWithdrawn`, `Activated(tokenIds)`, `Proposed(tranche, gauges, score, slot)`,
+`Rebalanced(tranche, gauges, weights, bounty, caller)` (emitted by the hook wherever it fires —
+inside a claim, a compound, or a standalone `rebalance`), `RevenueClaimed(tranche, token, amount,
+bounty, caller)`, `Compounded(amount, tranche, caller)`, `UserClaimed(user, token, amount)`, plus
+ERC-20 events. Because `Rebalanced` is emitted by the hook rather than by one dedicated function, a
+monitor reconstructs strategy activity from that event alone regardless of which entrypoint drove
+it. Everything a dashboard needs is reconstructable from events alone.
 
 ---
 
@@ -325,7 +393,7 @@ reconstructable from events alone.
 | Share inflation / first depositor | Seed phase + `SEED_BURN` dead shares + `MIN_DEPOSIT`. |
 | Donation manipulation of accumulators | Donations only increase distributable amounts; accumulator uses internal credit, not raw balances, where balances are attacker-inflatable. |
 | Reentrancy via token callbacks | Checks-effects-interactions everywhere + a single `nonReentrant` guard (hand-written, transient storage). |
-| Bounty draining (claim dust in a loop) | Bounty is proportional (bps of moved value), never fixed per call except `BOUNTY_AERO`, which requires an in-slot rebalance. |
+| Bounty draining (claim dust in a loop) | Claim/compound bounties are proportional (bps of moved value), so dust pays dust. The rebalance bounty is gated on the tranche being in-slot *and* cooldown-eligible (once per cooldown), and it ramps from zero, so it cannot be farmed by rapid repeat calls; a fired hook advances `lastRebalance[i]`, resetting the ramp. |
 | Cooldown griefing (attacker resets our cooldowns) | Allocation calls require position ownership at the protocol; verify no third-party path (poke-analogs) resets cooldowns — G4. |
 | Protocol-side: cap operator compromise or garbage caps | Bounded damage: allocation is still over factory-registered, active gauges; worst case ≈ mis-weighted but real pools. Kill-switch-free by design; series cap bounds absolute exposure. |
 | Protocol governance changes (cooldown length, min weights) | Read live values every call; grid arithmetic adapts; nothing is cached. |
@@ -391,7 +459,11 @@ Specification deltas from `TranchePilot`:
   whitelist-only final hour; enforce both protocol gates from G9). Validation: pools ≤ 30
   (`maxVotingNum`), each pool has a live gauge, and **coverage** `Σ Voter.weights(pool) ≥ 80% ×
   Voter.totalWeight()` — the on-chain check that defeats self-serving subsets. Weights submitted
-  = `Voter.weights(pool) − votes(ourTokenId, pool)` (mirror-ex-self; the Voter normalizes).
+  = `Voter.weights(pool) − votes(ourTokenId, pool)` (mirror-ex-self; the Voter normalizes). Its
+  bounty uses the **same escalating-from-loose-AERO ramp** as the v3 rebalance (§3.4). With one
+  position there is no claim/compound call to piggyback the vote on (the v3 hook needs multiple
+  tranches to be worthwhile), so the escalating bounty is the *sole* liveness mechanism here —
+  which makes the v2 PoC a fair test of that ramp under real fees before v3 relies on it.
 - **`claimRevenue(bribes[], fees[], tokens[][])`** validated against `Voter.gaugeToBribe` /
   `gaugeToFees`; per-token accumulator identical to §3.5. **`claimRebase()`** permissionless
   (auto-compounds into the lock, G10). **`compound()`** stakes loose AERO via `increaseAmount`.
