@@ -103,9 +103,14 @@ the **deployed contracts** (September) before deployment. Confidence: `faq` = of
 | G8 | Exchange revenue (fees + incentives) accrues to allocators in reward contracts, claimable per position, in heterogeneous tokens | spec | Distributor design (§5.4) assumes pull-per-token; if revenue is protocol-converted (e.g. USDC), the distributor simplifies. |
 | G9 | v2 (PoC): one vote per epoch per tokenId; vote window is (epochStart+1h, epochStart+WEEK−1h) with the last hour whitelist-only; `Voter.weights(pool)`/`totalWeight` are public; `vote()` normalizes relative weights; `maxVotingNum` = 30 | code | Assert all of it in fork tests against Base mainnet. |
 | G10 | v2 (PoC): rebases are claimable permissionlessly per tokenId and auto-compound into unexpired locks | code | Assert in fork tests. |
+| G11 | `withdraw-to-NFT` (fractional carve-out of staking weight into a new sTOKEN) is **role-gated** — only an authorized contract may call it, and only with source-owner approval | spec (voting-escrow.md) | Determines the exit story of **Model P** (§3.7): if the vault can obtain the role, `exitToNFT` gives position-level exit; if not, `exitToNFT` stays inert and the answer is Model S (separate positions, whole-NFT exit) or share-selling. **If published code exposes an *ungated* fractional withdraw, Model P gains a guaranteed position-exit and this whole limitation lifts.** |
+| G12 | `deposit-into-NFT` (merge all of one sTOKEN's weight into another) is gated only by **owner/approval of both** tokens — no special role; merging into a permanent destination makes the incoming weight permanent | spec (voting-escrow.md) | The role-free deposit path for both models (§3.1). If it needs a role too, deposits fall back to AERO + `createStake`. |
+| G13 | The Voter's allocation entrypoint votes **one tokenId per call** (no native batch over multiple positions) | spec | If a **batch-vote** entrypoint ships, it lowers Model S's per-transaction overhead (§3.7) — an efficiency win, not an architecture change; neither model depends on it. |
 
 **Spec-freeze gate:** implementation of `TranchePilot` does not start until G1, G3, G4, G6, G7 are
-confirmed in published code. Keep a diff log (published code vs this table) from Aug 3.
+confirmed in published code. **G11 in particular decides the default custody model (§3.7):** if the
+`withdraw-to-NFT` grant is realistically obtainable, ship Model P with `exitToNFT`; if it is not,
+ship Model S. Keep a diff log (published code vs this table) from Aug 3.
 
 ---
 
@@ -135,14 +140,27 @@ confirmed in published code. Keep a diff log (published code vs this table) from
 - Mint: `shares = amount × totalShares / totalPrincipal` (principal = AERO ever staked +
   compounded). First-mint inflation is neutralized by burning `SEED_BURN` shares to
   `address(0xdead)` at activation (see the OZ 4626 note in tier 3).
-- Principal is **permanently staked and never withdrawable** — that is what a permanent stake
-  means. Exit = transfer or sell shares. This is stated in the README in bold, in the deposit
-  function's NatSpec, and in the UI if one exists. Shares are a perpetual claim on the vault's
-  revenue stream; their market price is the market's valuation of that stream.
-- If governance ever grants the vault's address the v3 `withdraw-to-NFT` role (role-gated in the
-  escrow spec), a pre-wired `exitToNFT(shares)` becomes callable, letting a holder withdraw their
-  pro-rata stake into their own sTOKEN. The vault must remain fully functional if that grant
-  **never happens** — the code path is inert, not load-bearing (assumption isolation).
+- Principal is **permanently staked and never withdrawable as liquid AERO** — that is what a
+  permanent stake means, and the vault deliberately contains no function that could unstake it
+  (a principal-withdraw function is the drain vector; §3.7 explains why its absence is a security
+  feature). This is stated in the README in bold, in the deposit function's NatSpec, and in the
+  UI if one exists.
+- **Guaranteed exit: sell or transfer your shares.** Shares are a perpetual, transferable claim on
+  the vault's revenue stream; you exit by selling that claim for its market value, not by
+  redeeming AERO. This depends on a secondary market existing — a real limitation for a young or
+  small vault. The intended liquidity venue is an *external* shares↔AERO pool, kept outside the
+  immutable core so the vault stays minimal and the market, not the vault, provides the cash-out.
+- **Conditional exit to a position: `exitToNFT(shares)`.** If governance grants the vault's address
+  the v3 `withdraw-to-NFT` role (role-gated in the escrow spec), this pre-wired function lets a
+  holder carve their pro-rata weight into their **own new sTOKEN** — a staked *position*, not
+  liquid AERO (to get AERO from it they deal with the protocol directly: unlock-permanent → wait
+  out the lock, or sell the sTOKEN). It burns only `msg.sender`'s own shares (no `from` argument,
+  no allowance path — nobody can exit on another holder's behalf). The vault must remain fully
+  functional if the grant **never happens** — the path is inert, not load-bearing.
+- **If the role is unavailable, the fallback is not a worse pooled vault — it is a different
+  custody model (§3.7): one un-pooled position per depositor, exited by a plain whole-NFT
+  transfer that needs no role at all.** Which custody model a series ships is a deploy-time choice;
+  §3.7 lays out the trade.
 
 ### 3.3 Tranches and the reactivity edge
 
@@ -240,6 +258,62 @@ routes and price protection, which need either an oracle or an operator; all thr
 | `MAX_GAUGES` | 16 | bounds allocation gas and mirrors protocol per-vote limits. |
 | `SERIES_CAP` | e.g. 2,000,000 AERO | hard deposit cap per series (§0: immutable release trains; blast-radius bound for any undiscovered bug). |
 
+### 3.7 Custody model (and the role-free fallback)
+
+Everything in §3.1–§3.6 describes **Model P (pooled)**: deposits are merged into K communal
+permanent tranches, users hold fungible shares, and per-user exit to a *position* needs the
+role-gated `withdraw-to-NFT` primitive (§3.2). That role is **spec-draft and not guaranteed**
+(G7/G11). Rather than let the product's exit story hinge on a governance grant we may never
+receive, a series may instead ship **Model S (separate)**, which needs no role at all.
+
+**Model S — one un-pooled position per depositor.** A deposit is held as its **own sTOKEN**, never
+merged. The vault custodies it, votes it (as owner), claims its revenue straight to the depositor,
+and on exit hands the whole NFT back with a plain `transferFrom` — an ordinary ERC-721 transfer,
+no split, no role, no gated call. This is the clean answer to "get my sAERO back without the
+primitive."
+
+Model S is also **structurally smaller**: with non-fungible per-user positions there is no share
+token, no per-token reward accumulator, and no share-inflation surface — revenue for a position is
+claimed directly to its depositor. Less trusted code, fewer invariants. In seL4 terms it removes a
+whole subsystem.
+
+What Model S gives up is the **pooling multiplier**, which is the flagship edge. The trade is a
+trilemma — pick two:
+
+| Custody model | Role-free position exit | Small-user pooled reactivity | Gas |
+|---|---|---|---|
+| **P — pooled, K tranches, fungible shares** | ✗ (shares always; `exitToNFT` only if the role lands) | ✓ every holder gets the blended freshness of all K tranches | ✓ O(K) per cooldown |
+| **S — one position per depositor** | ✓ whole-NFT transfer, no role | ✗ each user gets only their own position's once-per-cooldown cadence — no better than staking solo | ~ O(N) aggregate per cooldown |
+| **U — unit-weight NFTs redeemed in kind** | ✓ | ✓ | ✗ O(N) per cycle; fights the tranche abstraction |
+
+The tension is fundamental: an sTOKEN's weight lives in exactly one NFT, so weight concentrated for
+one big staggered vote (P) cannot also be individually detachable (S) — pooling and per-user
+detachability are mutually exclusive.
+
+**On the gas question for Model S:** it is *not* a hard wall. Each position is O(1) and independent
+(claim / compound / revote one at a time), and staggering means no transaction ever touches all N;
+callers pay per-position gas for per-position bounties. The cost is (a) **aggregate** maintenance is
+O(N) per cooldown, so a position too small for its bounty to cover revote gas goes stale (drifts to
+market-average — degraded, never unsafe; G5), imposing an effective minimum economic position size;
+and (b) more decisively, Model S **forfeits the reactivity democratization** that justifies the
+whole project for small users. If Aero's published `vote` ships a **batch entrypoint** (multiple
+tokenIds in one call — verify at Aug 3), it lowers Model S's per-transaction overhead but does not
+change the O(N) aggregate or the lost pooling edge.
+
+**Positioning.** These are two products for two audiences, chosen at series-deploy time, never a
+runtime switch:
+
+- **Model P** — the flagship, for **large-N / small positions**: pooling *is* the value; illiquid
+  exit-via-shares is the accepted price; `exitToNFT` is a bonus if the role is ever granted.
+- **Model S** — the **fallback and the whale product**, for **small-N / large positions**: ships
+  even if the role never exists, gives a clean role-free exit and a smaller TCB, and suits large
+  stakers who already have enough weight to matter and don't need pooling for scale (O(N) is
+  trivial when N is dozens). This is the design to reach for the day it becomes clear the
+  `withdraw-to-NFT` grant is not coming.
+
+Both models share everything else in this brief — immutability, permissionless bounties, the
+cap-tracking strategy (§4), the assurance stack (§7), and the reproducible-verification gate (§8).
+
 ---
 
 ## 4. Strategy specification
@@ -322,24 +396,40 @@ collection.
 ```
 tranche-pilot/
 ├── src/
-│   ├── TranchePilot.sol          # v3 vault, one file, ≤ ~700 lines w/ NatSpec
+│   ├── TranchePilot.sol          # v3 vault, Model P (pooled), ≤ ~700 lines w/ NatSpec
+│   ├── SeparatePilot.sol         # v3 vault, Model S (one position per depositor); §3.7 —
+│   │                             #   smaller (no share/accumulator subsystem). Ship one or
+│   │                             #   the other per series; G11 decides which is default.
 │   ├── EpochPilot.sol            # v2 PoC,   one file, ≤ ~450 lines w/ NatSpec
 │   └── interfaces/               # hand-written minimal external interfaces
 ├── test/{unit,fuzz,invariant,fork,symbolic}/
-├── script/{DeployEpochPilot.s.sol,DeployTranchePilot.s.sol}   # CREATE2, zero post-deploy calls
+├── script/{DeployEpochPilot.s.sol,DeployTranchePilot.s.sol,DeploySeparatePilot.s.sol}  # CREATE2, zero post-deploy calls
 ├── verification/                 # standard-json artifacts, bytecode hashes, addresses
 ├── audits/
 └── foundry.toml                  # pinned solc (exact patch), optimizer runs, evm_version
 ```
 
+Each contract is an independent, single-file deployment — never a shared base or library
+(inheritance/linking would enlarge the TCB). Model P and Model S duplicate the small amount of
+common logic on purpose; auditing two flat contracts beats auditing one abstract hierarchy.
+
 ### 5.3 State (complete list)
 
-Shares: `totalShares`, `balanceOf`, `allowance`. Principal: `totalPrincipal`, `activated`,
-`tokenIds[K]`, `trancheStaked[K]`. Distributor: `accPerShare[token]`, `rewardDebt[user][token]`,
-`looseAero`. Strategy: `standingSet[K]`, `standingScore[K]`, `slotOfSet[K]` (the pre-validated
-candidate set per tranche and the slot it belongs to) and `lastRebalance[K]` (drives both the
-staleness bounty ramp and the eligibility check). Nothing else. Every variable's units and
-invariants are documented at the declaration.
+*Model P.* Shares: `totalShares`, `balanceOf`, `allowance`. Principal: `totalPrincipal`,
+`activated`, `tokenIds[K]`, `trancheStaked[K]`. Distributor: `accPerShare[token]`,
+`rewardDebt[user][token]`, `looseAero`. Strategy: `standingSet[K]`, `standingScore[K]`,
+`slotOfSet[K]` (the pre-validated candidate set per tranche and the slot it belongs to) and
+`lastRebalance[K]` (drives both the staleness bounty ramp and the eligibility check). Nothing else.
+
+*Model S* (§3.7) drops the entire share and distributor subsystem: no `totalShares`/`balanceOf`/
+`allowance`, no `accPerShare`/`rewardDebt`. It keeps a per-position registry
+(`depositorOf[tokenId]`, the enumerable set of held positions, and per-position `slotOfSet` /
+`lastRebalance` for the same strategy state), and revenue for a position is claimed directly to its
+depositor. Its invariant set is correspondingly smaller (no accumulator no-loss, no share
+conservation); it gains one: every held position is withdrawable only by its recorded depositor,
+by whole-NFT transfer.
+
+Every variable's units and invariants are documented at the declaration.
 
 ### 5.4 Invariants (the audit contract — each becomes a Foundry invariant test)
 
